@@ -1,0 +1,481 @@
+#:kivy 1.8
+
+<TextButton@Button>:
+	color: 1, 1, 1, 1
+	background_color: 0xbb / 255., 0xad / 255., 0xa0 / 255., 1.
+#	background_normal: 'data/round.png'
+#	background_down: 'data/round.png'
+	size_hint_y: None
+	height: '48dp'
+	font_size: '20dp'
+	bold: True
+
+<CardSplayCloseup>
+    canvas.before:
+        Color:
+            rgba: (0,0,0,1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+<Map>:
+    size_hint: None, None
+    rows: 3
+    cols: 4
+ #   canvas.before:
+ #       Color:
+ #           rgba: (0.5,0.5,0.5,1)
+ #       Rectangle:
+ #           pos: self.pos
+ #           size: self.size
+
+<Tile>:
+    letter: 'A'
+    value: 1
+    w_label: label_text
+    size_hint: (None, None)
+    canvas:
+        Color:
+            rgba: app.colors['tile_selected'] if self.selected else app.colors['tile'] if self.active else app.colors['tile_inactive']
+        Quad:
+            points: [self.pos[0]+0,self.pos[1]+0, self.pos[0]+self.size[0],self.pos[1]+0, self.pos[0]+self.size[0],self.pos[1]+self.size[1], self.pos[0]+0,self.pos[1]+self.size[1]]
+    Label:
+        id: label_text
+        halign: 'center'
+        size: root.size
+        pos: root.pos
+        font_size: root.size[0]/1.5
+        text: str(root.letter)
+        color: app.colors['tile_letter_text']
+    Label:
+        id: label_value
+        halign: 'center'
+        size: root.size[0]/4,root.size[1]/4
+        pos: root.pos
+        font_size: root.size[0]/5
+        text: str(root.value) if root.letter!='' else ''
+        color: app.colors['tile_letter_text']
+
+<ScoreBar>:
+    size_hint: (None, None)
+    score: 0
+    hi_score: 0
+    game_id: -1
+    orientation: 'horizontal'
+    target: [50, 150, 300]
+    BoxLayout:
+        orientation: 'vertical'
+        Label:
+            size_hint: (1, 0.33)
+            text: 'SCORE'
+            color: app.colors['score_text']
+            font_size: self.size[1]/1.2
+            text_size: self.size
+            halign: 'left'
+            valign: 'bottom'
+        Label:
+            size_hint: (1, 0.67)
+            text: str(root.score)
+            color: app.colors['score_text']
+            font_size: self.size[1]/1.2
+            text_size: self.size
+            halign: 'left'
+            valign: 'top'
+    BoxLayout:
+        orientation: 'vertical'
+        Label:
+            size_hint: (1, 0.33)
+            text: 'GAME %i'%(root.game_id) if root.game_id>0 else 'RANDOM GAME'
+            color: app.colors['score_text']
+            font_size: self.size[1]/1.2
+            text_size: self.size
+            halign: 'center'
+            valign: 'top'
+        BoxLayout:
+            size_hint: (1, 0.67)
+            spacing: 10
+            padding: [(self.size[0]-3*(10+self.size[1]))/2, 0]
+            orientation: 'horizontal'
+            Star:
+                active: root.hi_score >= root.target[0]
+                target: root.target[0]
+                color: app.colors['bronze_off']
+                alt_color: app.colors['bronze']
+                size_hint: (None,1)
+                width: self.size[1]
+            Star:
+                active: root.hi_score >= root.target[1]
+                target: root.target[1]
+                color: app.colors['silver_off']
+                alt_color: app.colors['silver']
+                size_hint: (None,1)
+                width: self.size[1]
+            Star:
+                active: root.hi_score >= root.target[2]
+                target: root.target[2]
+                color: app.colors['gold_off']
+                alt_color: app.colors['gold']
+                size_hint: (None,1)
+                width: self.size[1]
+    BoxLayout:
+        orientation: 'vertical'
+        Label:
+            size_hint: (1, 0.33)
+            text: 'BEST'
+            color: app.colors['score_text']
+            font_size: self.size[1]/1.2
+            text_size: self.size
+            halign: 'right'
+            valign: 'bottom'
+        Label:
+            size_hint: (1, 0.67)
+            text: str(root.hi_score)
+            color: app.colors['score_text']
+            font_size: self.size[1]/1.2
+            text_size: self.size
+            halign: 'right'
+            valign: 'top'
+
+<StatusBar>:
+    size_hint: (None, None)
+    orientation: 'vertical'
+    w_word_label: word_label
+    word: ''
+    word_score: 0
+    canvas.before:
+        Color:
+            rgba: app.colors['word_score_background'] if root.word!='' else app.colors['background']
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    BoxLayout:
+        orientation: 'horizontal'
+        Label:
+            id: word_label
+            text: '%s for %i'%(root.word, root.word_score) if root.word_score>0 else root.word if root.word_score<0 else ''
+            font_size: root.size[1]/1.5
+            color: app.colors['word_score_text']
+
+<MessageBar>:
+    size_hint: (None, None)
+    orientation: 'vertical'
+    message: ''
+    Label:
+        text: root.message
+        font_size: root.size[1]/1.5
+        color: app.colors['score_text']
+
+
+<MenuLabel@Label>:
+    active: True
+    canvas.before:
+        Color:
+            rgba: app.colors['menu_button_background']
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    font_size: self.size[1]/2.0
+    color: app.colors['menu_button_foreground'] if self.active else app.colors['menu_button_foreground_disabled']
+
+<InstructionsLabel@Label>:
+    canvas.before:
+        Color:
+            rgba: app.colors['checker']
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+<Instructions>:
+    m_scrollview: scroller
+    size_hint: (1, 1)
+    orientation: 'vertical'
+    padding: (0.1*self.size[0], 0.05*self.size[1])
+    spacing: int(0.01*self.size[0])
+    canvas.before:
+        Color:
+            rgba: [0,0,0,0.5]
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    InstructionsLabel:
+        left: 0.1*root.size[0]
+        size_hint: (1,0.1)
+        text: 'How to Play'
+        text_size: (self.size[0]*0.9, self.size[1])
+        font_size: '32dp'
+        valign: 'middle'
+        halign: 'center'
+    ScrollView:
+        id: scroller
+        left: 0.1*root.size[0]
+        size_hint: (None, None)
+        size: (0.8*root.size[0], 0.8*root.size[1])
+#        do_scroll_y: True
+#        scroll_y: 0
+        InstructionsLabel:
+            size_hint_y: None
+            height: max(self.texture_size[1], 0.8*root.size[1])
+            text_size: 0.9*self.width, None
+            text: 'Objective: Complete 7 words and amass the largest score you can.\n\n' 'Play: For each row, use one or more letters in the free stack (top of screen) and the current active row to form a word by touching the letter tiles in sequence. A score prompt will show for a valid word, which you can press to score the word. Press any of the selected letters to reset the current word.\n\n' 'Scoring: Each word scores the sum of the tile values multiplied by the length of the word.\n\n' 'End game: The game ends when you have completed all 7 words or you can\'t form a valid word.\n\n'
+            halign: 'left'
+            valign: 'middle'
+            font_size: '20dp'
+
+
+<Menu>:
+    size_hint: (None, None)
+    orientation: 'vertical'
+    hadj: max(0.1 * self.size[0], (self.size[0] - self.size[1])/2 + 0.1*self.size[0])
+    vadj: 0.15 * self.size[1]
+    padding: [self.hadj, self.vadj]
+    spacing: int(0.01*self.size[1])
+    next_game: False
+    prev_game: False
+    canvas.before:
+        Color:
+            rgba: [0,0,0,0.5]
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    MenuLabel:
+        text: 'Restart Game'
+        value: 1
+    MenuLabel:
+        text: 'Next Game'
+        value: 2
+        active: root.next_game
+    MenuLabel:
+        text: 'Previous Game'
+        value: 3
+        active: root.prev_game
+    MenuLabel:
+        text: 'Instructions'
+        value: 4
+    MenuLabel:
+        text: 'Leaderboard'
+        value: 5
+    MenuLabel:
+        text: 'Achievements'
+        value: 6
+    MenuLabel:
+        text: 'Theme'
+        value: 7
+    MenuLabel:
+        text: 'Quit'
+        value: 8
+
+<Hand>:
+    size_hint: None, None
+
+<PlayerDiscard>:
+    size_hint: None, None
+
+<PlayerDeck>:
+    size_hint: None, None
+
+<PlayerTableau>:
+    size_hint: None, None
+
+<Exhausted>:
+    size_hint: None, None
+
+<LootDeck>:
+    size_hint: None, None
+
+<MarketDeck>:
+    size_hint: None, None
+
+<MarketOffer>:
+    size_hint: None, None
+
+<EventDeck>:
+    size_hint: None, None
+
+<CardSplay0>:
+    size_hint:None,None
+    text: 'DECK'
+    canvas.after:
+        Color:
+            rgba: (1,1,1,1)
+        Line:
+            width: 1
+            rectangle: root.x, root.y, root.width, root.height
+    Label:
+        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+        text: root.text
+
+<CardSplay>:
+    size_hint:None,None
+    text: 'DECK'
+    canvas.after:
+        Color:
+            rgba: (1,1,1,1)
+        Line:
+            width: 1
+            rectangle: root.x, root.y, root.width, root.height
+    Label:
+        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+        text: root.text
+
+<MapChoice>:
+    map_pos: 0,0
+    pos: self.map_pos[0]*self.size[0], self.map_pos[1]*self.size[1]
+    size_hint: None, None
+    canvas.after:
+        Color:
+            rgb: 240,69,0
+        Rectangle:
+            pos: self.center_x-self.width//10, self.center_y-root.width//10
+            size: self.width//5, self.width//5
+
+<Token>:
+    map_pos: 0,0
+    pos: self.map_pos[0]*self.size[0], self.map_pos[1]*self.size[1]
+    size_hint: None, None
+
+<GuardToken>:
+    state: 'dozing'
+    canvas.after:
+        Color:
+            rgb: 0.5,0,0
+#        Line:
+#            width: 1
+#            rectangle: root.x, root.y, root.width, root.height
+        Line:
+            width: root.width//10
+            circle: self.x+(self.width)//2,self.y+(self.height)//2,root.width//3
+
+<PlayerToken>:
+    canvas.after:
+        Color:
+            rgb: 0.5,0.5,0.5
+#        Line:
+#            width: 1
+#            rectangle: root.x, root.y, root.width, root.height
+        Line:
+            width: root.width//10
+            circle: self.x+(self.width)//2,self.y+(self.height)//2,root.width//3
+
+<PlayArea>:
+    playerdiscard: playerdiscard
+    playerdeck: playerdeck
+    playertableau: playertableau
+    playerprompt: playerprompt
+    exhausted: exhausted
+    hand: hand
+    map: map
+    loot1: loot1
+    loot2: loot2
+    loot3: loot3
+    marketdeck: marketdeck
+    marketoffer: marketoffer
+    eventdeck: eventdeck
+    board: board
+
+    map_size: 4, 3
+    map_card_grid_size: 5,7
+    card_base_size: self.width//(7+self.map_size[0]*2), self.height//(self.map_size[1]*2)
+    card_size: min(self.card_base_size[0],self.card_base_size[1]*5//7), min(self.card_base_size[1],self.card_base_size[0]*7//5)
+    map_card_size: self.card_size[0]*2//self.map_card_grid_size[0]*self.map_card_grid_size[0], self.card_size[1]*2//self.map_card_grid_size[1]*self.map_card_grid_size[1]
+    paddy: (self.height - 5*self.card_size[1])//4
+    paddx: (self.width - (6+self.map_size[0]*2)*self.card_size[0])//3
+    PlayerDiscard:
+        id: playerdiscard
+        text: 'PLAYER\nDISCARD'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        pos: 0,0
+    PlayerDeck:
+        id: playerdeck
+        text: 'PLAYER\nDECK'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        pos: root.card_size[0]*6//5 + root.width//40, 0
+    Hand:
+        id: hand
+        text: 'PLAYER\nHAND'
+        size_hint: None, None
+        size: root.card_size[0]*4, root.card_size[1]
+        pos: root.card_size[0]*12//5 + root.width//20, 0
+    Label:
+        id: playerprompt
+        text: 'Select a card from your hand to play, or tap the event card to end your turn'
+        size_hint: None, None
+        font_size: 12
+        size: root.card_size[0]*5, root.card_size[1]//5
+        y: root.card_size[1]+root.paddy
+        x: root.width//40
+    PlayerTableau:
+        id: playertableau
+        text: 'PLAYER\nTABLEAU'
+        size_hint: None, None
+        size: root.card_size[0]*5, root.card_size[1]
+        y: root.card_size[1]*6//5+2*root.paddy
+        x: root.width//40
+    Exhausted:
+        id: exhausted
+        text: 'EXHAUSTED\nCARDS PILE'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        y: root.card_size[1]*6//5+2*root.paddy
+        x: root.width//20 + root.card_size[0]*5
+    LootDeck:
+        id: loot1
+        text: 'LOOT1'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        x: 0
+        y: root.height - self.height
+    LootDeck:
+        id: loot2
+        text: 'LOOT2'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        x: root.card_size[0] + root.width//40
+        y: root.height - self.height
+    LootDeck:
+        id: loot3
+        text: 'LOOT3'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        x: root.card_size[0]*2 + 2*root.width//40
+        y: root.height - self.height
+    EventDeck:
+        id: eventdeck
+        text: 'EVENT\nDECK'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        x: root.card_size[0]*3 + 3*root.width//40
+        y: root.height - self.height
+    MarketDeck:
+        id: marketdeck
+        text: 'MARKET\nDECK'
+        size_hint: None, None
+        size: int(root.card_size[0]*1.2), root.card_size[1]
+        x: root.width//40
+        y: root.height-self.height-root.card_size[1]-root.paddy
+    MarketOffer:
+        id: marketoffer
+        text: 'MARKET\nOFFER'
+        size_hint: None, None
+        size: int(root.card_size[0]*4), root.card_size[1]
+        x: 2*root.width//40+root.card_size[0]*6//5
+        y: root.height-self.height-root.card_size[1]-root.paddy
+    Board:
+        id: board
+        map: map
+        size_hint: None, None
+        size: root.map_card_size[0]*root.map_size[0], root.map_card_size[1]*root.map_size[1]
+        map_card_grid_size: root.map_card_grid_size
+        space_size: root.map_card_size[0]//root.map_card_grid_size[0], root.map_card_size[1]//root.map_card_grid_size[1]
+        x: root.width - self.width
+        y: (root.height - self.height)//2
+        w: self.map_card_grid_size[0]*root.map_size[0]
+        h: self.map_card_grid_size[1]*root.map_size[1]
+        Map:
+            orientation: 'lr-bt'
+            id: map
+            rows: root.map_size[1]
+            cols: root.map_size[0]
+            size_hint: None, None
+            size: root.map_card_size[0]*root.map_size[0], root.map_card_size[1]*root.map_size[1]

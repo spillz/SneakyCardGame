@@ -1,0 +1,3 @@
+title=Puzzle Dungeon
+author=
+orientation=landscape

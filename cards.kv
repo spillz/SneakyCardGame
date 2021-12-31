@@ -1,0 +1,165 @@
+#:kivy 1.8
+
+<Card>:
+    orientation: 'vertical'
+    size_hint: None,None
+    name: 'NULL'
+    card_text: 'NULL'
+    selected: False
+    type: 'NULL'
+    face_up: False
+
+
+<MapCard>:
+    reward_text_a: ''
+    reward_text_b: ''
+    face_up: True
+    name: 'MAP CARD'
+    type: 'MAP'
+
+<CityMap>:
+    name: 'CITY'
+
+<EventCard>:
+    name: 'EVENT'
+    type: 'EVENT'
+    canvas.before:
+        Color:
+            rgba: (0.2,0.2,0.2,1) if root.face_up==True else (0.5,0.5,0.5,1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: (0,0,0,1)
+        Line:
+            width: 1
+            rectangle: root.x, root.y, root.width, root.height
+    Label:
+        size_hint: 1, 0.2
+        text_size: self.size
+        text: root.name if root.face_up else ''
+        font_size: 10
+        halign: 'center'
+        valign: 'center'
+#        on_size: self.texture_size = self.size
+        color: 1,1,0.8,1
+    Label:
+        size_hint: 1, 0.8
+        text_size: self.size
+        halign: 'center'
+        valign: 'center'
+        font_size: 9
+        text: root.card_text if root.face_up else ''
+        color: 1,1,1,1
+
+<SpawnEvent>:
+    name: 'SPAWN'
+    card_text: 'Spawn a guard at the nearest waypoint'
+
+<PatrolEvent>:
+    name: 'PATROL'
+    card_text: "All guards on the player's map card move to the next waypoint"
+
+<AlertEvent>:
+    name: 'ALERT'
+    card_text: "All guards on this card become alert"
+
+<MoveEvent>:
+    name: 'MOVE'
+    card_text: "The nearest guard moves to a waypoint closer to you"
+
+
+<PlayerCard>:
+    name: 'PLAYER CARD'
+    type: 'PLAYER'
+    card_text: ''
+    attack_value: 0
+    exhausts: False
+    discards: True
+    stack_value: 1
+    canvas.before:
+        Color:
+            rgba: (0.2,0.2,0.2,1) if root.face_up==True else (0.5,0.5,0.5,1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: (0,0,0,1)
+        Line:
+            width: 1
+            rectangle: root.x, root.y, root.width, root.height
+    Label:
+        size_hint: 1, 0.2
+        text_size: self.size
+        text: root.name if root.face_up else ''
+        font_size: 10
+        halign: 'center'
+        valign: 'center'
+#        on_size: self.texture_size = self.size
+        color: 1,1,0.8,1
+    Label:
+        size_hint: 1, 0.8
+        text_size: self.size
+        halign: 'center'
+        valign: 'center'
+        font_size: 9
+        text: root.card_text if root.face_up else ''
+        color: 1,1,1,1
+
+<LootCard>:
+    name: 'LOOT CARD'
+    type: 'LOOT'
+
+<TreasureCard>:
+    name: 'TREASURE'
+    card_text: 'Spend 5 crowns in the market at game end then destroy this card'
+
+<MarketCard>:
+    name: 'LOOT CARD'
+    type: 'LOOT'
+
+<PoisonArrow>:
+    name: 'POISON ARROW'
+    card_text: 'Fire from bow. KOs affected enemy.'
+
+<BasicMove>:
+    name: 'BASIC MOVE'
+    card_text: 'Move 2 spaces'
+    move_value: 2
+
+<BasicAttack>:
+    name: 'BASIC ATTACK'
+    card_text: 'Attack with strength 2'
+    attack_value: 2
+
+<BasicClimb>:
+    name: 'BASIC CLIMB'
+    card_text: 'Gain climb 1'
+    climb_value: 1
+
+<BasicSneak>:
+    name: 'BASIC SNEAK'
+    card_text: 'Gain sneak 1'
+    sneak_value: 1
+
+<BasicKockout>:
+    name: 'BASIC KNOCKOUT'
+    card_text: 'Gain KO 1'
+    ko_value: 1
+
+<BasicArrow>:
+    name: 'BASIC ARROW'
+    card_text: 'Range 10 Attack 2'
+    range: 10
+    exhausts: True
+    attack_value: 1
+
+<BasicBow>:
+    name: 'BASIC BOW'
+    card_text: 'Shoots Arrows'
+    attack_value: 1
+
+<BasicSword>:
+    name: 'BASIC SWORD'
+    card_text: 'Attack 2'
+    attack_value: 1
