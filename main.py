@@ -303,14 +303,17 @@ class EventDeck(CardSplay):
         if len(self.cards)==0:
             return False
         card= self.cards[-1]
+        card.face_up = True
         print('EVENT CARD TAPPED', card)
         self.cards.remove(card)
         card.activate(self.parent.board)
+        self.parent.eventdiscard.cards.append(card)
         for c in self.parent.playertableau.cards[:]:
             self.parent.playertableau.cards.remove(c)
             self.parent.playerdiscard.cards.append(c)
         self.parent.playerdeck.can_draw = True
         return True
+
 
 class EventDiscard(CardSplay):
     def on_touch_up(self,touch):
@@ -638,9 +641,9 @@ class PlayArea(FloatLayout):
 
         self.marketdeck.cards[:] = self.marketcards[4:]
         self.marketoffer.cards[:] = self.marketcards[:4]
+
         self.eventdeck.cards[:] = self.eventcards[:]
-        print(self.eventdeck)
-        print(self.eventdeck.cards)
+        self.eventdiscard.cards[:] = []
 
     def token_setup(self):
         player = PlayerToken()

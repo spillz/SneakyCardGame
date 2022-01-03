@@ -5,7 +5,7 @@ from kivy.properties import StringProperty, ReferenceListProperty, NumericProper
     BooleanProperty, ObjectProperty, DictProperty, ListProperty
 from kivy.uix.label import Label
 
-from kivy.graphics import Rectangle, Color
+from kivy.graphics import Rectangle, Color, Mesh, Line
 from kivy.graphics.texture import Texture
 
 
@@ -71,7 +71,62 @@ class MapCard(Card):
                 Color(*self.building_codes[self.map[(i,j)]][1])
                 x = self.x + (i)*self.width//self.w
                 y = self.y + (j)*self.height//self.h
-                Rectangle(pos = (x,y), size = size)
+                tile = self.map[(i,j)]
+                if tile != 'B': #non-building tile
+                    Rectangle(pos = (x,y), size = size)
+                else: #Draw in roof line tile
+                    s = size[0]+1, size[1]+1
+                    Rectangle(pos = (x,y), size = s)
+                    Color(0,0,0)
+                    cx = x+s[0]//2
+                    cy = y+s[1]//2
+                    adj = [p for p in self.map.iter_types_in_range((i,j),'B',1)]
+                    tl = tr = bl = br = 0
+                    if (i+1,j) in adj:
+                        Line(width = 1, points = (cx,cy,x+s[0],cy))
+                        if (i,j+1) in adj:
+                            tr+=1
+                        if (i,j-1) in adj:
+                            br+=1
+                    else:
+                        br+=1
+                        tr+=1
+                    if (i-1,j) in adj:
+                        Line(width = 1, points = (cx,cy,x,cy))
+                        if (i,j+1) in adj:
+                            tl+=1
+                        if (i,j-1) in adj:
+                            bl+=1
+                    else:
+                        bl+=1
+                        tl+=1
+                    if (i,j+1) in adj:
+                        Line(width = 1, points = (cx,cy,cx,y+s[1]))
+                        if (i+1,j) in adj:
+                            tr+=1
+                        if (i-1,j) in adj:
+                            tl+=1
+                    else:
+                        tl+=1
+                        tr+=1
+                    if (i,j-1) in adj:
+                        Line(width = 1, points = (cx,cy,cx,y))
+                        if (i+1,j) in adj:
+                            br+=1
+                        if (i-1,j) in adj:
+                            bl+=1
+                    else:
+                        bl+=1
+                        br+=1
+                    if bl==2:
+                        Line(width = 1, points = (cx,cy,x,y))
+                    if br==2:
+                        Line(width = 1, points = (cx,cy,x+s[0],y))
+                    if tr==2:
+                        Line(width = 1, points = (cx,cy,x+s[0],y+s[1]))
+                    if tl==2:
+                        Line(width = 1, points = (cx,cy,x,y+s[1]))
+
 #        self.canvas.after.clear()
 #        with self.canvas.after:
             for i,j in self.lights:
@@ -93,7 +148,19 @@ class MapCard(Card):
                 Color(0.1,0.3,0.8,1)
                 x = self.x + (i+0.2)*self.width//self.w
                 y = self.y + (j+0.2)*self.height//self.h
-                Rectangle(pos = (x,y), size = (3*size[0]//5,3*size[1]//5))
+                w, h = 3*size[0]//5//2*2,3*size[1]//5//2*2
+                #Rectangle(pos = (x,y), size = (3*size[0]//5,3*size[1]//5))
+                vertices = [x+w//2,y,0,0,
+                             x,y+2*h//3,0,0,
+                             x+w//4,y+h,0,0,
+                             x+3*w//4,y+h,0,0,
+                             x+w,y+2*h//3,0,0,
+                             ]
+                indices = [0,4,3,2,1]
+                Mesh(vertices = vertices,
+                     indices = indices,
+                     mode = 'triangle_fan'
+                     )
 
 
 class Map:

@@ -291,6 +291,9 @@
 <EventDeck>:
     size_hint: None, None
 
+<EventDiscard>:
+    size_hint: None, None
+
 <CardSplay0>:
     size_hint:None,None
     text: 'DECK'
@@ -324,9 +327,21 @@
     canvas.after:
         Color:
             rgb: 240,69,0
-        Rectangle:
-            pos: self.center_x-self.width//10, self.center_y-root.width//10
-            size: self.width//5, self.width//5
+        Line:
+            width: self.width//20
+            points: self.x+self.width//10, self.y, self.x, self.y, self.x, self.y+self.width//10
+        Line:
+            width: self.width//20
+            points: self.right-self.width//10, self.y, self.right, self.y, self.right, self.y+self.width//10
+        Line:
+            width: self.width//20
+            points: self.x+self.width//10, self.top, self.x, self.top, self.x, self.top-self.width//10
+        Line:
+            width: self.width//20
+            points: self.right-self.width//10, self.top, self.right, self.top, self.right, self.top-self.width//10
+#        Rectangle:
+#            pos: self.center_x-self.width//10, self.center_y-root.width//10
+#            size: self.width//5, self.width//5
 
 <Token>:
     map_pos: 0,0
@@ -337,24 +352,48 @@
     state: 'dozing'
     canvas.after:
         Color:
-            rgb: 0.5,0,0
-#        Line:
-#            width: 1
-#            rectangle: root.x, root.y, root.width, root.height
+            rgb: 0.75,0,0
+        Ellipse:
+            pos: self.x+(self.width)//10,self.y+(self.height)//10
+            size: root.width*4//5, root.height*4//5
+        Color:
+            rgb: 0,0,0
+        Ellipse:
+            pos: self.x+(self.width)//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
+            size: root.width*3//10, root.height*3//10
+            angle_start: 90
+            angle_end: 270
+        Ellipse:
+            pos: self.x+(self.width)*2//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
+            size: root.width*3//10, root.height*3//10
+            angle_start: 90
+            angle_end: 270
         Line:
-            width: root.width//10
-            circle: self.x+(self.width)//2,self.y+(self.height)//2,root.width//3
+            width: root.height//20
+            points: self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3
 
 <PlayerToken>:
     canvas.after:
         Color:
             rgb: 0.5,0.5,0.5
-#        Line:
-#            width: 1
-#            rectangle: root.x, root.y, root.width, root.height
+        Ellipse:
+            pos: self.x+(self.width)//10,self.y+(self.height)//10
+            size: root.width*4//5, root.height*4//5
+        Color:
+            rgb: 0,0,0
+        Ellipse:
+            pos: self.x+(self.width)//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
+            size: root.width*3//10, root.height*3//10
+            angle_start: 90
+            angle_end: 270
+        Ellipse:
+            pos: self.x+(self.width)*2//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
+            size: root.width*3//10, root.height*3//10
+            angle_start: 90
+            angle_end: 270
         Line:
-            width: root.width//10
-            circle: self.x+(self.width)//2,self.y+(self.height)//2,root.width//3
+            width: root.height//20
+            points: self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3
 
 <PlayArea>:
     playerdiscard: playerdiscard
@@ -370,6 +409,7 @@
     marketdeck: marketdeck
     marketoffer: marketoffer
     eventdeck: eventdeck
+    eventdiscard: eventdiscard
     board: board
 
     map_size: 4, 3
@@ -445,7 +485,14 @@
         text: 'EVENT\nDECK'
         size_hint: None, None
         size: root.card_size[0]*6//5, root.card_size[1]
-        x: root.card_size[0]*3 + 3*root.width//40
+        x: root.card_size[0]*3 + 4*root.width//40
+        y: root.height - self.height
+    EventDiscard:
+        id: eventdiscard
+        text: 'EVENT\nDISCARD'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        x: root.card_size[0]*4 + 5*root.width//40
         y: root.height - self.height
     MarketDeck:
         id: marketdeck
