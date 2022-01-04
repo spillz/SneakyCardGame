@@ -4,7 +4,7 @@ import math
 #import sounds
 
 #os.environ['KIVY_GL_DEBUG'] = '1'
-#os.environ['KIVY_GL_BACKEND'] = 'sdl2'
+#os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
 
 import kivy
@@ -211,7 +211,29 @@ class PlayerDeck(CardSplay):
             self.cards.remove(c)
             self.parent.hand.cards.append(c)
         self.can_draw = False
+        print('Window size',self.parent.size)
         return True
+
+class PlayerStance(CardSplay):
+    can_draw = True
+    def on_touch_up(self,touch):
+        if not self.collide_point(*touch.pos):
+            return False
+        if not self.can_draw:
+            return True
+        super().on_touch_up(touch)
+        c = self.cards[-1]
+        self.cards.remove(c)
+        self.cards.insert(0,c)
+
+    def on_cards(self, *args):
+        for c in self.cards:
+            c.face_up = True
+            c.selected = False
+        super().on_cards(*args)
+        #clear the touch targets
+        pass
+
 
 class PlayerTableau(CardSplay):
     def on_touch_up(self,touch):
@@ -304,7 +326,6 @@ class EventDeck(CardSplay):
             return False
         card= self.cards[-1]
         card.face_up = True
-        print('EVENT CARD TAPPED', card)
         self.cards.remove(card)
         card.activate(self.parent.board)
         self.parent.eventdiscard.cards.append(card)
@@ -338,6 +359,68 @@ class Map(GridLayout):
     def on_touch_up(self,touch):
         return
 
+def extract_kwarg(kwargs,name,default=None):
+    if name in kwargs:
+        ret = kwargs[name]
+        del kwargs[name]
+    else:
+        ret = default
+    return ret
+
+
+class Token(BoxLayout):
+    map_pos = ListProperty()
+    off = ListProperty()
+    def __init__(self, **kwargs):
+        map_pos = extract_kwarg(kwargs,'map_pos',(0,0))
+        super().__init__(**kwargs)
+        self._old_map_pos = map_pos
+        self.map_pos = map_pos
+        self._a = None
+        self.pos = (self.map_pos[0]+self.off[0])*self.size[0], (self.map_pos[1]+self.off[1])*self.size[1]
+        self.bind(map_pos=self.func_on_map_pos)
+        self.bind(off=self.func_on_off)
+
+    def func_on_map_pos(self, obj, mp):
+        pos = (self.map_pos[0]+self.off[0])*self.size[0], (self.map_pos[1]+self.off[1])*self.size[1]
+        dur = 0.1*(cards.dist(self._old_map_pos, self.map_pos))
+        self._old_map_pos = self.map_pos
+        self._a = Animation(pos=pos, duration=dur)
+        self._a.bind(on_complete=self.anim_done)
+        self._a.start(self)
+
+    def func_on_off(self, obj, off):
+        self.func_on_map_pos(obj, off)
+
+    def anim_done(self, obj, val):
+        self._a = None
+        self.pos = (self.map_pos[0]+self.off[0])*self.size[0], (self.map_pos[1]+self.off[1])*self.size[1]
+
+    def on_size(self, obj, sz):
+        if self._a is not None:
+            self._a.cancel()
+        self.pos = (self.map_pos[0]+self.off[0])*self.size[0], (self.map_pos[1]+self.off[1])*self.size[1]
+
+
+class PlayerToken(Token):
+    pass
+
+
+class GuardToken(Token):
+    pass
+
+
+class MapChoice(BoxLayout):
+    def __init__(self, **kwargs):
+        map_pos = extract_kwarg(kwargs,'map_pos',(0,0))
+        listener = extract_kwarg(kwargs,'listener')
+        super().__init__(**kwargs)
+        self.map_pos = map_pos
+        self.listener = listener
+    def on_touch_up(self, touch):
+        if self.collide_point(*touch.pos):
+            self.listener(self)
+
 
 class Board(RelativeLayout):
     tokens = ListProperty()
@@ -345,14 +428,17 @@ class Board(RelativeLayout):
     space_size = ListProperty()
     w = NumericProperty()
     h = NumericProperty()
+    token_types = {'G': GuardToken, 'P': PlayerToken}
 
     def on_tokens(self, *args):
         self.active_player_token = None
         for t in self.children[:]:
             if isinstance(t,Token):
+                t.unbind(map_pos=self.on_token_move)
                 self.remove_widget(t)
         for t in self.tokens:
             if isinstance(t,Token):
+                t.bind(map_pos=self.on_token_move)
                 self.add_widget(t)
                 t.size = self.space_size
             if isinstance(t,PlayerToken):
@@ -372,6 +458,40 @@ class Board(RelativeLayout):
             t.size = self.space_size
         for c in self.map_choices:
             c.size = self.space_size
+
+    def on_token_move(self, token, mp):
+        for t in self.tokens:
+            if isinstance(t,GuardToken) and t.map_pos != self.active_player_token.map_pos:
+                if 1<=self.dist(t.map_pos, self.active_player_token.map_pos)<=10 and self[self.active_player_token.map_pos]!='U':
+                    if not self.has_types_between(t.map_pos, self.active_player_token.map_pos, 'B'):
+                        t.map_pos = self.active_player_token.map_pos
+                        if t.state == 'dozing':
+                            t.state = 'alert'
+                        return
+
+        clashes = {}
+        for t0 in self.tokens:
+            for t1 in self.tokens:
+                if t0==t1:
+                    continue
+                if tuple(t0.map_pos) == tuple(t1.map_pos):
+                    p = tuple(t0.map_pos)
+                    if p in clashes:
+                        clashes[p].add(t0)
+                        clashes[p].add(t1)
+                    else:
+                        clashes[p] = set([t0,t1])
+
+        if len(clashes)>0:
+            print(clashes)
+        for t in self.tokens:
+            if tuple(t.map_pos) not in clashes:
+                t.off = [0,0]
+        for p in clashes:
+            for t,o in zip(clashes[p],[[-0.25,-0.25],[0.25,0.25],[-0.25,0.25],[0.25,-0.25]][:len(clashes[p])]):
+                t.off = o
+                print(t,t.off)
+
 
     def __getitem__(self, pos):
         card, card_pos = self.get_card_and_pos(pos)
@@ -511,7 +631,6 @@ class Board(RelativeLayout):
     def nearest_guard(self, map_pos, max_range=None):
         gts = [t for t in self.tokens if isinstance(t,GuardToken)]
         dists = [self.dist(map_pos,t.map_pos) for t in gts]
-        print('Nearest guard dists',dists)
         min_dist = min(dists)
         if max_range is not None:
             if min_dist>max_range:
@@ -527,7 +646,7 @@ class Board(RelativeLayout):
                 return None
         return wps[dists.index(min_dist)]
 
-    def guard_nearest_move(self, guard_pos, player_pos, max_dist=1000):
+    def guard_nearest_move(self, guard_pos, player_pos, include_player=True, max_dist=1000):
         g_to_p_dist = self.dist(player_pos, guard_pos)
         wps = [wp for wp in self.iter_waypoints()]
         candidates = []
@@ -535,13 +654,15 @@ class Board(RelativeLayout):
         for wp in wps:
             p_to_wp_dist = self.dist(wp, player_pos)
             g_to_wp_dist = self.dist(wp, guard_pos)
-            if g_to_wp_dist<g_to_p_dist and p_to_wp_dist<g_to_p_dist and p_to_wp_dist<=smallest_dist:
+            if (p_to_wp_dist<g_to_p_dist or not include_player) and p_to_wp_dist<=smallest_dist: #g_to_wp_dist<g_to_p_dist and
                 smallest_dist = p_to_wp_dist
                 candidates.append(wp)
-        if len(candidates)==0:
+        if include_player and len(candidates)==0:
             return player_pos
+        elif len(candidates)==0:
+            return guard_pos
         else:
-            return candidates[0]
+            return candidates[-1]
 
     def walkable_dist(self, map_pos1, map_pos2):
         pass
@@ -552,7 +673,7 @@ class Board(RelativeLayout):
     def walkable_spots(self, map_pos, dist, spots):
         if len(spots)==0:
             spots[tuple(map_pos)] = 0
-        walk_costs = {'B': 4, 'U': 1, 'L': 1}
+        walk_costs = {'B': 4, 'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
         for pos in self.iter_in_range(map_pos,1.5):
             if tuple(pos) in spots:
                 continue
@@ -562,42 +683,6 @@ class Board(RelativeLayout):
                     spots[tuple(pos)] = cur_dist
                     self.walkable_spots(pos, dist, spots)
         return spots
-
-
-def extract_kwarg(kwargs,name,default=None):
-    if name in kwargs:
-        ret = kwargs[name]
-        del kwargs[name]
-    else:
-        ret = default
-    return ret
-
-
-class Token(BoxLayout):
-    map_pos = ListProperty()
-    def __init__(self, **kwargs):
-        map_pos = extract_kwarg(kwargs,'map_pos',(0,0))
-        super().__init__(**kwargs)
-        self.map_pos = map_pos
-
-class PlayerToken(Token):
-    pass
-
-
-class GuardToken(Token):
-    state = 'dozing' #dozing, alert, unconscious, dead
-
-
-class MapChoice(BoxLayout):
-    def __init__(self, **kwargs):
-        map_pos = extract_kwarg(kwargs,'map_pos',(0,0))
-        listener = extract_kwarg(kwargs,'listener')
-        super().__init__(**kwargs)
-        self.map_pos = map_pos
-        self.listener = listener
-    def on_touch_up(self, touch):
-        if self.collide_point(*touch.pos):
-            self.listener(self)
 
 
 class PlayArea(FloatLayout):
@@ -612,6 +697,7 @@ class PlayArea(FloatLayout):
     def on_parent(self, *args):
         self.mapcards = cards.make_map_cards(self, self.map_card_grid_size[0], self.map_card_grid_size[1])
         self.playercards = cards.make_player_cards(self)
+        self.stancecards = cards.make_stance_cards(self)
         self.lootcards = cards.make_loot_cards(self)
         self.marketcards = cards.make_market_cards(self)
         self.eventcards = cards.make_event_cards(self)
@@ -632,6 +718,7 @@ class PlayArea(FloatLayout):
         self.playerdeck.cards[:] = self.playercards[:]
         self.playerdiscard.cards[:] = []
         self.playertableau.cards[:] = []
+        self.playerstance.cards[:] = reversed(self.stancecards[:])
 
         self.loot1.cards[:] = self.lootcards[0][:]
         self.loot2.cards[:] = self.lootcards[1][:]

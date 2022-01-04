@@ -273,6 +273,9 @@
 <PlayerDeck>:
     size_hint: None, None
 
+<PlayerStance>:
+    size_hint: None, None
+
 <PlayerTableau>:
     size_hint: None, None
 
@@ -345,11 +348,11 @@
 
 <Token>:
     map_pos: 0,0
-    pos: self.map_pos[0]*self.size[0], self.map_pos[1]*self.size[1]
+    off: 0,0
     size_hint: None, None
 
 <GuardToken>:
-    state: 'dozing'
+    state: 'dozing' #dozing, alert, unconscious, dead
     canvas.after:
         Color:
             rgb: 0.75,0,0
@@ -357,17 +360,19 @@
             pos: self.x+(self.width)//10,self.y+(self.height)//10
             size: root.width*4//5, root.height*4//5
         Color:
+            rgb: [0,0,0] if self.state=='dozing' else [0.4,0,0]
+        Ellipse:
+            pos: self.x+(self.width)//3-root.width*3//40,self.y+(self.height)*2//5-root.height*3//40
+            size: root.width*3//10, root.height*3//10
+            angle_start: 270 if self.state=='dozing' else 290
+            angle_end: 450 if self.state=='dozing' else 470
+        Ellipse:
+            pos: self.x+(self.width)*2//3-root.width*3//40,self.y+(self.height)*2//5-root.height*3//40
+            size: root.width*3//10, root.height*3//10
+            angle_start: 270 if self.state=='dozing' else 250
+            angle_end: 450 if self.state=='dozing' else 430
+        Color:
             rgb: 0,0,0
-        Ellipse:
-            pos: self.x+(self.width)//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
-            size: root.width*3//10, root.height*3//10
-            angle_start: 90
-            angle_end: 270
-        Ellipse:
-            pos: self.x+(self.width)*2//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
-            size: root.width*3//10, root.height*3//10
-            angle_start: 90
-            angle_end: 270
         Line:
             width: root.height//20
             points: self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3
@@ -398,6 +403,7 @@
 <PlayArea>:
     playerdiscard: playerdiscard
     playerdeck: playerdeck
+    playerstance: playerstance
     playertableau: playertableau
     playerprompt: playerprompt
     exhausted: exhausted
@@ -445,20 +451,27 @@
         size: root.card_size[0]*5, root.card_size[1]//5
         y: root.card_size[1]+root.paddy
         x: root.width//40
+    PlayerStance:
+        id: playerstance
+        text: 'PLAYER\nSTANCE'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        y: root.card_size[1]*6//5+2*root.paddy
+        x: 0
     PlayerTableau:
         id: playertableau
         text: 'PLAYER\nTABLEAU'
         size_hint: None, None
-        size: root.card_size[0]*5, root.card_size[1]
+        size: root.card_size[0]*4, root.card_size[1]
         y: root.card_size[1]*6//5+2*root.paddy
-        x: root.width//40
+        x: root.width//40 + root.card_size[0]*6//5
     Exhausted:
         id: exhausted
         text: 'EXHAUSTED\nCARDS PILE'
         size_hint: None, None
         size: root.card_size[0]*6//5, root.card_size[1]
         y: root.card_size[1]*6//5+2*root.paddy
-        x: root.width//20 + root.card_size[0]*5
+        x: root.width*2//40 + root.card_size[0]*4 + root.card_size[0]*6//5
     LootDeck:
         id: loot1
         text: 'LOOT1'

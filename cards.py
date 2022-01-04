@@ -38,7 +38,7 @@ class Card(BoxLayout):
 
     def on_touch_down(self, touch):
         if self.collide_point(*self.to_local(*touch.pos)):
-            print(self,self.pos,self.size)
+            pass
         pass
 
 
@@ -83,7 +83,7 @@ class MapCard(Card):
                     adj = [p for p in self.map.iter_types_in_range((i,j),'B',1)]
                     tl = tr = bl = br = 0
                     if (i+1,j) in adj:
-                        Line(width = 1, points = (cx,cy,x+s[0],cy))
+                        Line(width = 0.5, points = (cx,cy,x+s[0],cy))
                         if (i,j+1) in adj:
                             tr+=1
                         if (i,j-1) in adj:
@@ -92,7 +92,7 @@ class MapCard(Card):
                         br+=1
                         tr+=1
                     if (i-1,j) in adj:
-                        Line(width = 1, points = (cx,cy,x,cy))
+                        Line(width = 0.5, points = (cx,cy,x,cy))
                         if (i,j+1) in adj:
                             tl+=1
                         if (i,j-1) in adj:
@@ -101,7 +101,7 @@ class MapCard(Card):
                         bl+=1
                         tl+=1
                     if (i,j+1) in adj:
-                        Line(width = 1, points = (cx,cy,cx,y+s[1]))
+                        Line(width = 0.5, points = (cx,cy,cx,y+s[1]))
                         if (i+1,j) in adj:
                             tr+=1
                         if (i-1,j) in adj:
@@ -110,7 +110,7 @@ class MapCard(Card):
                         tl+=1
                         tr+=1
                     if (i,j-1) in adj:
-                        Line(width = 1, points = (cx,cy,cx,y))
+                        Line(width = 0.5, points = (cx,cy,cx,y))
                         if (i+1,j) in adj:
                             br+=1
                         if (i-1,j) in adj:
@@ -119,13 +119,13 @@ class MapCard(Card):
                         bl+=1
                         br+=1
                     if bl==2:
-                        Line(width = 1, points = (cx,cy,x,y))
+                        Line(width = 0.5, points = (cx,cy,x,y))
                     if br==2:
-                        Line(width = 1, points = (cx,cy,x+s[0],y))
+                        Line(width = 0.5, points = (cx,cy,x+s[0],y))
                     if tr==2:
-                        Line(width = 1, points = (cx,cy,x+s[0],y+s[1]))
+                        Line(width = 0.5, points = (cx,cy,x+s[0],y+s[1]))
                     if tl==2:
-                        Line(width = 1, points = (cx,cy,x,y+s[1]))
+                        Line(width = 0.5, points = (cx,cy,x,y+s[1]))
 
 #        self.canvas.after.clear()
 #        with self.canvas.after:
@@ -268,16 +268,26 @@ class Map:
                 yield pos
 
 
+unlit = [0.1,0.1,0.1,1]
+lit = [0.3,0.3,0.35,1]
+def light(lit, unlit, wt):
+    return [l*wt + u*(1-wt) for l,u in zip(lit[:3],unlit[:3])]+[1]
+
+
 class CityMap(MapCard):
     building_codes= {'B': ('Building rooftop', [0.35,0.15,0.15,1]),
-                     'U': ('Unlit Pavement', [0.1,0.1,0.1,1]),
-                     'L': ('Lit Pavement',[0.3,0.3,0.35,1]),
+                     'U': ('Unlit Pavement', unlit),
+                     'L0': ('Lit Pavement', lit),
+                     'L1': ('Lit Pavement', light(lit,unlit,0.66)),
+                     'L2': ('Lit Pavement', light(lit,unlit,0.33)),
+                     'L3': ('Lit Pavement', light(lit,unlit,0.15)),
                      'G': ('Guard',[0.4,0.4,0.8,1]),
                      'S': ('Guard search and spawn point',[0.9,0.6,0.6,1]),
                      'Z': ('Loot Zone',[0.6,0.6,0.6,1]),
                      'M': ('Market', [0.6,0.9,0.6,1])}
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.pavement = 'U,L0,L1,L2'.split(',')
         self.make_map()
 
     def make_map(self):
@@ -316,7 +326,6 @@ class CityMap(MapCard):
         return False
 
     def place_building(self, pos, size, filled_borders, shape='R', orientation=0):
-        print('Placing',pos,size,shape)
         if shape=='R':
             for x in range(pos[0],pos[0]+size[0]):
                 for y in range(pos[1],pos[1]+size[1]):
@@ -334,7 +343,6 @@ class CityMap(MapCard):
                         filled_borders[1]=1
                     self.map[(c,r)] = 'B'
             return size[0]*size[1]
-
 
     def get_best_lightables(self):
         bestn = 0
@@ -357,15 +365,16 @@ class CityMap(MapCard):
                 break
             self.lights.append(random.choice(best_lightables))
             for pos in self.map.iter_types_in_range(self.lights[-1], 'U', blocker_types='B', radius=2):
-                self.map[pos] = 'L'
+                d = dist(pos, self.lights[-1])
+                self.map[pos] = f'L{d:1.0f}'
 
     def add_spawns(self):
         '''add the waypoints where guards spwan'''
         self.spawns=[]
-        num_spawns = random.randint(2,4)
+        num_spawns = random.randint(3,4)
         for s in range(num_spawns):
             new_spawn = None
-            options = [p for p in self.map.iter_types('UL', sub_rect=[1,1,self.map.w-1,self.map.h-1])] #,sub_rect=[1,1,self.map.w-1,self.map.h-1]
+            options = [p for p in self.map.iter_types(self.pavement, sub_rect=[1,1,self.map.w-1,self.map.h-1])] #,sub_rect=[1,1,self.map.w-1,self.map.h-1]
             random.shuffle(options)
             for pos in options:
                 if len(self.spawns)==0 or min([dist(pos,s) for s in self.spawns])>5:
@@ -382,7 +391,7 @@ class CityMap(MapCard):
         num_waypoints = 8-len(self.spawns)
         for s in range(num_waypoints):
             new_wp = None
-            options = [p for p in self.map.iter_types('UL', sub_rect=[1,1,self.map.w-1,self.map.h-1])]
+            options = [p for p in self.map.iter_types(self.pavement, sub_rect=[1,1,self.map.w-1,self.map.h-1])]
             random.shuffle(options)
             for pos in options:
                 if len(self.waypoints)+len(self.spawns)==0 or min([dist(pos,s) for s in self.waypoints+self.spawns])>3:
@@ -414,48 +423,115 @@ class CityMap(MapCard):
 
 class EventCard(Card):
     def activate(self, board):
-        self.board = board
-        guard = self.board.nearest_guard(self.board.active_player_token.map_pos)
-        if guard is None:
-            print('No guard found')
-            return True
-        print('Nearest guard', guard.map_pos)
-        new_pos = self.board.guard_nearest_move(guard.map_pos, self.board.active_player_token.map_pos)
-        if new_pos == self.board.active_player_token.map_pos:
-            if self.board[new_pos] == 'U':
-                print('Guard wants to move to player at unlit space', new_pos)
-                return
-        print('Moving guard to', new_pos)
-        guard.map_pos = new_pos
-
+        pass
 
 class SpawnEvent(EventCard):
-    pass
+    #TODO: Do we want to spawn globally or just the card (as implemented). Should prioritize empty cells if a tie.
+    def activate(self, board):
+        self.board = board
+        card, pos = board.get_card_and_pos(self.board.active_player_token.map_pos)
+        mind=1000
+        bests=None
+        for s in card.spawns+card.waypoints:
+            d = dist(pos, s)
+            if d<mind:
+                mind = d
+                bests = s
+        if bests is not None:
+            np = board.get_pos_from_card(card, bests)
+#            g = board.token_types['G'](map_pos = np)
+            g = board.token_types['G']()
+            board.tokens.append(g)
+            g.map_pos = np
 
 
 class PatrolEvent(EventCard):
-    pass
+    def activate(self, board):
+        self.board = board
+        pcard, ppos = board.get_card_and_pos(self.board.active_player_token.map_pos)
+        for g in board.tokens:
+            if not isinstance(g, board.token_types['G']):
+                continue
+            gcard, gpos = board.get_card_and_pos(g.map_pos)
+            if gcard!=pcard:
+                continue
+            if gpos == ppos: #don't move a guard on the player
+                continue
+            pts = gcard.spawns+gcard.waypoints
+            try:
+                ind = pts.index(gpos)
+            except ValueError:
+                continue
+            ind = ind-1 if ind>0 else len(pts)-1
+            g.map_pos = board.get_pos_from_card(gcard, pts[ind])
 
 
 class AlertEvent(EventCard):
-    pass
-
+    def activate(self, board):
+        self.board = board
+        pcard, ppos = board.get_card_and_pos(self.board.active_player_token.map_pos)
+        for g in board.tokens:
+            if not isinstance(g, board.token_types['G']):
+                continue
+            gcard, gpos = board.get_card_and_pos(g.map_pos)
+            if gcard!=pcard:
+                continue
+            if g.state=='dozing':
+                g.state = 'alert'
 
 class MoveEvent(EventCard):
     def activate(self, board):
         self.board = board
         guard = self.board.nearest_guard(self.board.active_player_token.map_pos)
         if guard is None:
-            print('No guard found')
             return True
-        print('Nearest guard', guard.map_pos)
-        new_pos = self.board.guard_nearest_move(guard.map_pos, self.board.active_player_token.map_pos)
-        if new_pos == self.board.active_player_token.map_pos:
-            if self.board[new_pos] == 'U':
-                print('Guard wants to move to player at unlit space', new_pos)
-                return
-        print('Moving guard to', new_pos)
+        if self.board[self.board.active_player_token.map_pos] == 'U':
+            inc_player = False
+        else:
+            inc_player = True
+        new_pos = self.board.guard_nearest_move(guard.map_pos, self.board.active_player_token.map_pos, include_player = inc_player)
         guard.map_pos = new_pos
+
+#Stance cards: player chooses which of their stance cards to activate at the start of each round
+#can change stance mid-round by discarding a card
+class StanceCard(Card):
+    pass
+
+class MoveStance(StanceCard):
+    #All move cards gain +1
+    #All non-move cards can be used for move 1
+    pass
+
+class FightStance(StanceCard):
+    #Get +1 to attack cards
+    #Play 1 non-attack card for attack 1
+
+    pass
+
+class ClimbStance(StanceCard):
+    #Play any 1 move card or 2 non-move cards to climb
+    #Play move card to move that distance on roof
+    #Play any card to move 1 on roof
+    #
+    pass
+
+class SneakStance(StanceCard):
+    #All move cards gain stealth
+    #All cards can be used for move 1
+    #All non-move cards can be used for KO action from shadows
+    pass
+
+class BowStance(StanceCard):
+    #Fires arrow cards
+    pass
+
+class LootStance(StanceCard):
+    #Gain +1 to loot cards
+    #All non-loot cards can be used for loot 1
+    #All non-loot cards can be spent to increase draw additional market cards to buy from
+    #Spend 2 cards to buy an additional market item
+    pass
+
 
 
 class PlayerCard(Card):
@@ -468,7 +544,7 @@ class PlayerCard(Card):
         self.board.map_choices = []
 
 
-class StartPlayerCard(PlayerCard):
+class StartPlayerCard(PlayerCard): #TODO: pretty ugly to use a subclass for this (also not compatible with multiple classes of player characters)
     pass
 
 
@@ -508,7 +584,6 @@ class BasicMove(StartPlayerCard):
     def activate(self, board):
         self.board = board
         board.map_choices = [board.make_choice(p,self.move_completed) for p in board.walkable_spots(board.active_player_token.map_pos, dist=2, spots={})]
-        print([c.map_pos for c in board.map_choices])
 
     def move_completed(self, touch_object):
         self.board.active_player_token.map_pos = touch_object.map_pos
@@ -556,3 +631,6 @@ def make_market_cards(pa):
 
 def make_player_cards(pa):
     return [m(pa=pa) for m in StartPlayerCard.__subclasses__() for i in range(2)]
+
+def make_stance_cards(pa):
+    return [m(pa=pa) for m in StanceCard.__subclasses__()]

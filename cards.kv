@@ -106,6 +106,67 @@
         text: root.card_text if root.face_up else ''
         color: 1,1,1,1
 
+<StanceCard>:
+    name: 'PLAYER CARD'
+    type: 'PLAYER'
+    card_text: ''
+    attack_value: 0
+    exhausts: False
+    discards: True
+    stack_value: 1
+    canvas.before:
+        Color:
+            rgba: (0.2,0.2,0.2,1) if root.face_up==True else (0.5,0.5,0.5,1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: (0,0,0,1)
+        Line:
+            width: 1
+            rectangle: root.x, root.y, root.width, root.height
+    Label:
+        size_hint: 1, 0.2
+        text_size: self.size
+        text: root.name if root.face_up else ''
+        font_size: 10
+        halign: 'center'
+        valign: 'center'
+#        on_size: self.texture_size = self.size
+        color: 1,1,0.8,1
+    Label:
+        size_hint: 1, 0.8
+        text_size: self.size
+        halign: 'center'
+        valign: 'center'
+        font_size: 9
+        text: root.card_text if root.face_up else ''
+        color: 1,1,1,1
+
+<MoveStance>:
+    name: 'Movement'
+    type: 'STANCE'
+
+<FightStance>:
+    name: 'Fight'
+    type: 'STANCE'
+
+<SneakStance>:
+    name: 'Sneak'
+    type: 'STANCE'
+
+<ClimbStance>:
+    name: 'Climb'
+    type: 'STANCE'
+
+<BowStance>:
+    name: 'Bow'
+    type: 'STANCE'
+
+<LootStance>:
+    name: 'Loot'
+    type: 'STANCE'
+
 <LootCard>:
     name: 'LOOT CARD'
     type: 'LOOT'
