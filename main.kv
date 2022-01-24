@@ -266,6 +266,8 @@
 
 <Hand>:
     size_hint: None, None
+    selected_action: ''
+
 
 <PlayerDiscard>:
     size_hint: None, None
@@ -315,7 +317,7 @@
     text: 'DECK'
     canvas.after:
         Color:
-            rgba: (1,1,1,1)
+            rgba: (1,1,1,1) # if not self.can_draw else (240,69,0, 255)
         Line:
             width: 1
             rectangle: root.x, root.y, root.width, root.height
@@ -326,25 +328,46 @@
 <MapChoice>:
     map_pos: 0,0
     pos: self.map_pos[0]*self.size[0], self.map_pos[1]*self.size[1]
+    choice_type: 'touch' #touch or info
     size_hint: None, None
     canvas.after:
         Color:
-            rgb: 240,69,0
+            rgb: (240,69,0) if self.choice_type=='touch' else (170,170,170)
         Line:
-            width: self.width//20
+            width: 1+self.width//20
             points: self.x+self.width//10, self.y, self.x, self.y, self.x, self.y+self.width//10
         Line:
-            width: self.width//20
+            width: 1+self.width//20
             points: self.right-self.width//10, self.y, self.right, self.y, self.right, self.y+self.width//10
         Line:
-            width: self.width//20
+            width: 1+self.width//20
             points: self.x+self.width//10, self.top, self.x, self.top, self.x, self.top-self.width//10
         Line:
-            width: self.width//20
+            width: 1+self.width//20
             points: self.right-self.width//10, self.top, self.right, self.top, self.right, self.top-self.width//10
-#        Rectangle:
-#            pos: self.center_x-self.width//10, self.center_y-root.width//10
-#            size: self.width//5, self.width//5
+
+<TokenMapChoice>:
+    pos: self.token.pos
+    size: self.token.size
+    size_hint: None, None
+    choice_type: 'touch' #touch or info
+    canvas.after:
+        Color:
+            rgb: (240,69,0) if self.choice_type=='touch' else (170,170,170)
+        Line:
+            width: 1+self.width//20
+            points: self.x+self.width//10, self.y, self.x, self.y, self.x, self.y+self.width//10
+        Line:
+            width: 1+self.width//20
+            points: self.right-self.width//10, self.y, self.right, self.y, self.right, self.y+self.width//10
+        Line:
+            width: 1+self.width//20
+            points: self.x+self.width//10, self.top, self.x, self.top, self.x, self.top-self.width//10
+        Line:
+            width: 1+self.width//20
+            points: self.right-self.width//10, self.top, self.right, self.top, self.right, self.top-self.width//10
+
+
 
 <Token>:
     map_pos: 0,0
@@ -353,29 +376,29 @@
 
 <GuardToken>:
     state: 'dozing' #dozing, alert, unconscious, dead
-    canvas.after:
-        Color:
-            rgb: 0.75,0,0
-        Ellipse:
-            pos: self.x+(self.width)//10,self.y+(self.height)//10
-            size: root.width*4//5, root.height*4//5
-        Color:
-            rgb: [0,0,0] if self.state=='dozing' else [0.4,0,0]
-        Ellipse:
-            pos: self.x+(self.width)//3-root.width*3//40,self.y+(self.height)*2//5-root.height*3//40
-            size: root.width*3//10, root.height*3//10
-            angle_start: 270 if self.state=='dozing' else 290
-            angle_end: 450 if self.state=='dozing' else 470
-        Ellipse:
-            pos: self.x+(self.width)*2//3-root.width*3//40,self.y+(self.height)*2//5-root.height*3//40
-            size: root.width*3//10, root.height*3//10
-            angle_start: 270 if self.state=='dozing' else 250
-            angle_end: 450 if self.state=='dozing' else 430
-        Color:
-            rgb: 0,0,0
-        Line:
-            width: root.height//20
-            points: self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3
+    # canvas.after:
+    #     Color:
+    #         rgb: 0.75,0,0
+    #     Ellipse:
+    #         pos: self.x+(self.width)//10,self.y+(self.height)//10
+    #         size: root.width*4//5, root.height*4//5
+    #     Color:
+    #         rgb: [0,0,0] if self.state=='dozing' else [0.4,0,0]
+    #     Ellipse:
+    #         pos: self.x+(self.width)//3-root.width*3//40,self.y+(self.height)*2//5-root.height*3//40
+    #         size: root.width*3//10, root.height*3//10
+    #         angle_start: 270 if self.state=='dozing' else 290
+    #         angle_end: 450 if self.state=='dozing' else 470
+    #     Ellipse:
+    #         pos: self.x+(self.width)*2//3-root.width*3//40,self.y+(self.height)*2//5-root.height*3//40
+    #         size: root.width*3//10, root.height*3//10
+    #         angle_start: 270 if self.state=='dozing' else 250
+    #         angle_end: 450 if self.state=='dozing' else 430
+    #     Color:
+    #         rgb: 0,0,0
+    #     Line:
+    #         width: root.height//20
+    #         points: self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3
 
 <PlayerToken>:
     canvas.after:
@@ -399,6 +422,15 @@
         Line:
             width: root.height//20
             points: self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3
+
+<ActionSelectorOption>:
+    _touching: False
+    canvas.before:
+        Color: 
+            rgb: (0.75,0.75,0.75) if self._touching else (0.5,0.5,0.5)
+        Rectangle: 
+            pos: self.pos
+            size: self.size
 
 <PlayArea>:
     playerdiscard: playerdiscard
@@ -443,6 +475,7 @@
         size_hint: None, None
         size: root.card_size[0]*4, root.card_size[1]
         pos: root.card_size[0]*12//5 + root.width//20, 0
+        multi_select: True
     Label:
         id: playerprompt
         text: 'Select a card from your hand to play, or tap the event card to end your turn'

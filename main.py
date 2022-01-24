@@ -1,3 +1,4 @@
+from ast import Num
 import random
 import os
 import math
@@ -8,6 +9,7 @@ import math
 
 
 import kivy
+from kivy.uix.label import Label
 kivy.require('1.8.0')
 
 #__version__ = '0.1.5'
@@ -21,8 +23,6 @@ def get_user_path():
     print('user path',path)
     return path
 
-import colors
-
 from functools import partial
 #from kivy.uix.listview import ListView, ListItemLabel, ListItemButton
 from kivy.uix.floatlayout import FloatLayout
@@ -33,7 +33,7 @@ from kivy.app import App
 from kivy.uix.image import Image
 from kivy.properties import StringProperty, ListProperty, NumericProperty, \
     BooleanProperty, ObjectProperty, DictProperty, ReferenceListProperty
-from kivy.graphics import Rectangle, Color
+from kivy.graphics import Rectangle, Color, Line
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.lang import Builder
@@ -41,9 +41,13 @@ from kivy.vector import Vector
 from kivy.animation import Animation
 from kivy.logger import Logger
 from kivy.storage.jsonstore import JsonStore
+from kivy.graphics import Rectangle, Color, Mesh, Line, Ellipse
+
 #from kivy.utils import platform
 
 import cards
+import colors
+
 
 ''' ###PC/Tablet Layout###
 Table Layout
@@ -70,6 +74,14 @@ City                          Loot A Loot B Loot C Market
  |    | |    |    | | | | | | |    |
 '''
 
+class TurnState:
+    #ENEMY TURN
+    #PLAYER TURN
+    #DRAW CARDS
+    #SELECT STANCE
+    #PLAY CARDS
+    #END TURN (BY TOUCHING EVENT DECK)
+    pass
 
 class CardSplayCloseup(RelativeLayout):
     cards = ListProperty()
@@ -94,12 +106,11 @@ class CardSplayCloseup(RelativeLayout):
     def on_touch_down(self,touch):
        if self.collide_point(*touch.pos):
            self._touch_down = True
-       return True
 
     def on_touch_up(self,touch):
        if self._touch_down and self.collide_point(*touch.pos):
            self.parent.remove_widget(self)
-       return True
+           self._touch_down = False
 #    def on_cards(self,*args):
 
 #class CardSplay0(RelativeLayout):
@@ -108,6 +119,11 @@ class CardSplayCloseup(RelativeLayout):
 class CardSplay(RelativeLayout):
     cards = ListProperty()
     orientation = StringProperty('horizontal')
+    can_draw = BooleanProperty(False)
+    shown_card = ObjectProperty(None, allownone=True)
+    shown_card_shift = 0 #proportion of card width or heigh to shift when card is selected
+    selected = BooleanProperty(False)
+    multi_select = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         if 'card_spread_scale' in kwargs:
@@ -116,8 +132,6 @@ class CardSplay(RelativeLayout):
         else:
             self.card_spread_scale = 0.5
         super().__init__(**kwargs)
-#        super().__init__(*args, **kwargs)
-#        self.size_hint = (None,None)
         self.touch_card = None
         self._clockev = None
 
@@ -130,6 +144,7 @@ class CardSplay(RelativeLayout):
                 self.remove_widget(c)
         for c in self.cards:
             self.add_widget(c)
+        self.shown_card = None
         self.splay_cards()
 
     def on_size(self, *args):
@@ -140,16 +155,19 @@ class CardSplay(RelativeLayout):
             return
         cardw = self.parent.card_size[0]
         cardh = self.parent.card_size[1]
+        mul = 1 if self.shown_card is None or self.shown_card==self.cards[-1] or len(self.cards)<=1 else 2
         if self.orientation=='horizontal':
+            exp_len = cardw
             offset = 0
             if len(self.cards)>1:
-                delta = int(max(min(cardw*self.card_spread_scale, (self.width-cardw)/(len(self.cards)-1)),2))
+                delta = int(max(min(cardw*self.card_spread_scale, (self.width-cardw*mul)/(len(self.cards)+1-mul)),2))
             else:
                 delta = 0
         else:
+            exp_len = cardh
             offset = self.height-cardh
             if len(self.cards)>1:
-                delta = -int(max(min(cardh*self.card_spread_scale, (self.height-cardh)/(len(self.cards)-1)),2))
+                delta = -int(max(min(cardh*self.card_spread_scale, (self.height-cardh*mul)/(len(self.cards)-mul)),2))
             else:
                 delta = 0
         if delta==2:
@@ -160,14 +178,28 @@ class CardSplay(RelativeLayout):
         for c in self.cards:
             if self.orientation=='horizontal':
                 c.x = offset
-                c.y = 0
+                c.y = 0 if c!=self.shown_card else self.shown_card_shift*cardh
             else:
                 c.y = offset
-                c.x = 0
+                c.y = 0 if c!=self.shown_card else self.shown_card_shift*cardw
 #            c.size = self.parent.card_size
-            if i<max_splay:
+            if c == self.shown_card:
+                offset+=exp_len
+            elif i<max_splay:
                 offset+=delta
             i+=1
+
+    def on_shown_card(self, exp, card):
+        if not self.multi_select:
+            for c in self.cards:
+                c.selected = False
+        if self.shown_card is not None:
+            self.shown_card.selected = True
+        if self.shown_card is None and self.multi_select:
+            for c in self.cards:
+                c.selected = False
+        self.splay_cards()
+
 
     def on_touch_down(self, touch):
         for c in self.cards[::-1]:
@@ -184,6 +216,18 @@ class CardSplay(RelativeLayout):
             self._clockev.cancel()
             self._clockev = None
 
+    def __draw_frame(self, *args):
+        print(self,'DRAW FRAME',*args)
+        self.canvas.after.clear()
+        with self.canvas.after:
+            Color(rgba=(1,1,1,1))
+            Line(width=1, rectangle=(self.x, self.y, self.width, self.height) )
+            if self.can_draw:
+                Color(rgba=(240,69,0,1))
+                Line(width=1+self.width//30, points=(self.x+self.width//10, self.y, self.x, self.y, self.x, self.y+self.width//10))
+                Line(width=1+self.width//30, points=(self.right-self.width//10, self.y, self.right, self.y, self.right, self.y+self.width//10))
+                Line(width=1+self.width//30, points=(self.x+self.width//10, self.top, self.x, self.top, self.x, self.top-self.width//10))
+                Line(width=1+self.width//30, points=(self.right-self.width//10, self.top, self.right, self.top, self.right, self.top-self.width//10))
 
 class PlayerDiscard(CardSplay):
     def on_cards(self, *args):
@@ -193,7 +237,6 @@ class PlayerDiscard(CardSplay):
 
 
 class PlayerDeck(CardSplay):
-    can_draw = True
     def on_cards(self, *args):
         super().on_cards(*args)
         for c in self.cards:
@@ -210,29 +253,36 @@ class PlayerDeck(CardSplay):
         for c in self.cards[-1:-6:-1]:
             self.cards.remove(c)
             self.parent.hand.cards.append(c)
+        self.parent.hand.can_draw=True
+        self.parent.playerstance.can_draw=True
+        self.parent.eventdeck.can_draw=True
         self.can_draw = False
-        print('Window size',self.parent.size)
         return True
 
+
 class PlayerStance(CardSplay):
-    can_draw = True
+    active_card = ObjectProperty()
+
     def on_touch_up(self,touch):
         if not self.collide_point(*touch.pos):
             return False
         if not self.can_draw:
             return True
+        if len(self.cards)==0:
+            return False
         super().on_touch_up(touch)
         c = self.cards[-1]
         self.cards.remove(c)
         self.cards.insert(0,c)
+        self.active_card = self.cards[-1]
 
     def on_cards(self, *args):
         for c in self.cards:
             c.face_up = True
             c.selected = False
         super().on_cards(*args)
-        #clear the touch targets
-        pass
+        if len(self.cards)>0:
+            self.active_card = self.cards[-1]
 
 
 class PlayerTableau(CardSplay):
@@ -258,34 +308,127 @@ class PlayerTableau(CardSplay):
             c.selected = False
         super().on_cards(*args)
         #clear the touch targets
-        pass
+        if len(self.cards)>0:
+            self.parent.playerstance.can_draw = False
+
+
+class ActionSelectorOption(Label):
+    _touching = BooleanProperty(False)
+
+    def on_touch_down(self, touch):
+        print(self,'touch down test')
+        if self.collide_point(*touch.pos):
+            print(self,'touch down')
+            self._touching=True
+
+    def on_touch_up(self, touch):
+        print(self,'touch up test')
+        if self.collide_point(*touch.pos) and self._touching:
+            print(self,'touch up')
+            self.parent.hand.selected_action = self.text
+            self._touching=False
+            return True
+
+
+class ActionSelector(BoxLayout):
+    def __init__(self, hand, actions, **kwargs):
+        self.hand = hand
+        super().__init__(orientation='vertical',**kwargs)
+        for a in actions:
+            self.add_widget(ActionSelectorOption(text=a))
 
 
 class Hand(CardSplay):
+    selected_action = StringProperty('')
+    actions = DictProperty()
+    action_selector = ObjectProperty(None, allownone=True)
+
+    def on_selected_action(self, *args):
+        if self.selected_action!='':
+            action = self.selected_action
+            action_fn = self.actions[action]
+            action_fn('card_action_selected')
+            self.clear_card_actions()
+
+    def clear_card_actions(self):
+        if self.action_selector is not None:
+            self.parent.remove_widget(self.action_selector)
+            self.action_selector = None
+
+    def show_card_actions(self, card, actions):
+        self.clear_card_actions()
+        assert(card==self.shown_card)
+        pos = card.pos
+        sz = card.size
+        pos = self.pos[0] + pos[0],self.pos[1] + pos[1]+sz[1]
+        sz = 2*sz[0], len(actions)*sz[1]//5
+        self.selected_action = ''
+        self.actions = actions
+        self.action_selector = ActionSelector(self, actions, pos=pos, size=sz, size_hint=(None, None))
+        self.parent.add_widget(self.action_selector) #TODO: This neeeds to handle resize
+
     def on_touch_up(self,touch):
         super().on_touch_up(touch)
         if len(self.cards)==0:
             return False
-        c = self.cards[-1]
         for c in self.cards[::-1]:
             if c.collide_point(*self.to_local(*touch.pos)):
-                self.cards.remove(c)
-                self.parent.playertableau.cards.append(c)
-                c.activate(self.parent.board)
-                return False
+                if c.selected: #clear the selection, if allowed
+                    #todo: could also unstack the non-shown cards
+                    if self.selected_action!='':
+                        action_fn = self.actions[self.selected_action]
+                        if not action_fn('can_cancel'):
+                            self.discard_selection()
+                    self.parent.board.map_choices = []
+                    self.clear_card_actions()
+                    self.clear_selection()
+                    self.shown_card = None
+                    self.selected_action = ''
+                    self.parent.playerprompt.text = 'Select a card from hand to play'
+                    return False
+                else:
+                    if self.shown_card is None: #select it
+                        self.shown_card = c
+                        self.selected_action = ''
+                        self.parent.board.map_choices = []
+                        actions = c.get_actions(self.parent)
+                        actions.update(self.parent.playerstance.cards[-1].get_actions_for_card(c, self.parent))
+                        self.show_card_actions(c, actions)
+                        self.parent.playerprompt.text = 'Select an action for this card'
+                        return False
+                    else: #stack it
+                        #todo: should allow stacks only after selecting the actions
+                        if self.selected_action!='':
+                            action_fn = self.actions[self.selected_action]
+                            if action_fn('can_stack', stacked_card=c):
+                                c.selected = True
+                                action_fn('card_stacked', stacked_card=c)
+                                return False
+                break
+        return False
 
-#    def on_size(self,*args):
-#        super().on_size(*args)
-#        for c in self.cards:
-#            if c.type=='ARSENAL':
-#                if c.selected==True:
-#                    c.y+=10
+    def clear_selection(self):
+        self.parent.board.map_choices = []
+        for c in [c for c in self.cards if c.selected]:
+            c.selected = False
+
+    def discard_selection(self):
+        self.parent.board.map_choices = []
+        for c in [c for c in self.cards if c.selected]:
+            c.selected = False
+            self.cards.remove(c)
+            self.parent.playerdiscard.cards.append(c)
 
     def on_cards(self, *args):
         for c in self.cards:
             c.face_up = True
             c.selected = False
         super().on_cards(*args)
+        if len(self.cards)==0:
+            self.can_draw=False
+            self.parent.playerprompt.text = 'Touch the event deck to end your turn'
+        else:
+            self.parent.playerprompt.text = 'Select a card from your hand to play'
 
 
 class LootDeck(CardSplay):
@@ -318,9 +461,12 @@ class Exhausted(CardSplay):
 
 
 class EventDeck(CardSplay):
+    can_draw = BooleanProperty(False)
     def on_touch_up(self,touch):
         super().on_touch_up(touch)
         if not self.collide_point(*touch.pos):
+            return False
+        if not self.can_draw:
             return False
         if len(self.cards)==0:
             return False
@@ -333,7 +479,17 @@ class EventDeck(CardSplay):
             self.parent.playertableau.cards.remove(c)
             self.parent.playerdiscard.cards.append(c)
         self.parent.playerdeck.can_draw = True
+        self.parent.hand.can_draw = False
+        self.parent.playerstance.can_draw = False
         return True
+#    def on_can_draw(self, obj, val):
+#        if self.can_draw:
+#            self.canvas.after.clear()
+#            with self.canvas.after:
+#                Line()
+#        else:
+#            self.canvas.after.clear()
+
 
 
 class EventDiscard(CardSplay):
@@ -371,6 +527,7 @@ def extract_kwarg(kwargs,name,default=None):
 class Token(BoxLayout):
     map_pos = ListProperty()
     off = ListProperty()
+
     def __init__(self, **kwargs):
         map_pos = extract_kwarg(kwargs,'map_pos',(0,0))
         super().__init__(**kwargs)
@@ -400,26 +557,106 @@ class Token(BoxLayout):
         if self._a is not None:
             self._a.cancel()
         self.pos = (self.map_pos[0]+self.off[0])*self.size[0], (self.map_pos[1]+self.off[1])*self.size[1]
+        self.draw_token()
 
+    def on_parent(self, *args):
+        self.draw_token()
+
+    def on_pos(self, *args):
+        self.draw_token()
+
+    def on_off(self, *args):
+        self.draw_token()
+
+    def draw_token(self):
+        return
 
 class PlayerToken(Token):
     pass
 
 
 class GuardToken(Token):
-    pass
+    state = StringProperty()
+
+    def on_state(self, *args):
+        self.draw_token()
+
+    def draw_token(self):
+        self.canvas.after.clear()
+        with self.canvas.after:
+            if self.state in ['dozing','alert']:
+                Color(rgb=(0.75,0,0))
+            else:
+                Color(rgb=(0.5,0.1,0.1))
+            Ellipse(pos=(self.x+(self.width)//10,self.y+(self.height)//10), size=(self.width*4//5, self.height*4//5))
+            if self.state=='alert':
+                Color(rgb=(0.4,0,0))
+            else:
+                Color(rgb=(0,0,0))
+            if self.state in ['dozing','alert']:
+                Ellipse(pos=(self.x+(self.width)//3-self.width*3//40,self.y+(self.height)*2//5-self.height*3//40),
+                        size=(self.width*3//10, self.height*3//10),
+                        angle_start=(270 if self.state=='dozing' else 290),
+                        angle_end=(450 if self.state=='dozing' else 470))
+                Ellipse(pos=(self.x+(self.width)*2//3-self.width*3//40,self.y+(self.height)*2//5-self.height*3//40),
+                        size=(self.width*3//10, self.height*3//10),
+                        angle_start=(270 if self.state=='dozing' else 250),
+                        angle_end=(450 if self.state=='dozing' else 430))
+            elif self.state =='dead':
+                eyeleft = self.x+(self.width)//3-self.width*3//40
+                eyeright = self.x+(self.width)//3+self.width*3//40
+                eyetop = self.y+(self.height)//2 - self.height*3//40
+                eyebottom = self.y+(self.height)//2 + self.height*3//40
+                Line(points=(eyeleft,eyebottom,eyeright,eyetop))
+                Line(points=(eyeleft,eyetop,eyeright,eyebottom))
+                eyeleft = self.x+(self.width)*2//3-self.width*3//40
+                eyeright = self.x+(self.width)*2//3+self.width*3//40
+                eyetop = self.y+(self.height)//2 - self.height*3//40
+                eyebottom = self.y+(self.height)//2 + self.height*3//40
+                Line(points=(eyeleft,eyebottom,eyeright,eyetop))
+                Line(points=(eyeleft,eyetop,eyeright,eyebottom))
+            else: #KO'd
+                eyeleft = self.x+(self.width)//3-self.width*3//40
+                eyeright = self.x+(self.width)//3+self.width*3//40
+                eyemiddle = self.y+(self.height)//2
+                Line(points=(eyeleft,eyemiddle,eyeright,eyemiddle))
+                eyeleft = self.x+(self.width)*2//3-self.width*3//40
+                eyeright = self.x+(self.width)*2//3+self.width*3//40
+                eyemiddle = self.y+(self.height)//2
+                Line(points=(eyeleft,eyemiddle,eyeright,eyemiddle))
+
+            Color(rgb=(0,0,0))
+            if self.state=='dead':
+                Ellipse(pos = (self.x+(self.width)*2//5,self.y+(self.height)//4), size = (self.width//5,self.height//5))
+            else:
+                Line(width=1+self.height//30, points=(self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3))
+
+
+class TokenMapChoice(BoxLayout):
+    def __init__(self, **kwargs):
+        self.token = extract_kwarg(kwargs,'token',(0,0))
+        self.choice_type = extract_kwarg(kwargs,'choice_type','info')
+        self.listener = extract_kwarg(kwargs,'listener')
+        super().__init__(**kwargs)
+
+    def on_touch_up(self, touch):
+        if self.collide_point(*touch.pos):
+            self.listener('map_choice_selected', touch_object=self)
 
 
 class MapChoice(BoxLayout):
     def __init__(self, **kwargs):
         map_pos = extract_kwarg(kwargs,'map_pos',(0,0))
+        tp = extract_kwarg(kwargs,'choice_type','info')
         listener = extract_kwarg(kwargs,'listener')
         super().__init__(**kwargs)
         self.map_pos = map_pos
+        self.choice_type = tp
         self.listener = listener
+        
     def on_touch_up(self, touch):
-        if self.collide_point(*touch.pos):
-            self.listener(self)
+        if self.choice_type=='touch' and self.collide_point(*touch.pos):
+            self.listener('map_choice_selected', touch_object=self)
 
 
 class Board(RelativeLayout):
@@ -446,10 +683,10 @@ class Board(RelativeLayout):
 
     def on_map_choices(self, *args):
         for t in self.children[:]:
-            if isinstance(t,MapChoice):
+            if isinstance(t,MapChoice) or isinstance(t,TokenMapChoice):
                 self.remove_widget(t)
         for t in self.map_choices:
-            if isinstance(t,MapChoice):
+            if isinstance(t,MapChoice) or isinstance(t,TokenMapChoice):
                 self.add_widget(t)
                 t.size = self.space_size
 
@@ -461,7 +698,7 @@ class Board(RelativeLayout):
 
     def on_token_move(self, token, mp):
         for t in self.tokens:
-            if isinstance(t,GuardToken) and t.map_pos != self.active_player_token.map_pos:
+            if isinstance(t,GuardToken) and t.map_pos != self.active_player_token.map_pos and t.state not in ['dead','unconscious']:
                 if 1<=self.dist(t.map_pos, self.active_player_token.map_pos)<=10 and self[self.active_player_token.map_pos]!='U':
                     if not self.has_types_between(t.map_pos, self.active_player_token.map_pos, 'B'):
                         t.map_pos = self.active_player_token.map_pos
@@ -610,8 +847,11 @@ class Board(RelativeLayout):
             if self[pos] in targets:
                 yield pos
 
-    def make_choice(self, map_pos, listener):
-        return MapChoice(map_pos=map_pos, listener=listener)
+    def make_choice(self, map_pos, listener, choice_type):
+        return MapChoice(map_pos=map_pos, listener=listener, choice_type=choice_type)
+
+    def make_token_choice(self, token, listener, choice_type):
+        return TokenMapChoice(token=token, listener=listener, choice_type=choice_type)
 
     def iter_spawns(self):
         for c in self.map.cards:
@@ -673,12 +913,12 @@ class Board(RelativeLayout):
     def walkable_spots(self, map_pos, dist, spots):
         if len(spots)==0:
             spots[tuple(map_pos)] = 0
-        walk_costs = {'B': 4, 'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
+        walk_costs = {'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
         for pos in self.iter_in_range(map_pos,1.5):
-            if tuple(pos) in spots:
-                continue
             if self[pos] in walk_costs:
                 cur_dist = spots[tuple(map_pos)]+walk_costs[self[pos]]*self.dist(pos,map_pos)
+                if tuple(pos) in spots and cur_dist>=spots[pos]:
+                    continue
                 if cur_dist <= dist:
                     spots[tuple(pos)] = cur_dist
                     self.walkable_spots(pos, dist, spots)
@@ -686,13 +926,13 @@ class Board(RelativeLayout):
 
 
 class PlayArea(FloatLayout):
-
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
         self.menu = Menu()
         self.instructions = None
         self.menu.bind(selection = self.menu_choice)
         self.first_start = True
+        self.action_selector = None
 
     def on_parent(self, *args):
         self.mapcards = cards.make_map_cards(self, self.map_card_grid_size[0], self.map_card_grid_size[1])
@@ -731,6 +971,8 @@ class PlayArea(FloatLayout):
 
         self.eventdeck.cards[:] = self.eventcards[:]
         self.eventdiscard.cards[:] = []
+
+        self.playerdeck.can_draw = True
 
     def token_setup(self):
         player = PlayerToken()
@@ -782,7 +1024,7 @@ class PlayArea(FloatLayout):
         with self.canvas.before:
             Color(*colors.background)
             Rectangle(pos = self.pos, size = self.size)
-#
+
     def update_word_bar(self):
         self.statusbar.word, self.statusbar.word_score = self.is_selection_a_word()
 
@@ -914,7 +1156,6 @@ class SneakyApp(App):
     colors = DictProperty()
     def build(self):
         try:
-#            self.colors = colors.load_theme('default')
             self.colors = colors.load_theme(self.config.get('theme','theme'))
         except KeyError:
             self.colors = colors.load_theme('default')

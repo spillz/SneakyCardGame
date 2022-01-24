@@ -84,7 +84,7 @@
             pos: self.pos
             size: self.size
         Color:
-            rgba: (0,0,0,1)
+            rgba: (0,0,0,1) if self.selected==False else (0.7,0.7,0.1,1)
         Line:
             width: 1
             rectangle: root.x, root.y, root.width, root.height
