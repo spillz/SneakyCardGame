@@ -597,6 +597,33 @@ class ClimbAction(PlayerAction):
             playarea.playerprompt.text = f'Climb: Touch the board to move across the map.'
 
 
+class SneakAction(PlayerAction):
+    def __call__(self, message, **kwargs):
+        playarea= self.playarea
+        board = playarea.board
+        if message == 'can_cancel':
+            return True if self.spent==0 else False
+        if message == 'can_stack':
+            return True
+        if message=='map_choice_selected':
+            obj = kwargs['touch_object']
+            obj.token.state = 'unconscious'
+        else:
+            if message=='card_action_selected':
+                self.fight = self.base_fight + sum([c.selected for c in playarea.hand.cards])
+                self.spent = 0
+
+        guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing'] and dist(board.active_player_token.map_pos, t.map_pos)<=1]
+        map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
+        print('Fight action map_choices:', map_choices)
+        board.map_choices = map_choices
+
+        if len(board.map_choices)==0:
+            playarea.hand.discard_selection()
+        else:
+            playarea.playerprompt.text = f'Sneak {self.fight}: Select a guard to knockout.'
+
+
 class MoveStance(StanceCard):
     #All move cards gain +1
     #All non-move cards can be used for move 1
@@ -623,7 +650,8 @@ class SneakStance(StanceCard):
     #All move cards gain stealth
     #All cards can be used for move 1
     #All non-move cards can be used for KO action from shadows
-    pass
+    def get_actions_for_card(self, card, playarea):
+        return {'CLIMB 1': SneakAction(card, playarea)}
 
 class BowStance(StanceCard):
     #Fires arrow cards
