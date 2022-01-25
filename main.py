@@ -653,7 +653,7 @@ class MapChoice(BoxLayout):
         self.map_pos = map_pos
         self.choice_type = tp
         self.listener = listener
-        
+
     def on_touch_up(self, touch):
         if self.choice_type=='touch' and self.collide_point(*touch.pos):
             self.listener('map_choice_selected', touch_object=self)
@@ -863,7 +863,7 @@ class Board(RelativeLayout):
             for w in c.spawns+c.waypoints:
                 yield self.get_pos_from_card(c,w)
 
-    def iter_targets(self, map_pos):
+    def iter_targets(self):
         for c in self.map.cards:
             for t in c.targets:
                 yield self.get_pos_from_card(c,t)

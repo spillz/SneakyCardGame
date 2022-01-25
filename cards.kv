@@ -180,8 +180,8 @@
     type: 'LOOT'
 
 <PoisonArrow>:
-    name: 'POISON ARROW'
-    card_text: 'Fire from bow. KOs affected enemy.'
+    name: 'GAS ARROW'
+    card_text: 'Range 5. KOs affected enemy.'
 
 <BasicMove>:
     name: 'BASIC MOVE'
@@ -205,22 +205,15 @@
 
 <BasicKockout>:
     name: 'BASIC KNOCKOUT'
-    card_text: 'Gain KO 1'
+    card_text: 'Knockout 1+'
     ko_value: 1
 
 <BasicArrow>:
     name: 'BASIC ARROW'
-    card_text: 'Range 10 Attack 2'
-    range: 10
+    card_text: 'Range 5+'
+    base_range: 4
     exhausts: True
-    attack_value: 1
 
-<BasicBow>:
-    name: 'BASIC BOW'
-    card_text: 'Shoots Arrows'
-    attack_value: 1
-
-<BasicSword>:
-    name: 'BASIC SWORD'
-    card_text: 'Attack 2'
-    attack_value: 1
+<DecoyArrow>:
+    name: 'DECOY ARROW'
+    card_text: 'Range 5+'
