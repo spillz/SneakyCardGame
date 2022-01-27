@@ -163,17 +163,21 @@ class CardSplay(RelativeLayout):
                 delta = int(max(min(cardw*self.card_spread_scale, (self.width-cardw*mul)/(len(self.cards)+1-mul)),2))
             else:
                 delta = 0
+            if delta==2:
+                max_splay = (self.width-cardw)//2
+            else:
+                max_splay = len(self.cards)
         else:
-            exp_len = cardh
+            exp_len = -cardh
             offset = self.height-cardh
             if len(self.cards)>1:
                 delta = -int(max(min(cardh*self.card_spread_scale, (self.height-cardh*mul)/(len(self.cards)-mul)),2))
             else:
                 delta = 0
-        if delta==2:
-            max_splay = (self.width-cardw)//2
-        else:
-            max_splay = len(self.cards)
+            if delta==-2:
+                max_splay = (self.height-cardh)//2
+            else:
+                max_splay = len(self.cards)
         i=0
         for c in self.cards:
             if self.orientation=='horizontal':
@@ -181,7 +185,7 @@ class CardSplay(RelativeLayout):
                 c.y = 0 if c!=self.shown_card else self.shown_card_shift*cardh
             else:
                 c.y = offset
-                c.y = 0 if c!=self.shown_card else self.shown_card_shift*cardw
+                c.x = 0 if c!=self.shown_card else self.shown_card_shift*cardw
 #            c.size = self.parent.card_size
             if c == self.shown_card:
                 offset+=exp_len
@@ -475,9 +479,6 @@ class EventDeck(CardSplay):
         self.cards.remove(card)
         card.activate(self.parent.board)
         self.parent.eventdiscard.cards.append(card)
-        for c in self.parent.playertableau.cards[:]:
-            self.parent.playertableau.cards.remove(c)
-            self.parent.playerdiscard.cards.append(c)
         self.parent.playerdeck.can_draw = True
         self.parent.hand.can_draw = False
         self.parent.playerstance.can_draw = False
@@ -935,7 +936,7 @@ class PlayArea(FloatLayout):
         self.action_selector = None
 
     def on_parent(self, *args):
-        self.mapcards = cards.make_map_cards(self, self.map_card_grid_size[0], self.map_card_grid_size[1])
+        self.mapcards = cards.make_map_cards(self, self.map_card_grid_size[0], self.map_card_grid_size[1], self.map_size[0]*self.map_size[1])
         self.playercards = cards.make_player_cards(self)
         self.stancecards = cards.make_stance_cards(self)
         self.lootcards = cards.make_loot_cards(self)
@@ -953,11 +954,10 @@ class PlayArea(FloatLayout):
         random.shuffle(self.marketcards)
         random.shuffle(self.eventcards)
 
-        self.map.cards[:] = self.mapcards[:12] #[:self.map.rows*self.map.cols]
+        self.map.cards[:] = self.mapcards #[:self.map.rows*self.map.cols]
 
         self.playerdeck.cards[:] = self.playercards[:]
         self.playerdiscard.cards[:] = []
-        self.playertableau.cards[:] = []
         self.playerstance.cards[:] = reversed(self.stancecards[:])
 
         self.loot1.cards[:] = self.lootcards[0][:]

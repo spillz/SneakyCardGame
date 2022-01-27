@@ -817,8 +817,8 @@ class BasicArrow(StartPlayerCard):
     def get_actions(self, playarea):
         return {'SHOOT ARROW 5': ArrowAction(self, playarea, base_range=4)}
 
-def make_map_cards(pa, w, h):
-    return [m(pa=pa, w=w, h=h) for m in MapCard.__subclasses__() for i in range(12)]
+def make_map_cards(pa, w, h, n):
+    return [m(pa=pa, w=w, h=h) for m in MapCard.__subclasses__() for i in range(n)]
 
 def make_event_cards(pa):
     return [m(pa=pa) for m in EventCard.__subclasses__() for i in range(3)]
