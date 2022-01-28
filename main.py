@@ -214,7 +214,6 @@ class CardSplay(RelativeLayout):
                 break
 
     def on_touch_up(self, touch):
-        print('UP')
         if not self.collide_point(*touch.pos):
             return
         if self._clockev != None:
@@ -300,13 +299,11 @@ class ActionSelectorOption(Label):
     _touching = BooleanProperty(False)
 
     def on_touch_down(self, touch):
-        print(self,'touch down test')
         if self.collide_point(*touch.pos):
             print(self,'touch down')
             self._touching=True
 
     def on_touch_up(self, touch):
-        print(self,'touch up test')
         if self.collide_point(*touch.pos) and self._touching:
             print(self,'touch up')
             self.parent.hand.selected_action = self.text
@@ -370,24 +367,22 @@ class Hand(CardSplay):
                     self.selected_action = ''
                     self.parent.playerprompt.text = 'Select a card from hand to play'
                     return False
-                else:
-                    if self.shown_card is None: #select it
-                        self.shown_card = c
-                        self.selected_action = ''
-                        self.parent.board.map_choices = []
-                        actions = c.get_actions(self.parent)
-                        actions.update(self.parent.playerstance.cards[-1].get_actions_for_card(c, self.parent))
-                        self.show_card_actions(c, actions)
-                        self.parent.playerprompt.text = 'Select an action for this card'
+                elif self.shown_card is None or self.selected_action=='': #select it
+                    self.clear_selection()
+                    self.shown_card = c
+                    self.selected_action = ''
+                    self.parent.board.map_choices = []
+                    actions = c.get_actions(self.parent)
+                    actions.update(self.parent.playerstance.cards[-1].get_actions_for_card(c, self.parent))
+                    self.show_card_actions(c, actions)
+                    self.parent.playerprompt.text = 'Select an action for this card'
+                    return False
+                else: #stack it
+                    action_fn = self.actions[self.selected_action]
+                    if action_fn('can_stack', stacked_card=c):
+                        c.selected = True
+                        action_fn('card_stacked', stacked_card=c)
                         return False
-                    else: #stack it
-                        #todo: should allow stacks only after selecting the actions
-                        if self.selected_action!='':
-                            action_fn = self.actions[self.selected_action]
-                            if action_fn('can_stack', stacked_card=c):
-                                c.selected = True
-                                action_fn('card_stacked', stacked_card=c)
-                                return False
                 break
         return False
 
