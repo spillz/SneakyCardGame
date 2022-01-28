@@ -106,11 +106,14 @@ class CardSplayCloseup(RelativeLayout):
     def on_touch_down(self,touch):
        if self.collide_point(*touch.pos):
            self._touch_down = True
+           return True
 
     def on_touch_up(self,touch):
        if self._touch_down and self.collide_point(*touch.pos):
            self.parent.remove_widget(self)
            self._touch_down = False
+           return True
+       self._touch_down = False
 #    def on_cards(self,*args):
 
 #class CardSplay0(RelativeLayout):
@@ -134,9 +137,6 @@ class CardSplay(RelativeLayout):
         super().__init__(**kwargs)
         self.touch_card = None
         self._clockev = None
-
-    def do_closeup(self, closeup_card, time):
-        self.parent.add_widget(CardSplayCloseup(closeup_card))
 
     def on_cards(self,*args):
         for c in self.children[:]:
@@ -204,21 +204,27 @@ class CardSplay(RelativeLayout):
                 c.selected = False
         self.splay_cards()
 
+    def do_closeup(self, closeup_card, time):
+        self.parent.add_widget(CardSplayCloseup(closeup_card))
 
     def on_touch_down(self, touch):
         for c in self.cards[::-1]:
             if c.collide_point(*self.to_local(*touch.pos)):
                 self._clockev = Clock.schedule_once(partial(self.do_closeup,c), 0.5)
                 break
+
+    def on_touch_up(self, touch):
+        print('UP')
+        if not self.collide_point(*touch.pos):
+            return
+        if self._clockev != None:
+            self._clockev.cancel()
+            self._clockev = None
+            return True
         if len(self.cards)>0:
             c = self.cards[-1]
             if c.collide_point(*self.to_local(*touch.pos)):
                 self.touch_card = c
-
-    def on_touch_up(self, touch):
-        if self._clockev != None:
-            self._clockev.cancel()
-            self._clockev = None
 
     def __draw_frame(self, *args):
         print(self,'DRAW FRAME',*args)
@@ -232,6 +238,7 @@ class CardSplay(RelativeLayout):
                 Line(width=1+self.width//30, points=(self.right-self.width//10, self.y, self.right, self.y, self.right, self.y+self.width//10))
                 Line(width=1+self.width//30, points=(self.x+self.width//10, self.top, self.x, self.top, self.x, self.top-self.width//10))
                 Line(width=1+self.width//30, points=(self.right-self.width//10, self.top, self.right, self.top, self.right, self.top-self.width//10))
+
 
 class PlayerDiscard(CardSplay):
     def on_cards(self, *args):
@@ -268,13 +275,13 @@ class PlayerStance(CardSplay):
     active_card = ObjectProperty()
 
     def on_touch_up(self,touch):
+        super().on_touch_up(touch)
         if not self.collide_point(*touch.pos):
             return False
         if not self.can_draw:
-            return True
+            return False
         if len(self.cards)==0:
             return False
-        super().on_touch_up(touch)
         c = self.cards[-1]
         self.cards.remove(c)
         self.cards.insert(0,c)
@@ -287,33 +294,6 @@ class PlayerStance(CardSplay):
         super().on_cards(*args)
         if len(self.cards)>0:
             self.active_card = self.cards[-1]
-
-
-class PlayerTableau(CardSplay):
-    def on_touch_up(self,touch):
-        super().on_touch_up(touch)
-        i = len(self.cards) - 1
-        while i>=0:
-            c = self.cards[i]
-            if c.collide_point(*self.to_local(*touch.pos)):
-                c.selected = not c.selected
-                if c.selected == True:
-                    for j in range(i,len(self.cards)):
-                        self.cards[j].selected = True
-                else:
-                    for j in range(0,i):
-                        self.cards[j].selected = False
-                return True
-            i-=1
-
-    def on_cards(self, *args):
-        for c in self.cards:
-            c.face_up = True
-            c.selected = False
-        super().on_cards(*args)
-        #clear the touch targets
-        if len(self.cards)>0:
-            self.parent.playerstance.can_draw = False
 
 
 class ActionSelectorOption(Label):
@@ -418,10 +398,14 @@ class Hand(CardSplay):
 
     def discard_selection(self):
         self.parent.board.map_choices = []
+        self.parent.playerstance.can_draw=False
         for c in [c for c in self.cards if c.selected]:
             c.selected = False
             self.cards.remove(c)
             self.parent.playerdiscard.cards.append(c)
+
+    def allow_stance_select(self):
+        self.parent.playerstance.can_draw=True
 
     def on_cards(self, *args):
         for c in self.cards:

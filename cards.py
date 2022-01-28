@@ -514,6 +514,22 @@ class PlayerAction:
         self.playarea.playerprompt.text = f'Default action handler. You should not see this text.'
 
 
+class StanceAction(PlayerAction):
+    def __call__(self, message, **kwargs):
+        playarea= self.playarea
+        board = playarea.board
+        if message == 'can_cancel':
+            return True
+        if message == 'can_stack':
+            return False
+        if message=='map_choice_selected':
+            return False
+        if message=='card_action_selected':
+            playarea.hand.discard_selection()
+            playarea.hand.allow_stance_select()
+            playarea.playerprompt.text = 'Change your stance or select a card to play'
+
+
 class MoveAction(PlayerAction):
     base_move = 0
     moves_per_card = 1
@@ -717,7 +733,8 @@ class MoveStance(StanceCard):
     #All move cards gain +1
     #All non-move cards can be used for move 1
     def get_actions_for_card(self, card, playarea):
-        return {'MOVE 1+': MoveAction(card, playarea, base_move=0)}
+        return {'MOVE 1+': MoveAction(card, playarea, base_move=0),
+                'STANCE': StanceAction(card, playarea)}
 
 
 class FightStance(StanceCard):
@@ -804,7 +821,8 @@ class BasicAttack(StartPlayerCard):
         return {'ATTACK 2+': FightAction(self, playarea, base_fight=1)}
 
 class BasicClimb(StartPlayerCard):
-    pass
+    def get_actions(self, playarea):
+        return {'CLIMB 1': ClimbAction(self, playarea)}
 
 class BasicSneak(StartPlayerCard):
     pass
