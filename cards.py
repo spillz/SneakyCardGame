@@ -482,7 +482,7 @@ class MoveEvent(EventCard):
         guard = self.board.nearest_guard(self.board.active_player_token.map_pos)
         if guard is None:
             return True
-        if self.board[self.board.active_player_token.map_pos] == 'U':
+        if self.board[self.board.active_player_token.map_pos] in ['U','B']:
             inc_player = False
         else:
             inc_player = True
@@ -653,7 +653,7 @@ class ArrowAction(PlayerAction):
             if message=='card_action_selected':
                 self.range = self.base_range + sum([c.selected for c in playarea.hand.cards])
                 self.spent = 0
-        guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing'] and dist(board.active_player_token.map_pos, t.map_pos)<=self.range and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
+        guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert'] and 0<dist(board.active_player_token.map_pos, t.map_pos)<=self.range and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
         map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
         board.map_choices = map_choices
         if len(board.map_choices)<=1 and self.spent!=0:
@@ -741,12 +741,14 @@ class FightStance(StanceCard):
     #Get +1 to attack cards
     #Play 1 non-attack card for attack 1
     def get_actions_for_card(self, card, playarea):
-        return {'ATTACK 1+': FightAction(card, playarea, base_fight=0)}
+        return {'ATTACK 1+': FightAction(card, playarea, base_fight=0),
+                'STANCE': StanceAction(card, playarea)}
 
 
 class ClimbStance(StanceCard):
     def get_actions_for_card(self, card, playarea):
-        return {'CLIMB 1': ClimbAction(card, playarea)}
+        return {'CLIMB 1': ClimbAction(card, playarea),
+                'STANCE': StanceAction(card, playarea)}
 
 class SneakStance(StanceCard):
     #All cards used for move actions make no noise
@@ -754,7 +756,8 @@ class SneakStance(StanceCard):
     #All non-move cards can be used for KO action on dozing guards from shadows
     def get_actions_for_card(self, card, playarea):
         return {'KNOCKOUT': KnockoutAction(card, playarea, base_ko=1),
-                'MOVE 1+': MoveAction(card, playarea, moves_per_card=0.5)}
+                'MOVE 0.5+': MoveAction(card, playarea, moves_per_card=0.5),
+                'STANCE': StanceAction(card, playarea)}
 
 class LootStance(StanceCard):
     #Spend card to enter buildings
@@ -765,7 +768,7 @@ class LootStance(StanceCard):
     #Spend 2 cards to buy an additional market item
     def get_actions_for_card(self, card, playarea):
         return {'LOCKPICK 1+': LockpickAction(card, playarea, base_pick=0),
-                }
+                'STANCE': StanceAction(card, playarea)}
 
 def stack_all_fn(card):
     return True

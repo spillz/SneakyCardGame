@@ -254,20 +254,34 @@ class PlayerDeck(CardSplay):
 
     def on_touch_up(self,touch):
         super().on_touch_up(touch)
-        if len(self.cards)==0:
-            return False
         if not self.collide_point(*touch.pos):
             return False
         if not self.can_draw:
             return True
-        for c in self.cards[-1:-6:-1]:
-            self.cards.remove(c)
-            self.parent.hand.cards.append(c)
+        if len(self.parent.hand.cards)==0:
+            cards_to_draw = self.parent.hand.hand_size
+        else:
+            cards_to_draw = 1 + self.parent.hand.hand_size - len(self.parent.hand.cards)
+        self.draw(cards_to_draw)
         self.parent.hand.can_draw=True
         self.parent.playerstance.can_draw=True
         self.parent.eventdeck.can_draw=True
         self.can_draw = False
         return True
+
+    def draw(self, n):
+        shuffle = n - len(self.cards)
+        for c in self.cards[-1:-n-1:-1]:
+            self.cards.remove(c)
+            self.parent.hand.cards.append(c)
+        if shuffle>0:
+            discards = self.parent.playerdiscard.cards[:]
+            random.shuffle(discards)
+            self.parent.playerdiscard.cards = []
+            self.cards = discards
+            for c in self.cards[-1:-shuffle-1:-1]:
+                self.cards.remove(c)
+                self.parent.hand.cards.append(c)
 
 
 class PlayerStance(CardSplay):
@@ -323,6 +337,7 @@ class Hand(CardSplay):
     selected_action = StringProperty('')
     actions = DictProperty()
     action_selector = ObjectProperty(None, allownone=True)
+    hand_size = NumericProperty(5)
 
     def on_selected_action(self, *args):
         if self.selected_action!='':
@@ -679,7 +694,7 @@ class Board(RelativeLayout):
     def on_token_move(self, token, mp):
         for t in self.tokens:
             if isinstance(t,GuardToken) and t.map_pos != self.active_player_token.map_pos and t.state not in ['dead','unconscious']:
-                if 1<=self.dist(t.map_pos, self.active_player_token.map_pos)<=10 and self[self.active_player_token.map_pos]!='U':
+                if 1<=self.dist(t.map_pos, self.active_player_token.map_pos)<=10 and self[self.active_player_token.map_pos] not in ['U','B']:
                     if not self.has_types_between(t.map_pos, self.active_player_token.map_pos, 'B'):
                         t.map_pos = self.active_player_token.map_pos
                         if t.state == 'dozing':
@@ -893,7 +908,10 @@ class Board(RelativeLayout):
     def walkable_spots(self, map_pos, dist, spots):
         if len(spots)==0:
             spots[tuple(map_pos)] = 0
-        walk_costs = {'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
+        if self[map_pos] in ['U','L','L0','L1','L2']:
+            walk_costs = {'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
+        elif self[map_pos] == 'B':
+            walk_costs = {'B': 1}
         for pos in self.iter_in_range(map_pos,1.5):
             if self[pos] in walk_costs:
                 cur_dist = spots[tuple(map_pos)]+walk_costs[self[pos]]*self.dist(pos,map_pos)
