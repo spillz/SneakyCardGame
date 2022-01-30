@@ -252,12 +252,7 @@ class PlayerDeck(CardSplay):
         for c in self.cards:
             c.face_up = False
 
-    def on_touch_up(self,touch):
-        super().on_touch_up(touch)
-        if not self.collide_point(*touch.pos):
-            return False
-        if not self.can_draw:
-            return True
+    def draw_hand(self):
         if len(self.parent.hand.cards)==0:
             cards_to_draw = self.parent.hand.hand_size
         else:
@@ -267,7 +262,6 @@ class PlayerDeck(CardSplay):
         self.parent.playerstance.can_draw=True
         self.parent.eventdeck.can_draw=True
         self.can_draw = False
-        return True
 
     def draw(self, n):
         shuffle = n - len(self.cards)
@@ -307,7 +301,18 @@ class PlayerStance(CardSplay):
         super().on_cards(*args)
         if len(self.cards)>0:
             self.active_card = self.cards[-1]
+        else:
+            self.active_card = None
 
+class ActiveCardSplay(CardSplay):
+    active_card = ObjectProperty()
+
+    def on_cards(self, *args):
+        super().on_cards(*args)
+        if len(self.cards)>0:
+            self.active_card = self.cards[-1]
+        else:
+            self.active_card = None
 
 class ActionSelectorOption(Label):
     _touching = BooleanProperty(False)
@@ -433,6 +438,15 @@ class LootDeck(CardSplay):
     def on_touch_up(self,touch):
         super().on_touch_up(touch)
 
+    def select_draw(self, num_to_pick, num_offered):
+        #TODO: This is a placeholder that just gives the top card
+        #Instead we should pop up a card select that lets the player
+        #choose num_to_pick from num_offered cards. Player can turn
+        #down some or all of the offer
+        card = self.cards[-1]
+        self.cards.remove(card)
+        self.parent.hand.cards.append(card)
+
 
 class MarketDeck(CardSplay):
     def on_touch_up(self,touch):
@@ -473,18 +487,8 @@ class EventDeck(CardSplay):
         self.cards.remove(card)
         card.activate(self.parent.board)
         self.parent.eventdiscard.cards.append(card)
-        self.parent.playerdeck.can_draw = True
-        self.parent.hand.can_draw = False
-        self.parent.playerstance.can_draw = False
+        self.parent.playerdeck.draw_hand()
         return True
-#    def on_can_draw(self, obj, val):
-#        if self.can_draw:
-#            self.canvas.after.clear()
-#            with self.canvas.after:
-#                Line()
-#        else:
-#            self.canvas.after.clear()
-
 
 
 class EventDiscard(CardSplay):
@@ -568,6 +572,29 @@ class Token(BoxLayout):
 
 class PlayerToken(Token):
     pass
+
+
+class TargetToken(Token):
+
+    def draw_token(self):
+        self.canvas.after.clear()
+        with self.canvas.after:
+            Color(0.1,0.3,0.8,1)
+            x = self.x + self.width//5
+            y = self.y + self.height//5
+            w, h = 3*self.size[0]//5//2*2, 3*self.size[1]//5//2*2
+            #Rectangle(pos = (x,y), size = (3*size[0]//5,3*size[1]//5))
+            vertices = [x+w//2,y,0,0,
+                         x,y+2*h//3,0,0,
+                         x+w//4,y+h,0,0,
+                         x+3*w//4,y+h,0,0,
+                         x+w,y+2*h//3,0,0,
+                         ]
+            indices = [0,4,3,2,1]
+            Mesh(vertices = vertices,
+                 indices = indices,
+                 mode = 'triangle_fan'
+                 )
 
 
 class GuardToken(Token):
@@ -660,7 +687,7 @@ class Board(RelativeLayout):
     space_size = ListProperty()
     w = NumericProperty()
     h = NumericProperty()
-    token_types = {'G': GuardToken, 'P': PlayerToken}
+    token_types = {'G': GuardToken, 'P': PlayerToken, 'T': TargetToken}
 
     def on_tokens(self, *args):
         self.active_player_token = None
@@ -815,6 +842,15 @@ class Board(RelativeLayout):
             if self[pos0] in types:
                 yield pos0
 
+    def iter_tokens(self, token_type = None):
+        if token_type is None:
+            for t in self.tokens:
+                yield t
+        else:
+            for t in self.tokens:
+                if isinstance(t, self.token_types[token_type]):
+                    yield t
+
     def num_in_range(self, pos, types, radius=3, blocker_types=None):
         num = 0
         for pos0 in self.iter_types_in_range(pos, types, radius, blocker_types):
@@ -863,8 +899,8 @@ class Board(RelativeLayout):
             for t in c.targets:
                 yield self.get_pos_from_card(c,t)
 
-    def nearest_guard(self, map_pos, max_range=None):
-        gts = [t for t in self.tokens if isinstance(t,GuardToken)]
+    def nearest_guard(self, map_pos, max_range=None, states = ['dozing', 'alert']):
+        gts = [t for t in self.tokens if isinstance(t,GuardToken) and t.state in states]
         dists = [self.dist(map_pos,t.map_pos) for t in gts]
         min_dist = min(dists)
         if max_range is not None:
@@ -911,7 +947,7 @@ class Board(RelativeLayout):
         if self[map_pos] in ['U','L','L0','L1','L2']:
             walk_costs = {'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
         elif self[map_pos] == 'B':
-            walk_costs = {'B': 1}
+            walk_costs = {'B': 1,'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
         for pos in self.iter_in_range(map_pos,1.5):
             if self[pos] in walk_costs:
                 cur_dist = spots[tuple(map_pos)]+walk_costs[self[pos]]*self.dist(pos,map_pos)
@@ -969,7 +1005,7 @@ class PlayArea(FloatLayout):
         self.eventdeck.cards[:] = self.eventcards[:]
         self.eventdiscard.cards[:] = []
 
-        self.playerdeck.can_draw = True
+        self.eventdeck.can_draw = True
 
     def token_setup(self):
         player = PlayerToken()
@@ -977,7 +1013,11 @@ class PlayArea(FloatLayout):
         for c in self.map.cards:
             spawns += [self.board.get_pos_from_card(c,s) for s in c.spawns]
         guards = [GuardToken(map_pos=s) for s in spawns]
-        self.board.tokens = [player]+guards
+        loot = []
+        for c in self.map.cards:
+            loot += [self.board.get_pos_from_card(c,s) for s in c.targets]
+        targets = [TargetToken(map_pos=s) for s in loot]
+        self.board.tokens = [player]+guards+targets
 
     def show_menu(self):
         self.menu.selection = -1

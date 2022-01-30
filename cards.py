@@ -144,23 +144,6 @@ class MapCard(Card):
                 x = self.x + (i+0.4)*self.width//self.w
                 y = self.y + (j+0.4)*self.height//self.h
                 Rectangle(pos = (x,y), size = (size[0]//5,size[1]//5))
-            for i,j in self.targets:
-                Color(0.1,0.3,0.8,1)
-                x = self.x + (i+0.2)*self.width//self.w
-                y = self.y + (j+0.2)*self.height//self.h
-                w, h = 3*size[0]//5//2*2,3*size[1]//5//2*2
-                #Rectangle(pos = (x,y), size = (3*size[0]//5,3*size[1]//5))
-                vertices = [x+w//2,y,0,0,
-                             x,y+2*h//3,0,0,
-                             x+w//4,y+h,0,0,
-                             x+3*w//4,y+h,0,0,
-                             x+w,y+2*h//3,0,0,
-                             ]
-                indices = [0,4,3,2,1]
-                Mesh(vertices = vertices,
-                     indices = indices,
-                     mode = 'triangle_fan'
-                     )
 
 
 class Map:
@@ -450,6 +433,8 @@ class PatrolEvent(EventCard):
         for g in board.tokens:
             if not isinstance(g, board.token_types['G']):
                 continue
+            if g.state in ['dead','unconscious']:
+                continue
             gcard, gpos = board.get_card_and_pos(g.map_pos)
             if gcard!=pcard:
                 continue
@@ -613,6 +598,7 @@ class ClimbAction(PlayerAction):
 
 
 class KnockoutAction(PlayerAction):
+    can_loot = True
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
@@ -633,6 +619,8 @@ class KnockoutAction(PlayerAction):
         board.map_choices = map_choices
         if len(board.map_choices)<=1 and self.spent!=0:
             playarea.hand.discard_selection()
+            if self.can_loot:
+                playarea.loot1.select_draw(1, 1)
         else:
             playarea.playerprompt.text = f'Sneak {self.fight}: Select a guard to knockout.'
 
@@ -676,13 +664,15 @@ class LockpickAction(PlayerAction):
             return True
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
-            target = [t for t in board.iter_targets() if t==obj.map_pos][0]
+            target = [t for t in board.iter_tokens(token_type='T') if t.map_pos==obj.map_pos][0]
             lock_level = 1
             if self.pick>=lock_level:
-                loot_decks = [playarea.loot1, playarea.loot2, playarea.loot3]
-                loot_decks[self.loot_level].select_draw(1, self.pick)
                 #TODO: Clear the target
+                board.tokens.remove(target)
                 self.spent += lock_level
+                if self.can_loot:
+                    loot_decks = [playarea.loot1, playarea.loot2, playarea.loot3]
+                    loot_decks[self.loot_level].select_draw(1, self.pick)
         else:
             if message=='card_action_selected':
                 self.spent = 0

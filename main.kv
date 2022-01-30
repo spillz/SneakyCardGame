@@ -373,29 +373,10 @@
 
 <GuardToken>:
     state: 'dozing' #dozing, alert, unconscious, dead
-    # canvas.after:
-    #     Color:
-    #         rgb: 0.75,0,0
-    #     Ellipse:
-    #         pos: self.x+(self.width)//10,self.y+(self.height)//10
-    #         size: root.width*4//5, root.height*4//5
-    #     Color:
-    #         rgb: [0,0,0] if self.state=='dozing' else [0.4,0,0]
-    #     Ellipse:
-    #         pos: self.x+(self.width)//3-root.width*3//40,self.y+(self.height)*2//5-root.height*3//40
-    #         size: root.width*3//10, root.height*3//10
-    #         angle_start: 270 if self.state=='dozing' else 290
-    #         angle_end: 450 if self.state=='dozing' else 470
-    #     Ellipse:
-    #         pos: self.x+(self.width)*2//3-root.width*3//40,self.y+(self.height)*2//5-root.height*3//40
-    #         size: root.width*3//10, root.height*3//10
-    #         angle_start: 270 if self.state=='dozing' else 250
-    #         angle_end: 450 if self.state=='dozing' else 430
-    #     Color:
-    #         rgb: 0,0,0
-    #     Line:
-    #         width: root.height//20
-    #         points: self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3
+
+
+<TargetToken>:
+
 
 <PlayerToken>:
     canvas.after:
@@ -433,7 +414,7 @@
     playerdiscard: playerdiscard
     playerdeck: playerdeck
     playerstance: playerstance
-    playertableau: playertableau
+    activecard: activecard
     playerprompt: playerprompt
     exhausted: exhausted
     hand: hand
@@ -576,6 +557,7 @@
     playerdeck: playerdeck
     playerstance: playerstance
     playerprompt: playerprompt
+    activecardsplay: activecardsplay
     exhausted: exhausted
     hand: hand
     map: map
@@ -596,21 +578,28 @@
     map_card_size: self.card_size[0]*self.map_scale//self.map_card_grid_size[0]*self.map_card_grid_size[0], self.card_size[1]*self.map_scale//self.map_card_grid_size[1]*self.map_card_grid_size[1]
     paddy: (self.height - 5*self.card_size[1])//4
     paddx: (self.width - (6+self.map_size[0]*2)*self.card_size[0])//3
+    ActiveCardSplay:
+        id: activecardsplay
+        text: 'ACTIVE\nCARD'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        pos: 0, 0
+    PlayerStance:
+        id: playerstance
+        text: 'PLAYER\nSTANCE'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        pos: 0, root.card_size[1]
     PlayerDeck:
         id: playerdeck
         text: 'PLAYER\nDECK'
         size_hint: None, None
         size: root.card_size[0]*6//5, root.card_size[1]
-        pos: 0,0
+        y: root.height - 2*root.card_size[1]
+        x: 0
     PlayerDiscard:
         id: playerdiscard
         text: 'PLAYER\nDISCARD'
-        size_hint: None, None
-        size: root.card_size[0]*6//5, root.card_size[1]
-        pos: 0, root.card_size[1]
-    PlayerStance:
-        id: playerstance
-        text: 'PLAYER\nSTANCE'
         size_hint: None, None
         size: root.card_size[0]*6//5, root.card_size[1]
         y: root.height - root.card_size[1]
