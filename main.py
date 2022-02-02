@@ -119,7 +119,7 @@ class CardSplayCloseup(RelativeLayout):
 #class CardSplay0(RelativeLayout):
 #    pass
 
-class CardSplay(RelativeLayout):
+class CardSplay(FloatLayout):
     cards = ListProperty()
     orientation = StringProperty('horizontal')
     can_draw = BooleanProperty(False)
@@ -137,20 +137,29 @@ class CardSplay(RelativeLayout):
         super().__init__(**kwargs)
         self.touch_card = None
         self._clockev = None
+        self._splay_clockev = None
 
     def on_cards(self,*args):
         for c in self.children[:]:
             if isinstance(c, cards.Card):
                 self.remove_widget(c)
+                c.selected=False
         for c in self.cards:
             self.add_widget(c)
+            c.selected=False
         self.shown_card = None
         self.splay_cards()
 
     def on_size(self, *args):
-        self.on_cards()
+        self.splay_cards()
 
     def splay_cards(self):
+        if self._splay_clockev is not None:
+            self._splay_clockev.cancel()
+        self._splay_clockev = Clock.schedule_once(partial(self.do_splay_cards), 0.05)
+
+    def do_splay_cards(self, time):
+        self._splay_clockev = None
         if len(self.cards)==0:
             return
         cardw = self.parent.card_size[0]
@@ -181,17 +190,24 @@ class CardSplay(RelativeLayout):
         i=0
         for c in self.cards:
             if self.orientation=='horizontal':
-                c.x = offset
-                c.y = 0 if c!=self.shown_card else self.shown_card_shift*cardh
+                x = self.x + offset
+                y = self.y if c!=self.shown_card else self.y+self.shown_card_shift*cardh
             else:
-                c.y = offset
-                c.x = 0 if c!=self.shown_card else self.shown_card_shift*cardw
-#            c.size = self.parent.card_size
+                y = self.y + offset
+                x = self.x if c!=self.shown_card else self.x+self.shown_card_shift*cardw
+            if len(self.cards)<10:
+                anim = Animation(pos=c.pos, duration=i*0.025)+Animation(pos=(x,y), duration=0.2)
+            else:
+                anim = Animation(pos=(x,y), duration=0.2)
+#            anim = Animation(pos=(x,y), duration=0.2)
+            anim.start(c)
+            #TODO: We could add a blocker to prevent touches but probably not necessary
             if c == self.shown_card:
                 offset+=exp_len
             elif i<max_splay:
                 offset+=delta
             i+=1
+        print('Animation',self)
 
     def on_shown_card(self, exp, card):
         if not self.multi_select:
@@ -225,8 +241,14 @@ class CardSplay(RelativeLayout):
             if c.collide_point(*self.to_local(*touch.pos)):
                 self.touch_card = c
 
+    def move_to(self, cards, deck, pos=None):
+        self.cards = [c for c in self.cards if c not in cards]
+        if pos is not None:
+            deck.cards = deck.cards[:pos] + cards + deck.cards[pos:]
+        else:
+            deck.cards = deck.cards[:] + cards
+
     def __draw_frame(self, *args):
-        print(self,'DRAW FRAME',*args)
         self.canvas.after.clear()
         with self.canvas.after:
             Color(rgba=(1,1,1,1))
@@ -265,21 +287,18 @@ class PlayerDeck(CardSplay):
 
     def draw(self, n):
         shuffle = n - len(self.cards)
-        for c in self.cards[-1:-n-1:-1]:
-            self.cards.remove(c)
-            self.parent.hand.cards.append(c)
+        cards = self.cards[-1:-n-1:-1]
+        self.move_to(cards,self.parent.hand)
         if shuffle>0:
             discards = self.parent.playerdiscard.cards[:]
             random.shuffle(discards)
-            self.parent.playerdiscard.cards = []
-            self.cards = discards
-            for c in self.cards[-1:-shuffle-1:-1]:
-                self.cards.remove(c)
-                self.parent.hand.cards.append(c)
+            self.parent.playerdiscard.move_to(discards, self)
+            cards = self.cards[-1:-shuffle-1:-1]
+            self.move_to(cards, self.parent.hand)
 
 
 class PlayerStance(CardSplay):
-    active_card = ObjectProperty()
+    active_card = ObjectProperty(None, allownone=True)
 
     def on_touch_up(self,touch):
         super().on_touch_up(touch)
@@ -304,8 +323,9 @@ class PlayerStance(CardSplay):
         else:
             self.active_card = None
 
+
 class ActiveCardSplay(CardSplay):
-    active_card = ObjectProperty()
+    active_card = ObjectProperty(None, allownone=True)
 
     def on_cards(self, *args):
         super().on_cards(*args)
@@ -314,17 +334,38 @@ class ActiveCardSplay(CardSplay):
         else:
             self.active_card = None
 
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            touch.grab(self)
+            return True
+
+    def on_touch_up(self, touch):
+        if touch.grab_current==self:
+            touch.ungrab(self)
+            if len(self.cards)>0:
+                self.parent.hand.cancel_action()
+            return True
+
+    def discard_used(self, unused=0):
+        if unused<len(self.cards):
+            self.parent.playerstance.can_draw = False
+        if unused>0:
+            cards = self.cards[:unused]
+            self.move_to(cards, self.parent.hand)
+        cards = self.cards[:]
+        self.move_to(cards, self.parent.playerdiscard)
+        self.parent.hand.clear_selection()
+
+
 class ActionSelectorOption(Label):
     _touching = BooleanProperty(False)
 
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
-            print(self,'touch down')
             self._touching=True
 
     def on_touch_up(self, touch):
         if self.collide_point(*touch.pos) and self._touching:
-            print(self,'touch up')
             self.parent.hand.selected_action = self.text
             self._touching=False
             return True
@@ -346,6 +387,7 @@ class Hand(CardSplay):
 
     def on_selected_action(self, *args):
         if self.selected_action!='':
+            self.move_to([self.shown_card], self.parent.activecardsplay)
             action = self.selected_action
             action_fn = self.actions[action]
             action_fn('card_action_selected')
@@ -361,12 +403,19 @@ class Hand(CardSplay):
         assert(card==self.shown_card)
         pos = card.pos
         sz = card.size
-        pos = self.pos[0] + pos[0],self.pos[1] + pos[1]+sz[1]
+        pos = pos[0],pos[1]+sz[1]
         sz = 2*sz[0], len(actions)*sz[1]//5
         self.selected_action = ''
         self.actions = actions
         self.action_selector = ActionSelector(self, actions, pos=pos, size=sz, size_hint=(None, None))
         self.parent.add_widget(self.action_selector) #TODO: This neeeds to handle resize
+
+    def cancel_action(self):
+        action = self.selected_action
+        action_fn = self.actions[action]
+        action_fn('card_action_end')
+        self.selected_action = ''
+        self.clear_selection()
 
     def on_touch_up(self,touch):
         super().on_touch_up(touch)
@@ -374,20 +423,16 @@ class Hand(CardSplay):
             return False
         for c in self.cards[::-1]:
             if c.collide_point(*self.to_local(*touch.pos)):
-                if c.selected: #clear the selection, if allowed
-                    #todo: could also unstack the non-shown cards
-                    if self.selected_action!='':
-                        action_fn = self.actions[self.selected_action]
-                        if not action_fn('can_cancel'):
-                            self.discard_selection()
-                    self.parent.board.map_choices = []
-                    self.clear_card_actions()
+                if self.shown_card==c: #deselect the already selected card
                     self.clear_selection()
                     self.shown_card = None
-                    self.selected_action = ''
-                    self.parent.playerprompt.text = 'Select a card from hand to play'
-                    return False
-                elif self.shown_card is None or self.selected_action=='': #select it
+                elif self.selected_action!='': #stack it
+                    action_fn = self.actions[self.selected_action]
+                    if action_fn('can_stack', stacked_card=c):
+                        self.move_to([c], self.parent.activecardsplay,0)
+                        action_fn('card_stacked', stacked_card=c)
+                        return False
+                else: #select it
                     self.clear_selection()
                     self.shown_card = c
                     self.selected_action = ''
@@ -397,27 +442,16 @@ class Hand(CardSplay):
                     self.show_card_actions(c, actions)
                     self.parent.playerprompt.text = 'Select an action for this card'
                     return False
-                else: #stack it
-                    action_fn = self.actions[self.selected_action]
-                    if action_fn('can_stack', stacked_card=c):
-                        c.selected = True
-                        action_fn('card_stacked', stacked_card=c)
-                        return False
                 break
         return False
 
     def clear_selection(self):
+        self.parent.playerprompt.text = 'Select a card to play or touch the event deck to end your turn'
         self.parent.board.map_choices = []
         for c in [c for c in self.cards if c.selected]:
             c.selected = False
-
-    def discard_selection(self):
-        self.parent.board.map_choices = []
-        self.parent.playerstance.can_draw=False
-        for c in [c for c in self.cards if c.selected]:
-            c.selected = False
-            self.cards.remove(c)
-            self.parent.playerdiscard.cards.append(c)
+        self.clear_card_actions()
+        self.selected_action=''
 
     def allow_stance_select(self):
         self.parent.playerstance.can_draw=True
@@ -425,7 +459,6 @@ class Hand(CardSplay):
     def on_cards(self, *args):
         for c in self.cards:
             c.face_up = True
-            c.selected = False
         super().on_cards(*args)
         if len(self.cards)==0:
             self.can_draw=False
@@ -444,8 +477,7 @@ class LootDeck(CardSplay):
         #choose num_to_pick from num_offered cards. Player can turn
         #down some or all of the offer
         card = self.cards[-1]
-        self.cards.remove(card)
-        self.parent.hand.cards.append(card)
+        self.move_to([card], self.parent.hand)
 
 
 class MarketDeck(CardSplay):
@@ -484,9 +516,8 @@ class EventDeck(CardSplay):
             return False
         card= self.cards[-1]
         card.face_up = True
-        self.cards.remove(card)
+        self.move_to([card], self.parent.eventdiscard)
         card.activate(self.parent.board)
-        self.parent.eventdiscard.cards.append(card)
         self.parent.playerdeck.draw_hand()
         return True
 
@@ -575,6 +606,10 @@ class PlayerToken(Token):
 
 
 class TargetToken(Token):
+    #These should probably be properties so that they can be modified
+    lock_level = 1
+    loot_level = 1
+    can_loot = True
 
     def draw_token(self):
         self.canvas.after.clear()
@@ -661,9 +696,16 @@ class TokenMapChoice(BoxLayout):
         self.listener = extract_kwarg(kwargs,'listener')
         super().__init__(**kwargs)
 
-    def on_touch_up(self, touch):
+    def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
+            touch.grab(self)
+            return True
+
+    def on_touch_up(self, touch):
+        if touch.grab_current==self:
+            touch.ungrab(self)
             self.listener('map_choice_selected', touch_object=self)
+            return True
 
 
 class MapChoice(BoxLayout):
@@ -676,9 +718,17 @@ class MapChoice(BoxLayout):
         self.choice_type = tp
         self.listener = listener
 
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            touch.grab(self)
+            return True
+
     def on_touch_up(self, touch):
-        if self.choice_type=='touch' and self.collide_point(*touch.pos):
-            self.listener('map_choice_selected', touch_object=self)
+        if touch.grab_current==self:
+            touch.ungrab(self)
+            if self.choice_type=='touch':
+                self.listener('map_choice_selected', touch_object=self)
+            return True
 
 
 class Board(RelativeLayout):
@@ -741,15 +791,12 @@ class Board(RelativeLayout):
                     else:
                         clashes[p] = set([t0,t1])
 
-        if len(clashes)>0:
-            print(clashes)
         for t in self.tokens:
             if tuple(t.map_pos) not in clashes:
                 t.off = [0,0]
         for p in clashes:
             for t,o in zip(clashes[p],[[-0.25,-0.25],[0.25,0.25],[-0.25,0.25],[0.25,-0.25]][:len(clashes[p])]):
                 t.off = o
-                print(t,t.off)
 
 
     def __getitem__(self, pos):

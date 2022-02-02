@@ -453,7 +453,6 @@
         size_hint: None, None
         size: root.card_size[0]*4, root.card_size[1]
         pos: root.card_size[0]*12//5 + root.width//20, 0
-        multi_select: True
     Label:
         id: playerprompt
         text: 'Select a card from your hand to play, or tap the event card to end your turn'
@@ -668,7 +667,6 @@
         size_hint: None, None
         size: root.card_size[0]*6,root.card_size[1]
         pos: (root.width-root.card_size[0]*6)//2, 0
-        multi_select: True
     Board:
         id: board
         map: map

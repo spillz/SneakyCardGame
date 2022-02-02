@@ -482,7 +482,10 @@ class StanceCard(Card):
 
 
 class PlayerAction:
+    value_per_card = 1
+    base_allowance = 1
     def __init__(self, card, playarea, **kwargs):
+        self.spent = 0
         self.card = card
         self.playarea = playarea
         for k in kwargs:
@@ -498,6 +501,22 @@ class PlayerAction:
         '''
         self.playarea.playerprompt.text = f'Default action handler. You should not see this text.'
 
+    def cards_unused(self):
+        num_stacked_cards = len(self.playarea.activecardsplay.cards) - 1
+        if self.spent==0:
+            return num_stacked_cards + 1
+        elif self.spent<self.base_allowance:
+            return num_stacked_cards
+        else:
+            return int((self.value_allowance() - self.spent)/self.value_per_card)
+
+    def value_allowance(self):
+        num_stacked_cards = len(self.playarea.activecardsplay.cards) - 1
+        return self.base_allowance + self.value_per_card*num_stacked_cards
+        #spent, base_allowance, value_per_card, num_cards
+
+    def rounded_remain(self):
+        return (self.value_allowance() - self.spent)//0.5 /2
 
 class StanceAction(PlayerAction):
     def __call__(self, message, **kwargs):
@@ -510,19 +529,19 @@ class StanceAction(PlayerAction):
         if message=='map_choice_selected':
             return False
         if message=='card_action_selected':
-            playarea.hand.discard_selection()
+            self.spent=1
+            playarea.activecardsplay.discard_used(self.cards_unused())
             playarea.hand.allow_stance_select()
             playarea.playerprompt.text = 'Change your stance or select a card to play'
 
 
 class MoveAction(PlayerAction):
-    base_move = 0
-    moves_per_card = 1
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
-        if message == 'can_cancel':
-            return True if self.spent==0 else False
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
@@ -532,24 +551,25 @@ class MoveAction(PlayerAction):
         else:
             if message=='card_action_selected':
                 self.spent = 0
-        self.dist = self.base_move + self.moves_per_card*sum([c.selected for c in playarea.hand.cards])
-        moves_left = self.dist - self.spent
+        moves_left = self.value_allowance() - self.spent
         spots = {}
-        spots = board.walkable_spots(board.active_player_token.map_pos, dist=moves_left, spots={})
-        board.map_choices = [board.make_choice(p, self, set_choice_type(p,board.active_player_token.map_pos)) for p in spots]
-        if len(board.map_choices)<=1 and self.spent!=0:
-            playarea.hand.discard_selection()
+        pp = board.active_player_token.map_pos
+        spots = board.walkable_spots(pp, dist=moves_left, spots={})
+        board.map_choices = [board.make_choice(p, self, set_choice_type(p,pp)) for p in spots if tuple(p)!=tuple(pp)]
+        if len(board.map_choices)<1 and self.spent>0:
+            playarea.activecardsplay.discard_used(self.cards_unused())
         else:
-            playarea.playerprompt.text = f'Move: Touch the board to move across the map {self.spent}/{self.dist}.'
+            playarea.playerprompt.text = f'Move {self.rounded_remain()}: Touch the highlighted board spaces to move across the map.'
 
 
 class FightAction(PlayerAction):
-    base_fight = 1
+    base_allowance = 1
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
-        if message == 'can_cancel':
-            return True if self.spent==0 else False
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
@@ -560,23 +580,24 @@ class FightAction(PlayerAction):
             if message=='card_action_selected':
                 self.spent = 0
 
-        self.fight = self.base_fight + sum([c.selected for c in playarea.hand.cards])
+        fight = self.value_allowance()
         guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert'] and dist(board.active_player_token.map_pos, t.map_pos)==0]
         map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
         board.map_choices = map_choices
 
-        if len(board.map_choices)<=1 and self.spent!=0:
-            playarea.hand.discard_selection()
+        if len(board.map_choices)<1 and self.spent!=0:
+            playarea.activecardsplay.discard_used(self.cards_unused())
         else:
-            playarea.playerprompt.text = f'Fight {self.fight}: Select a guard to attack.'
+            playarea.playerprompt.text = f'Fight {self.rounded_remain()}: Select a highlighted guard to attack.'
 
 
 class ClimbAction(PlayerAction):
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
-        if message == 'can_cancel':
-            return True if self.spent==0 else False
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
         if message == 'can_stack':
             return False
         if message=='map_choice_selected':
@@ -592,9 +613,9 @@ class ClimbAction(PlayerAction):
             spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, ['U','L','L0','L1','L2'], 1)]
         board.map_choices = [board.make_choice(p, self, 'touch') for p in spots]
         if self.spent==1:
-            playarea.hand.discard_selection()
+            playarea.activecardsplay.discard_used(self.cards_unused())
         else:
-            playarea.playerprompt.text = f'Climb: Touch the board to move across the map.'
+            playarea.playerprompt.text = f'Climb {self.rounded_remain()}: Touch the highlighted board spaces to climb an adjacent building.'
 
 
 class KnockoutAction(PlayerAction):
@@ -602,14 +623,15 @@ class KnockoutAction(PlayerAction):
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
-        if message == 'can_cancel':
-            return True if self.spent==0 else False
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
         if message == 'can_stack':
             return False
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
             obj.token.state = 'unconscious'
-            self.spent = 1
+            self.spent = len(playarea.activecardsplay.cards)
         else:
             if message=='card_action_selected':
                 self.fight = 1
@@ -617,20 +639,22 @@ class KnockoutAction(PlayerAction):
         guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing'] and dist(board.active_player_token.map_pos, t.map_pos)<=1]
         map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
         board.map_choices = map_choices
-        if len(board.map_choices)<=1 and self.spent!=0:
-            playarea.hand.discard_selection()
+        if len(board.map_choices)<1 and self.spent!=0:
+            draw = len(playarea.activecardsplay.cards)
+            playarea.activecardsplay.discard_used(self.cards_unused())
             if self.can_loot:
-                playarea.loot1.select_draw(1, 1)
+                playarea.loot1.select_draw(1, draw)
         else:
-            playarea.playerprompt.text = f'Sneak {self.fight}: Select a guard to knockout.'
+            playarea.playerprompt.text = f'Sneak {self.rounded_remain()}: Select a guard to knockout.'
 
 
 class ArrowAction(PlayerAction):
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
-        if message == 'can_cancel':
-            return True if self.spent==0 else False
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
@@ -639,60 +663,62 @@ class ArrowAction(PlayerAction):
             self.spent = 1
         else:
             if message=='card_action_selected':
-                self.range = self.base_range + sum([c.selected for c in playarea.hand.cards])
                 self.spent = 0
-        guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert'] and 0<dist(board.active_player_token.map_pos, t.map_pos)<=self.range and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
+        guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert']
+                        and 0<dist(board.active_player_token.map_pos, t.map_pos)<=self.value_allowance()
+                        and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
         map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
         board.map_choices = map_choices
-        if len(board.map_choices)<=1 and self.spent!=0:
-            playarea.hand.discard_selection()
+        if self.spent!=0:
+            playarea.activecardsplay.discard_used(self.cards_unused())
         else:
-            playarea.playerprompt.text = f'SHOOT ARROW {self.range}: Select a guard to shoot.'
+            playarea.playerprompt.text = f'SHOOT ARROW {self.rounded_remain()}: Select a guard to shoot.'
 
 
 class LockpickAction(PlayerAction):
+    base_allowance = 1
     can_loot = True
-    loot_level = 1
     max_loot = 3
-    base_pick = 0
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
-        if message == 'can_cancel':
-            return True if self.spent==0 else False
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
             target = [t for t in board.iter_tokens(token_type='T') if t.map_pos==obj.map_pos][0]
-            lock_level = 1
-            if self.pick>=lock_level:
+            pick = self.value_allowance()
+            if pick>=target.lock_level:
                 #TODO: Clear the target
                 board.tokens.remove(target)
-                self.spent += lock_level
+                self.spent = pick
                 if self.can_loot:
                     loot_decks = [playarea.loot1, playarea.loot2, playarea.loot3]
-                    loot_decks[self.loot_level].select_draw(1, self.pick)
-        else:
-            if message=='card_action_selected':
-                self.spent = 0
-        self.pick = self.base_pick + sum([c.selected for c in playarea.hand.cards])
+                    loot_decks[target.loot_level-1].select_draw(1, pick - target.lock_level)
+                    playarea.activecardsplay.discard_used(self.cards_unused())
+                return
+        elif message=='card_action_selected':
+            self.spent = 0
         target_choices = [t for t in board.iter_targets() if dist(board.active_player_token.map_pos, t)==1]
         map_choices = [board.make_choice(t, self, 'touch') for t in target_choices]
         board.map_choices = map_choices
         if len(board.map_choices)<1 and self.spent!=0:
-            playarea.hand.discard_selection()
+            playarea.activecardsplay.discard_used(self.cards_unused())
         else:
-            playarea.playerprompt.text = f'Lockpick {self.pick}: Select a guard to knockout.'
+            playarea.playerprompt.text = f'Lockpick {self.rounded_remain()}: Select a guard to knockout.'
 
 
 class DecoyAction(PlayerAction):
-    base_range = 4
+    base_allowance = 4
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
-        if message == 'can_cancel':
-            return True if self.spent==0 else False
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
@@ -705,25 +731,25 @@ class DecoyAction(PlayerAction):
                        continue
                     t.map_pos = obj.map_pos
                     t.state = 'alert'
-            self.spent = 1
+            self.spent = dist(obj.map_pos, board.playertoken.map_pos)
         else:
             if message=='card_action_selected':
-                self.range = self.base_range + sum([c.selected for c in playarea.hand.cards])
                 self.spent = 0
-        place_choices = [t for t in board.iter_in_range(board.playertoken.map_pos, ['L','L1','L2','U'], self.range) and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
+        place_choices = [t for t in board.iter_in_range(board.playertoken.map_pos, ['L','L1','L2','U'], self.value_allowance)
+                         and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
         map_choices = [board.make_token_choice(t, self, 'touch') for t in place_choices]
         board.map_choices = map_choices
-        if len(board.map_choices)<=1 and self.spent!=0:
-            playarea.hand.discard_selection()
+        if self.spent!=0:
+            playarea.activecardsplay.discard_used(self.cards_unused())
         else:
-            playarea.playerprompt.text = f'SHOOT DECOY {self.range}: Select a tile to shoot the decoy to.'
+            playarea.playerprompt.text = f'SHOOT DECOY {self.rounded_remain()}: Select a tile to shoot the decoy to.'
 
 
 class MoveStance(StanceCard):
     #All move cards gain +1
     #All non-move cards can be used for move 1
     def get_actions_for_card(self, card, playarea):
-        return {'MOVE 1+': MoveAction(card, playarea, base_move=0),
+        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
                 'STANCE': StanceAction(card, playarea)}
 
 
@@ -731,7 +757,7 @@ class FightStance(StanceCard):
     #Get +1 to attack cards
     #Play 1 non-attack card for attack 1
     def get_actions_for_card(self, card, playarea):
-        return {'ATTACK 1+': FightAction(card, playarea, base_fight=0),
+        return {'ATTACK 1+': FightAction(card, playarea, base_allowance=1),
                 'STANCE': StanceAction(card, playarea)}
 
 
@@ -745,8 +771,8 @@ class SneakStance(StanceCard):
     #All cards can be used for move 0.5
     #All non-move cards can be used for KO action on dozing guards from shadows
     def get_actions_for_card(self, card, playarea):
-        return {'KNOCKOUT': KnockoutAction(card, playarea, base_ko=1),
-                'MOVE 0.5+': MoveAction(card, playarea, moves_per_card=0.5),
+        return {'KNOCKOUT': KnockoutAction(card, playarea, base_allowance=1),
+                'MOVE 0.5+': MoveAction(card, playarea, base_allowance=0.5, value_per_card=0.5),
                 'STANCE': StanceAction(card, playarea)}
 
 class LootStance(StanceCard):
@@ -757,8 +783,14 @@ class LootStance(StanceCard):
     #All non-loot cards can be spent to increase draw additional market cards to buy from
     #Spend 2 cards to buy an additional market item
     def get_actions_for_card(self, card, playarea):
-        return {'LOCKPICK 1+': LockpickAction(card, playarea, base_pick=0),
+        return {'LOCKPICK 1+': LockpickAction(card, playarea, base_allowance=1),
                 'STANCE': StanceAction(card, playarea)}
+
+class ArcherStance(StanceCard):
+    #Archer stance (holding your bow) is required to shoot arrows
+    #TODO: Upgrading the archer stance should offer additional range etc.
+    def get_actions_for_card(self, card, playarea):
+        return {'STANCE': StanceAction(card, playarea)}
 
 def stack_all_fn(card):
     return True
@@ -778,7 +810,7 @@ class StartPlayerCard(PlayerCard): #TODO: pretty ugly to use a subclass for this
 
 class LockpickCard(PlayerCard):
     def get_actions_for_card(self, card, playarea):
-        return {'LOCKPICK 1+': LockpickAction(card, playarea, base_pick=0)}
+        return {'LOCKPICK 1+': LockpickAction(card, playarea, base_allowance=1)}
 
 class LootCard(PlayerCard):
     pass
@@ -797,7 +829,7 @@ class RopeArrow(MarketCard):
 
 class DecoyArrow(MarketCard):
     def get_actions(self, playarea):
-        return {'SHOOT DECOY 5': DecoyAction(self, playarea)}
+        return {'SHOOT DECOY 5': DecoyAction(self, playarea, base_allowance=5)}
 
 class SmokeBomb(MarketCard):
     pass
@@ -807,18 +839,19 @@ class Lure(MarketCard):
 
 class BasicMove(StartPlayerCard):
     def get_actions(self, playarea):
-        return {'MOVE 2+': MoveAction(self, playarea, base_move=1)}
+        return {'MOVE 2+': MoveAction(self, playarea, base_allowance=2)}
 
 class BasicAttack(StartPlayerCard):
     def get_actions(self, playarea):
-        return {'ATTACK 2+': FightAction(self, playarea, base_fight=1)}
+        return {'ATTACK 2+': FightAction(self, playarea, base_allowance=2)}
 
 class BasicClimb(StartPlayerCard):
     def get_actions(self, playarea):
         return {'CLIMB 1': ClimbAction(self, playarea)}
 
 class BasicSneak(StartPlayerCard):
-    pass
+    def get_actions(self, playarea):
+        return {'SNEAK 1+': MoveAction(self, playarea, base_allowance=1, moves_per_card=0.5)}
 
 class BasicKockout(StartPlayerCard):
     def get_actions(self, playarea):
@@ -826,7 +859,10 @@ class BasicKockout(StartPlayerCard):
 
 class BasicArrow(StartPlayerCard):
     def get_actions(self, playarea):
-        return {'SHOOT ARROW 5': ArrowAction(self, playarea, base_range=4)}
+        if isinstance(playarea.playerstance.cards[-1], ArcherStance):
+            return {'SHOOT ARROW 5': ArrowAction(self, playarea, base_allowance=5)}
+        else:
+            return {}
 
 def make_map_cards(pa, w, h, n):
     return [m(pa=pa, w=w, h=h) for m in MapCard.__subclasses__() for i in range(n)]
