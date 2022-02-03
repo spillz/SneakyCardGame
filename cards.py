@@ -745,35 +745,42 @@ class DecoyAction(PlayerAction):
             playarea.playerprompt.text = f'SHOOT DECOY {self.rounded_remain()}: Select a tile to shoot the decoy to.'
 
 
-class MoveStance(StanceCard):
+class MoveStance(): ##StanceCard
     #All move cards gain +1
     #All non-move cards can be used for move 1
     def get_actions_for_card(self, card, playarea):
         return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
-                'STANCE': StanceAction(card, playarea)}
+                'STANCE': StanceAction(card, playarea)
+                }
 
 
 class FightStance(StanceCard):
     #Get +1 to attack cards
     #Play 1 non-attack card for attack 1
     def get_actions_for_card(self, card, playarea):
-        return {'ATTACK 1+': FightAction(card, playarea, base_allowance=1),
-                'STANCE': StanceAction(card, playarea)}
+        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
+                'ATTACK 1+': FightAction(card, playarea, base_allowance=1),
+#                'STANCE': StanceAction(card, playarea)
+                }
 
 
 class ClimbStance(StanceCard):
     def get_actions_for_card(self, card, playarea):
-        return {'CLIMB 1': ClimbAction(card, playarea),
-                'STANCE': StanceAction(card, playarea)}
+        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
+                'CLIMB 1': ClimbAction(card, playarea),
+#                'STANCE': StanceAction(card, playarea)
+                }
 
 class SneakStance(StanceCard):
     #All cards used for move actions make no noise
     #All cards can be used for move 0.5
     #All non-move cards can be used for KO action on dozing guards from shadows
     def get_actions_for_card(self, card, playarea):
-        return {'KNOCKOUT': KnockoutAction(card, playarea, base_allowance=1),
-                'MOVE 0.5+': MoveAction(card, playarea, base_allowance=0.5, value_per_card=0.5),
-                'STANCE': StanceAction(card, playarea)}
+        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
+                'KNOCKOUT': KnockoutAction(card, playarea, base_allowance=1),
+#                'MOVE 0.5+': MoveAction(card, playarea, base_allowance=0.5, value_per_card=0.5),
+#                'STANCE': StanceAction(card, playarea)
+                }
 
 class LootStance(StanceCard):
     #Spend card to enter buildings
@@ -783,14 +790,18 @@ class LootStance(StanceCard):
     #All non-loot cards can be spent to increase draw additional market cards to buy from
     #Spend 2 cards to buy an additional market item
     def get_actions_for_card(self, card, playarea):
-        return {'LOCKPICK 1+': LockpickAction(card, playarea, base_allowance=1),
-                'STANCE': StanceAction(card, playarea)}
+        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
+                'LOCKPICK 1+': LockpickAction(card, playarea, base_allowance=1),
+#                'STANCE': StanceAction(card, playarea)
+                }
 
 class ArcherStance(StanceCard):
     #Archer stance (holding your bow) is required to shoot arrows
     #TODO: Upgrading the archer stance should offer additional range etc.
     def get_actions_for_card(self, card, playarea):
-        return {'STANCE': StanceAction(card, playarea)}
+        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
+#                'STANCE': StanceAction(card, playarea)
+                }
 
 def stack_all_fn(card):
     return True
