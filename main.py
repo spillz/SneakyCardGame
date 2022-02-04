@@ -285,6 +285,9 @@ class PlayerDeck(CardSplay):
         self.parent.eventdeck.can_draw=True
         self.can_draw = False
 
+        self.parent.board.scroll_to_player()
+
+
     def draw(self, n):
         shuffle = n - len(self.cards)
         cards = self.cards[-1:-n-1:-1]
@@ -362,10 +365,12 @@ class ActionSelectorOption(Label):
 
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
+            touch.grab(self)
             self._touching=True
 
     def on_touch_up(self, touch):
-        if self.collide_point(*touch.pos) and self._touching:
+        if touch.grab_current==self:
+            touch.ungrab(self)
             self.parent.hand.selected_action = self.text
             self._touching=False
             return True
@@ -761,6 +766,15 @@ class Board(RelativeLayout):
             if isinstance(t,MapChoice) or isinstance(t,TokenMapChoice):
                 self.add_widget(t)
                 t.size = self.space_size
+        self.scroll_to_player()
+
+    def scroll_to_player(self):
+        pad = (
+            (self.parent.width - self.active_player_token.width)//4,
+            (self.parent.height - self.active_player_token.height)//4
+        )
+        self.parent.scroll_to(self.active_player_token,padding=pad)
+
 
     def on_space_size(self, *args):
         for t in self.tokens:

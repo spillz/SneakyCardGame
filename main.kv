@@ -434,7 +434,7 @@
     map_size: 6, 3
     scroll_min: min(self.map_size[1],2) if self.width>self.height else min(self.map_size[1],5/self.map_scale*self.height/self.width*root.map_card_grid_size[0]/root.map_card_grid_size[1])
     scroll_spacer: 2/self.map_scale if self.width>self.height else 0
-    scroll_size: (min(int(self.scroll_min/root.map_card_grid_size[0]*root.map_card_grid_size[1]*self.width/self.height),self.map_size[0]), self.scroll_min) if self.width>self.height else (6//self.map_scale, self.scroll_min)
+    scroll_size: (min(int(self.scroll_min/root.map_card_grid_size[0]*root.map_card_grid_size[1]*self.width/self.height),self.map_size[0]), self.scroll_min) if self.width>self.height else (6/self.map_scale, self.scroll_min)
     hz_cards: 2.4 if self.width>self.height else 0
     vt_cards: 1.2 if self.width>self.height else 4.2
     card_base_size: self.width//(self.hz_cards+self.scroll_size[0]*self.map_scale), self.height//(self.vt_cards+self.scroll_size[1]*self.map_scale)
@@ -565,7 +565,7 @@
         id: playerprompt
         text: 'Select a card from your hand to play, or tap the event card to end your turn'
         size_hint: None, None
-        font_size: 12
+        font_size: root.card_size[1]*0.3//3
         size: root.width, root.card_size[1]//5
         y: root.card_size[1]*2 if root.height>=root.width else root.height - root.card_size[1]//5
         x: root.width//40

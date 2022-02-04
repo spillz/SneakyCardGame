@@ -722,20 +722,20 @@ class DecoyAction(PlayerAction):
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
-            player_c, p = board.get_card_and_pos(board.playertoken.map_pos)
+            player_c, p = board.get_card_and_pos(board.active_player_token.map_pos)
             obj = kwargs['touch_object']
             for t in board.tokens:
-                if isinstance(t,board.token_types['G']) and t.state in['alert','dozing'] and t.map_pos!=board.playertoken.map_pos:
-                    c, p = board.get_card_and_pos(board.playertoken.map_pos)
+                if isinstance(t,board.token_types['G']) and t.state in['alert','dozing'] and t.map_pos!=board.active_player_token.map_pos:
+                    c, p = board.get_card_and_pos(board.active_player_token.map_pos)
                     if c != player_c:
                        continue
                     t.map_pos = obj.map_pos
                     t.state = 'alert'
-            self.spent = dist(obj.map_pos, board.playertoken.map_pos)
+            self.spent = dist(obj.map_pos, board.active_player_token.map_pos)
         else:
             if message=='card_action_selected':
                 self.spent = 0
-        place_choices = [t for t in board.iter_in_range(board.playertoken.map_pos, ['L','L1','L2','U'], self.value_allowance)
+        place_choices = [t for t in board.iter_in_range(board.active_player_token.map_pos, ['L','L1','L2','U'], self.value_allowance)
                          and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
         map_choices = [board.make_token_choice(t, self, 'touch') for t in place_choices]
         board.map_choices = map_choices
