@@ -553,8 +553,9 @@ class MoveAction(PlayerAction):
                 self.spent = 0
         moves_left = self.value_allowance() - self.spent
         spots = {}
-        pp = board.active_player_token.map_pos
-        spots = board.walkable_spots(pp, dist=moves_left, spots={})
+        if not board.active_player_clashing():
+            pp = board.active_player_token.map_pos
+            spots = board.walkable_spots(pp, dist=moves_left, spots={})
         board.map_choices = [board.make_choice(p, self, set_choice_type(p,pp)) for p in spots if tuple(p)!=tuple(pp)]
         if len(board.map_choices)<1 and self.spent>0:
             playarea.activecardsplay.discard_used(self.cards_unused())

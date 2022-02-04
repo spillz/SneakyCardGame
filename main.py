@@ -151,14 +151,14 @@ class CardSplay(FloatLayout):
         self.splay_cards()
 
     def on_size(self, *args):
-        self.splay_cards()
+        self.splay_cards(anim=False)
 
-    def splay_cards(self):
+    def splay_cards(self, anim=True):
         if self._splay_clockev is not None:
             self._splay_clockev.cancel()
-        self._splay_clockev = Clock.schedule_once(partial(self.do_splay_cards), 0.05)
+        self._splay_clockev = Clock.schedule_once(partial(self.do_splay_cards, anim=anim), 0.05)
 
-    def do_splay_cards(self, time):
+    def do_splay_cards(self, time, anim=True):
         self._splay_clockev = None
         if len(self.cards)==0:
             return
@@ -195,19 +195,22 @@ class CardSplay(FloatLayout):
             else:
                 y = self.y + offset
                 x = self.x if c!=self.shown_card else self.x+self.shown_card_shift*cardw
-            if len(self.cards)<10:
-                anim = Animation(pos=c.pos, duration=i*0.025)+Animation(pos=(x,y), duration=0.2)
+            if anim:
+                if len(self.cards)<10:
+                    animc = Animation(pos=c.pos, duration=i*0.025)+Animation(pos=(x,y), duration=0.2)
+                else:
+                    animc = Animation(pos=(x,y), duration=0.2)
+    #            anim = Animation(pos=(x,y), duration=0.2)
+                animc.start(c)
             else:
-                anim = Animation(pos=(x,y), duration=0.2)
-#            anim = Animation(pos=(x,y), duration=0.2)
-            anim.start(c)
-            #TODO: We could add a blocker to prevent touches but probably not necessary
+                c.x=x
+                c.y=y
+                #TODO: We could add a blocker to prevent touches but probably not necessary
             if c == self.shown_card:
                 offset+=exp_len
             elif i<max_splay:
                 offset+=delta
             i+=1
-        print('Animation',self)
 
     def on_shown_card(self, exp, card):
         if not self.multi_select:
@@ -426,6 +429,8 @@ class Hand(CardSplay):
         super().on_touch_up(touch)
         if len(self.cards)==0:
             return False
+        if self.can_draw==False:
+            return False
         for c in self.cards[::-1]:
             if c.collide_point(*self.to_local(*touch.pos)):
                 if self.shown_card==c: #deselect the already selected card
@@ -518,6 +523,12 @@ class EventDeck(CardSplay):
         if not self.can_draw:
             return False
         if len(self.cards)==0:
+            return False
+        if self.parent.board.active_player_clashing(): #Game over condition
+            self.parent.menu_showing=True
+            self.parent.hand.clear_selection()
+            self.parent.hand.can_draw=False
+            self.parent.playerstance.can_draw=False
             return False
         card= self.cards[-1]
         card.face_up = True
@@ -912,6 +923,9 @@ class Board(RelativeLayout):
                 if isinstance(t, self.token_types[token_type]):
                     yield t
 
+    def active_player_clashing(self):
+        return sum([g.map_pos==self.active_player_token.map_pos and g.state in ['alert','dozing'] for g in self.iter_tokens('G')])
+
     def num_in_range(self, pos, types, radius=3, blocker_types=None):
         num = 0
         for pos0 in self.iter_types_in_range(pos, types, radius, blocker_types):
@@ -1020,14 +1034,65 @@ class Board(RelativeLayout):
         return spots
 
 
+class Stats(BoxLayout):
+    kills = NumericProperty()
+    knockouts = NumericProperty()
+    alerted = NumericProperty()
+    loot = NumericProperty()
+    rounds = NumericProperty()
+    showing = BooleanProperty()
+    def reset(self):
+        self.kills = 0
+        self.knockouts = 0
+        self.alerted = 0
+        self.loot = 0
+        self.rounds = 0
+        self.showing = False
+
+    def on_parent1(self, *args):
+        parent = self.parent
+        if parent is None:
+            return
+        self.center_x = -self.parent.width//4
+        self.center_y = -self.parent.height//4
+        self.width = self.parent.width//4
+        self.height= self.parent.height//4
+        center_x = parent.center_x
+        center_y = parent.center_y
+        width = 3*parent.width//4
+        height= 3*parent.height//4
+        anim = Animation(center_x=center_x, center_y=center_y, width=width, height=height, duration=0.2)
+        anim.start(self)
+
+    def on_touch_down(self, touch):
+        for but in self.restart, self.quit:
+            if but.collide_point(*touch.pos):
+                touch.grab(self)
+                return True
+        return True
+
+    def on_touch_up(self, touch):
+        if touch.grab_current==self:
+            touch.ungrab(self.restart)
+        if self.restart.collide_point(*touch.pos):
+            self.parent.restart_game()
+            self.reset()
+            self.parent.menu_showing=False
+            return True
+        if self.quit.collide_point(*touch.pos):
+            touch.ungrab(self.quit)
+            gameapp.stop()
+            return True
+        return True
+
 class PlayArea(FloatLayout):
+    menu_showing = ObjectProperty(False)
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self.menu = Menu()
         self.instructions = None
-        self.menu.bind(selection = self.menu_choice)
         self.first_start = True
         self.action_selector = None
+        self.stats = Stats()
 
     def on_parent(self, *args):
         self.mapcards = cards.make_map_cards(self, self.map_card_grid_size[0], self.map_card_grid_size[1], self.map_size[0]*self.map_size[1])
@@ -1048,6 +1113,27 @@ class PlayArea(FloatLayout):
         random.shuffle(self.marketcards)
         random.shuffle(self.eventcards)
 
+        #First clear everything out (this will remove all card widgets from the splay objects)
+        self.map.cards[:] = []
+
+        self.hand.cards[:] = []
+        self.playerdeck.cards[:] = []
+        self.playerdiscard.cards[:] = []
+        self.playerstance.cards[:] = []
+
+        self.loot1.cards[:] = []
+        self.loot2.cards[:] = []
+        self.loot3.cards[:] = []
+
+        self.exhausted.cards[:] = []
+
+        self.marketdeck.cards[:] = []
+        self.marketoffer.cards[:] = []
+
+        self.eventdeck.cards[:] = []
+        self.eventdiscard.cards[:] = []
+
+        #Now assign cards to decks
         self.map.cards[:] = self.mapcards #[:self.map.rows*self.map.cols]
 
         self.playerdeck.cards[:] = self.playercards[:]
@@ -1068,6 +1154,14 @@ class PlayArea(FloatLayout):
 
         self.eventdeck.can_draw = True
 
+    def on_menu_showing(self, *args):
+        if self.menu_showing:
+            if self.stats not in self.children:
+                self.add_widget(self.stats)
+        else:
+            if self.stats in self.children:
+                self.remove_widget(self.stats)
+
     def token_setup(self):
         player = PlayerToken()
         spawns = []
@@ -1080,51 +1174,9 @@ class PlayArea(FloatLayout):
         targets = [TargetToken(map_pos=s) for s in loot]
         self.board.tokens = [player]+guards+targets
 
-    def show_menu(self):
-        self.menu.selection = -1
-        self.add_widget(self.menu)
-
-    def hide_menu(self):
-        self.remove_widget(self.menu)
-
-    def menu_choice(self, menu, selection):
-        if selection == 1:
-            self.hide_menu()
-            self.restart_game()
-        if selection == 2:
-            self.hide_menu()
-            self.next_game()
-        if selection == 3:
-            self.hide_menu()
-            self.prev_game()
-        if selection == 4:
-            self.hide_menu()
-            self.add_widget(self.instructions)
-        if selection == 5:
-            App.get_running_app().set_next_theme()
-            self.hide_menu()
-            self.show_menu()
-        if selection == 6:
-            App.get_running_app().stop()
-
-    def next_game(self):
-        self.reset(True)
-
-    def prev_game(self):
-        self.reset(True)
-
     def restart_game(self):
-        self.reset()
-
-    def draw_background(self, candidates = None):
-        return
-        self.canvas.before.clear()
-        with self.canvas.before:
-            Color(*colors.background)
-            Rectangle(pos = self.pos, size = self.size)
-
-    def update_word_bar(self):
-        self.statusbar.word, self.statusbar.word_score = self.is_selection_a_word()
+        self.card_setup()
+        self.token_setup()
 
     def path_state(self):
         return os.path.join(get_user_path(),'gamestate.pickle')
@@ -1142,112 +1194,6 @@ class Instructions(BoxLayout):
     m_scrollview = ObjectProperty()
     def __init__(self):
         super().__init__()
-
-
-class Menu(BoxLayout):
-    selection = NumericProperty(-1)
-    prev_game = BooleanProperty()
-    next_game = BooleanProperty()
-    def __init__(self):
-        super().__init__()
-        self.size_hint=(1,1)
-
-    def ui_update(self, scorebar, *args):
-        self.prev_game = scorebar.game_id>1
-        self.next_game = scorebar.hi_score > scorebar.target[0] or scorebar.played>10
-
-    def on_touch_down(self, touch):
-        if self.collide_point(*touch.pos):
-            return True
-        return False
-
-    def on_touch_up(self, touch):
-        if self.collide_point(*touch.pos):
-            for c in self.children:
-                if c.collide_point(*touch.pos) and c.active:
-                    self.selection = c.value
-#                    sounds.MENU.play()
-                    return True
-            return True
-        return False
-
-class ScoreBar(BoxLayout):
-    score = NumericProperty()
-    hi_score = NumericProperty()
-    game_id = NumericProperty(-1)
-    played = NumericProperty()
-
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        try:
-            self.store = JsonStore(os.path.join(get_user_path(),'scores.json'))
-        except:
-            self.store = None
-        self.bind(game_id = self.set_game_id)
-        self.bind(score = self.score_changed)
-        self.bind(played = self.set_played)
-
-    def get_status(self):
-        try:
-            if self.store.exists('status'):
-                data = self.store.get('status')
-                self.game_id = data['game_id']
-            else:
-                self.game_id = 1
-        except:
-            self.game_id = 1
-
-    def set_played(self, *args):
-        try:
-            self.store.put(str(self.game_id), high_score=int(self.hi_score), played = int(self.played))
-        except:
-            pass
-        Logger.info("played game %i %i times"%(self.game_id, self.played))
-
-    def set_game_id(self, *args):
-        Logger.info("setting game %i"%self.game_id)
-        if self.game_id > 0:
-            try:
-                data = self.store.put('status', game_id = self.game_id)
-            except:
-                pass
-        try:
-            if self.store.exists(str(self.game_id)):
-                data = self.store.get(str(self.game_id))
-                self.hi_score = data['high_score']
-                self.played = data['played']
-            else:
-                raise IOError
-        except:
-            self.hi_score = 0
-            self.played = 0
-        Logger.info("high score %i"%self.hi_score)
-        self.score = 0
-        random.seed(self.game_id)
-
-    def score_changed(self, *args):
-        Logger.info("setting game score %i for game %i"%(self.score,self.game_id))
-        if self.score > self.hi_score:
-            self.hi_score = self.score
-            try:
-                self.store.put(str(self.game_id), high_score=int(self.hi_score), played = int(self.played))
-            except:
-                pass
-
-class StatusBar(BoxLayout):
-    w_word_label = ObjectProperty()
-    word = StringProperty()
-    word_score = NumericProperty()
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-
-class MessageBar(BoxLayout):
-    message = StringProperty()
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-
-    def game_changed(self, scorebar, game_id):
-        self.game_id = game_id
 
 
 class SneakyApp(App):
@@ -1288,12 +1234,7 @@ class SneakyApp(App):
         '''
         if key == 27:
 #            sounds.MENU.play()
-            if self.pa.instructions in self.pa.children:
-                self.pa.remove_widget(self.pa.instructions)
-            elif self.pa.menu not in self.pa.children:
-                self.pa.show_menu()
-            else:
-                self.pa.hide_menu()
+            self.pa.menu_showing = not self.pa.menu_showing
             return True
         return False
 
