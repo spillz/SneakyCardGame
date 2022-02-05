@@ -370,6 +370,7 @@ class ActionSelectorOption(Label):
         if self.collide_point(*touch.pos):
             touch.grab(self)
             self._touching=True
+            return True
 
     def on_touch_up(self, touch):
         if touch.grab_current==self:
@@ -471,7 +472,6 @@ class Hand(CardSplay):
             c.face_up = True
         super().on_cards(*args)
         if len(self.cards)==0:
-            self.can_draw=False
             self.parent.playerprompt.text = 'Touch the event deck to end your turn'
         else:
             self.parent.playerprompt.text = 'Select a card from your hand to play'
@@ -794,15 +794,37 @@ class Board(RelativeLayout):
             c.size = self.space_size
 
     def on_token_move(self, token, mp):
-        for t in self.tokens:
-            if isinstance(t,GuardToken) and t.map_pos != self.active_player_token.map_pos and t.state not in ['dead','unconscious']:
-                if 1<=self.dist(t.map_pos, self.active_player_token.map_pos)<=10 and self[self.active_player_token.map_pos] not in ['U','B']:
-                    if not self.has_types_between(t.map_pos, self.active_player_token.map_pos, 'B'):
-                        t.map_pos = self.active_player_token.map_pos
-                        if t.state == 'dozing':
-                            t.state = 'alert'
-                        return
+        self.token_update()
 
+    def token_update(self):
+        p = self.active_player_token
+        #Move guard to player if player is visible
+        for t in self.iter_tokens('G'):
+            if t.map_pos!=p.map_pos and t.state not in ['dead','unconscious']:
+                if 1<=self.dist(t.map_pos, p.map_pos)<=10 and self[p.map_pos] not in ['U','B']:
+                    if not self.has_types_between(t.map_pos, p.map_pos, 'B'):
+                        t.map_pos = p.map_pos
+                        t.state = 'alert'
+                        print('moving to p',t,t.map_pos)
+                        return
+        #Move guard to a downed guard if visible
+        for t in self.iter_tokens('G'):
+            if t.map_pos==p.map_pos or t.state in ['unconscious','dead']: continue
+            closest = (100, None)
+            for t0 in self.iter_tokens('G'):
+                if t0.state in ['alert','dozing']: continue
+                if t0.map_pos==p.map_pos: continue
+                d = self.dist(t.map_pos, t0.map_pos)
+                if d<=10 and self[t0.map_pos] not in ['U','B']:
+                    if not self.has_types_between(t.map_pos, t0.map_pos, 'B'):
+                        if d<closest[0]: closest = (d, t0)
+            d,t0 = closest
+            if t0 is not None and d>0:
+                t.map_pos = t0.map_pos
+                t.state = 'alert'
+                print('moving to g',t,t.map_pos)
+                return
+        #A clash occurs if two or more tokens occupy the same space, we'll shift their positions a bit
         clashes = {}
         for t0 in self.tokens:
             for t1 in self.tokens:
@@ -815,14 +837,12 @@ class Board(RelativeLayout):
                         clashes[p].add(t1)
                     else:
                         clashes[p] = set([t0,t1])
-
         for t in self.tokens:
             if tuple(t.map_pos) not in clashes:
                 t.off = [0,0]
         for p in clashes:
             for t,o in zip(clashes[p],[[-0.25,-0.25],[0.25,0.25],[-0.25,0.25],[0.25,-0.25]][:len(clashes[p])]):
                 t.off = o
-
 
     def __getitem__(self, pos):
         card, card_pos = self.get_card_and_pos(pos)
@@ -1074,16 +1094,17 @@ class Stats(BoxLayout):
     def on_touch_up(self, touch):
         if touch.grab_current==self:
             touch.ungrab(self.restart)
-        if self.restart.collide_point(*touch.pos):
-            self.parent.restart_game()
-            self.reset()
-            self.parent.menu_showing=False
+            if self.restart.collide_point(*touch.pos):
+                print(self.parent)
+                self.parent.restart_game()
+                self.reset()
+                self.parent.menu_showing=False
+                return True
+            if self.quit.collide_point(*touch.pos):
+                touch.ungrab(self.quit)
+                gameapp.stop()
+                return True
             return True
-        if self.quit.collide_point(*touch.pos):
-            touch.ungrab(self.quit)
-            gameapp.stop()
-            return True
-        return True
 
 class PlayArea(FloatLayout):
     menu_showing = ObjectProperty(False)

@@ -576,7 +576,8 @@ class FightAction(PlayerAction):
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
             obj.token.state = 'dead'
-            self.spent = 1
+            self.spent += 1
+            board.token_update()
         else:
             if message=='card_action_selected':
                 self.spent = 0
@@ -608,10 +609,12 @@ class ClimbAction(PlayerAction):
         else:
             if message=='card_action_selected':
                 self.spent = 0
-        if board[board.active_player_token.map_pos] not in 'B':
-            spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, 'B', 1)]
-        else:
-            spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, ['U','L','L0','L1','L2'], 1)]
+        spots = []
+        if not board.active_player_clashing():
+            if board[board.active_player_token.map_pos] not in 'B':
+                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, 'B', 1)]
+            else:
+                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, ['U','L','L0','L1','L2'], 1)]
         board.map_choices = [board.make_choice(p, self, 'touch') for p in spots]
         if self.spent==1:
             playarea.activecardsplay.discard_used(self.cards_unused())
@@ -633,13 +636,17 @@ class KnockoutAction(PlayerAction):
             obj = kwargs['touch_object']
             obj.token.state = 'unconscious'
             self.spent = len(playarea.activecardsplay.cards)
+            board.token_update()
         else:
             if message=='card_action_selected':
                 self.fight = 1
                 self.spent = 0
-        guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing'] and dist(board.active_player_token.map_pos, t.map_pos)<=1]
-        map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
-        board.map_choices = map_choices
+        if not board.active_player_clashing():
+            guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing'] and dist(board.active_player_token.map_pos, t.map_pos)<=1]
+            map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
+            board.map_choices = map_choices
+        else:
+            board.map_choices = []
         if len(board.map_choices)<1 and self.spent!=0:
             draw = len(playarea.activecardsplay.cards)
             playarea.activecardsplay.discard_used(self.cards_unused())
@@ -662,14 +669,18 @@ class ArrowAction(PlayerAction):
             obj = kwargs['touch_object']
             obj.token.state = 'dead'
             self.spent = 1
+            board.token_update()
         else:
             if message=='card_action_selected':
                 self.spent = 0
-        guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert']
-                        and 0<dist(board.active_player_token.map_pos, t.map_pos)<=self.value_allowance()
-                        and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
-        map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
-        board.map_choices = map_choices
+        if not board.active_player_clashing():
+            guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert']
+                            and 0<dist(board.active_player_token.map_pos, t.map_pos)<=self.value_allowance()
+                            and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
+            map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
+            board.map_choices = map_choices
+        else:
+            board.map_choices = []
         if self.spent!=0:
             playarea.activecardsplay.discard_used(self.cards_unused())
         else:
@@ -703,9 +714,12 @@ class LockpickAction(PlayerAction):
                 return
         elif message=='card_action_selected':
             self.spent = 0
-        target_choices = [t for t in board.iter_targets() if dist(board.active_player_token.map_pos, t)==1]
-        map_choices = [board.make_choice(t, self, 'touch') for t in target_choices]
-        board.map_choices = map_choices
+        if not board.active_player_clashing():
+            target_choices = [t for t in board.iter_targets() if dist(board.active_player_token.map_pos, t)==1]
+            map_choices = [board.make_choice(t, self, 'touch') for t in target_choices]
+            board.map_choices = map_choices
+        else:
+            board.map_choices = []
         if len(board.map_choices)<1 and self.spent!=0:
             playarea.activecardsplay.discard_used(self.cards_unused())
         else:
@@ -736,10 +750,13 @@ class DecoyAction(PlayerAction):
         else:
             if message=='card_action_selected':
                 self.spent = 0
-        place_choices = [t for t in board.iter_in_range(board.active_player_token.map_pos, ['L','L1','L2','U'], self.value_allowance)
-                         and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
-        map_choices = [board.make_token_choice(t, self, 'touch') for t in place_choices]
-        board.map_choices = map_choices
+        if not board.active_player_clashing():
+            place_choices = [t for t in board.iter_in_range(board.active_player_token.map_pos, ['L','L1','L2','U'], self.value_allowance)
+                             and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
+            map_choices = [board.make_token_choice(t, self, 'touch') for t in place_choices]
+            board.map_choices = map_choices
+        else:
+            board.map_choices = []
         if self.spent!=0:
             playarea.activecardsplay.discard_used(self.cards_unused())
         else:
