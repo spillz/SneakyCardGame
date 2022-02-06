@@ -904,34 +904,38 @@ class Board(RelativeLayout):
         x,y = x + card_x * self.map_card_grid_size[0], y + card_y * self.map_card_grid_size[1]
         return x,y
 
-    def iter_between(self, pos1, pos2):
+    def iter_between(self, pos1, pos2,off1=(0,0),off2=(0,0)):
         '''
         simple line of site algorithm to yield all map positions on the line between pos1 and pos2
         '''
         x1,y1 = pos1
         x2,y2 = pos2
+        ox1,oy1 = off1
+        ox2,oy2 = off2
+        x1a,y1a=x1+ox1,y1+oy1
+        x2a,y2a=x2+ox2,y2+oy2
         if abs(y2-y1)==0 and abs(x2-x1)==0:
             return
-        if abs(y2-y1)>abs(x2-x1):
-            slope = (x2-x1)/(y2-y1)
+        if abs(y2a-y1a)>abs(x2a-x1a):
+            slope = (x2a-x1a)/(y2a-y1a)
             if y1>y2:
                 y1,y2 = y2,y1
                 x1,x2 = x2,x1
-            for y in range(int(round(y1+1)),int(round(y2))):
+            for y in range(y1+1,y2):
 #            for y in range(int(y1+1),int(y2+1)):
-                x = x1 + (y-y1)*slope
+                x = x1a + (y-y1a)*slope
                 yield round(x),y
         else:
-            slope = (y2-y1)/(x2-x1)
+            slope = (y2a-y1a)/(x2a-x1a)
             if x1>x2:
                 y1,y2 = y2,y1
                 x1,x2 = x2,x1
-            for x in range(int(round(x1+1)),int(round(x2))):
-                y = y1 + (x-x1)*slope
+            for x in range(x1+1,x2):
+                y = y1a + (x-x1a)*slope
                 yield x,round(y)
 
-    def iter_types_between(self, pos1, pos2, types):
-        for pos in self.iter_between(pos1, pos2):
+    def iter_types_between(self, pos1, pos2, types,off1=(0,0), off2=(0,0)):
+        for pos in self.iter_between(pos1, pos2, off1, off2):
             if self[pos] in types:
                 yield pos
 
@@ -946,9 +950,7 @@ class Board(RelativeLayout):
         bases = [tuple(pos1),tuple(pos2)]
         for add1 in [(-0.5,-0.5),(-0.5,0.5),(0.5,-0.5),(0.5,0.5)]:
             for add2 in [(-0.5,-0.5),(-0.5,0.5),(0.5,-0.5),(0.5,0.5)]:
-                pos1a = (pos1[0]+add1[0],pos1[1]+add1[1])
-                pos2a = (pos2[0]+add2[0],pos2[1]+add2[1])
-                blockers = [p for p in self.iter_types_between(pos1a, pos2a, types) if p not in bases]
+                blockers = [p for p in self.iter_types_between(pos1, pos2, types, add1, add2) if p not in bases]
                 if len(blockers)==0:
                     return True
         return False
