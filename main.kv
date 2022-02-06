@@ -281,11 +281,11 @@
 <MapChoice>:
     map_pos: 0,0
     pos: self.map_pos[0]*self.size[0], self.map_pos[1]*self.size[1]
-    choice_type: 'touch' #touch or info
+    choice_type: 'touch' #touch, visible or info
     size_hint: None, None
     canvas.after:
         Color:
-            rgb: (240,69,0) if self.choice_type=='touch' else (170,170,170)
+            rgb: (240,69,0) if self.choice_type=='touch' else (192,0,0) if self.choice_type=='visible' else (170,170,170)
         Line:
             width: 1+self.width//20
             points: self.x+self.width//10, self.y, self.x, self.y, self.x, self.y+self.width//10
@@ -392,7 +392,8 @@
         Label:
             size_hint: 1,0.3
             text: 'GAME OVER'
-            font_size: 2*self.size[1]//3
+            text_size: root.width, None
+            font_size: self.size[1]//2
             canvas.before:
                 Color:
                     rgba: (0.3,0,0.1,1)
@@ -588,8 +589,8 @@
             map_card_grid_size: root.map_card_grid_size
 #            x: 0
 #            y: 0
-            w: root.map_card_size[0]*root.map_size[0]
-            h: root.map_card_size[1]*root.map_size[1]
+            w: root.map_card_grid_size[0]*root.map_size[0]
+            h: root.map_card_grid_size[1]*root.map_size[1]
             Map:
                 orientation: 'lr-bt'
                 id: map

@@ -229,20 +229,23 @@ class CardSplay(FloatLayout):
     def on_touch_down(self, touch):
         for c in self.cards[::-1]:
             if c.collide_point(*self.to_local(*touch.pos)):
+                touch.grab(self)
                 self._clockev = Clock.schedule_once(partial(self.do_closeup,c), 0.5)
                 break
 
     def on_touch_up(self, touch):
-        if not self.collide_point(*touch.pos):
+        if touch.grab_current!=self:
             return
+        touch.ungrab(self)
         if self._clockev != None:
             self._clockev.cancel()
             self._clockev = None
             return True
-        if len(self.cards)>0:
-            c = self.cards[-1]
-            if c.collide_point(*self.to_local(*touch.pos)):
-                self.touch_card = c
+#        if len(self.cards)>0:
+#            c = self.cards[-1]
+#            if c.collide_point(*self.to_local(*touch.pos)):
+#                self.touch_card = c
+
 
     def move_to(self, cards, deck, pos=None):
         self.cards = [c for c in self.cards if c not in cards]
@@ -266,6 +269,9 @@ class CardSplay(FloatLayout):
 
 class PlayerDiscard(CardSplay):
     def on_cards(self, *args):
+        for c in self.children[:]:
+            if isinstance(c, cards.Card):
+                c.face_up=False
         super().on_cards(*args)
         for c in self.cards:
             c.face_up = True
@@ -340,17 +346,12 @@ class ActiveCardSplay(CardSplay):
         else:
             self.active_card = None
 
-    def on_touch_down(self, touch):
-        if self.collide_point(*touch.pos):
-            touch.grab(self)
-            return True
-
     def on_touch_up(self, touch):
-        if touch.grab_current==self:
-            touch.ungrab(self)
-            if len(self.cards)>0:
-                self.parent.hand.cancel_action()
-            return True
+        if super().on_touch_up(touch) is None:
+            return
+        if len(self.cards)>0:
+            self.parent.hand.cancel_action()
+        return True
 
     def discard_used(self, unused=0):
         if unused<len(self.cards):
@@ -427,11 +428,12 @@ class Hand(CardSplay):
         self.clear_selection()
 
     def on_touch_up(self,touch):
-        super().on_touch_up(touch)
+        if super().on_touch_up(touch) is None:
+            return
         if len(self.cards)==0:
-            return False
+            return True
         if self.can_draw==False:
-            return False
+            return True
         for c in self.cards[::-1]:
             if c.collide_point(*self.to_local(*touch.pos)):
                 if self.shown_card==c: #deselect the already selected card
@@ -442,19 +444,23 @@ class Hand(CardSplay):
                     if action_fn('can_stack', stacked_card=c):
                         self.move_to([c], self.parent.activecardsplay,0)
                         action_fn('card_stacked', stacked_card=c)
-                        return False
+                        return True
                 else: #select it
                     self.clear_selection()
                     self.shown_card = c
                     self.selected_action = ''
                     self.parent.board.map_choices = []
                     actions = c.get_actions(self.parent)
-                    actions.update(self.parent.playerstance.cards[-1].get_actions_for_card(c, self.parent))
+                    if sum(isinstance(a,cards.MoveAction) for a in actions.values())==0:
+                        actions.update({'MOVE 1+': cards.MoveAction(c, self.parent, base_allowance=1)})
+                    if sum(isinstance(a,cards.FightAction) for a in actions.values())==0:
+                        actions.update({'ATTACK 0.5+': cards.FightAction(c, self.parent, base_allowance=0.5, value_per_card=0.5)})
+#                    actions.update(self.parent.playerstance.cards[-1].get_actions_for_card(c, self.parent))
                     self.show_card_actions(c, actions)
                     self.parent.playerprompt.text = 'Select an action for this card'
-                    return False
+                    return True
                 break
-        return False
+        return True
 
     def clear_selection(self):
         self.parent.playerprompt.text = 'Select a card to play or touch the event deck to end your turn'
@@ -492,7 +498,7 @@ class LootDeck(CardSplay):
 
 class MarketDeck(CardSplay):
     def on_touch_up(self,touch):
-        super().on_touch_up(touch)
+        return super().on_touch_up(touch)
 
 
 class MarketOffer(CardSplay):
@@ -501,7 +507,7 @@ class MarketOffer(CardSplay):
         super().__init__(**kwargs)
 
     def on_touch_up(self,touch):
-        super().on_touch_up(touch)
+        return super().on_touch_up(touch)
 
     def on_cards(self, *args):
         for c in self.cards:
@@ -511,25 +517,34 @@ class MarketOffer(CardSplay):
 
 class Exhausted(CardSplay):
     def on_touch_up(self,touch):
-        super().on_touch_up(touch)
+        return super().on_touch_up(touch)
+
+    def on_cards(self, *args):
+        for c in self.children[:]:
+            if isinstance(c, cards.Card):
+                c.face_up=False
+        super().on_cards(*args)
+        for c in self.cards:
+            c.face_up = True
 
 
 class EventDeck(CardSplay):
     can_draw = BooleanProperty(False)
     def on_touch_up(self,touch):
-        super().on_touch_up(touch)
+        if super().on_touch_up(touch) is None:
+            return
         if not self.collide_point(*touch.pos):
-            return False
+            return True
         if not self.can_draw:
-            return False
+            return True
         if len(self.cards)==0:
-            return False
+            return True
         if self.parent.board.active_player_clashing(): #Game over condition
             self.parent.menu_showing=True
             self.parent.hand.clear_selection()
             self.parent.hand.can_draw=False
             self.parent.playerstance.can_draw=False
-            return False
+            return True
         card= self.cards[-1]
         card.face_up = True
         self.move_to([card], self.parent.eventdiscard)
@@ -540,7 +555,16 @@ class EventDeck(CardSplay):
 
 class EventDiscard(CardSplay):
     def on_touch_up(self,touch):
-        super().on_touch_up(touch)
+        if super().on_touch_up(touch)==True:
+            return True
+
+    def on_cards(self, *args):
+        for c in self.children[:]:
+            if isinstance(c, cards.Card):
+                c.face_up=False
+        super().on_cards(*args)
+        for c in self.cards:
+            c.face_up = True
 
 
 class Map(GridLayout):
@@ -742,7 +766,7 @@ class MapChoice(BoxLayout):
     def on_touch_up(self, touch):
         if touch.grab_current==self:
             touch.ungrab(self)
-            if self.choice_type=='touch':
+            if self.choice_type in ['touch','visible']:
                 self.listener('map_choice_selected', touch_object=self)
             return True
 
@@ -754,16 +778,22 @@ class Board(RelativeLayout):
     w = NumericProperty()
     h = NumericProperty()
     token_types = {'G': GuardToken, 'P': PlayerToken, 'T': TargetToken}
+    path_types = ['U','L','L0','L1','L2']
+    building_types = ['B']
 
     def on_tokens(self, *args):
         self.active_player_token = None
         for t in self.children[:]:
             if isinstance(t,Token):
                 t.unbind(map_pos=self.on_token_move)
+                if isinstance(t,GuardToken):
+                    t.unbind(state=self.on_token_state)
                 self.remove_widget(t)
         for t in self.tokens:
             if isinstance(t,Token):
                 t.bind(map_pos=self.on_token_move)
+                if isinstance(t,GuardToken):
+                    t.bind(state=self.on_token_state)
                 self.add_widget(t)
                 t.size = self.space_size
             if isinstance(t,PlayerToken):
@@ -796,6 +826,9 @@ class Board(RelativeLayout):
     def on_token_move(self, token, mp):
         self.token_update()
 
+    def on_token_state(self, token, st):
+        self.token_update()
+
     def token_update(self):
         p = self.active_player_token
         #Move guard to player if player is visible
@@ -805,7 +838,6 @@ class Board(RelativeLayout):
                     if not self.has_types_between(t.map_pos, p.map_pos, 'B'):
                         t.map_pos = p.map_pos
                         t.state = 'alert'
-                        print('moving to p',t,t.map_pos)
                         return
         #Move guard to a downed guard if visible
         for t in self.iter_tokens('G'):
@@ -815,14 +847,17 @@ class Board(RelativeLayout):
                 if t0.state in ['alert','dozing']: continue
                 if t0.map_pos==p.map_pos: continue
                 d = self.dist(t.map_pos, t0.map_pos)
-                if d<=10 and self[t0.map_pos] not in ['U','B']:
+                if 1<d<=10 and self[t0.map_pos] not in ['U','B']:
                     if not self.has_types_between(t.map_pos, t0.map_pos, 'B'):
                         if d<closest[0]: closest = (d, t0)
+                elif d==0:
+                    if t.state!='alert':
+                        t.state = 'alert'
+                        return
             d,t0 = closest
-            if t0 is not None and d>0:
+            if t0 is not None and t.map_pos!=t0.map_pos and t.state!='alert':
                 t.map_pos = t0.map_pos
                 t.state = 'alert'
-                print('moving to g',t,t.map_pos)
                 return
         #A clash occurs if two or more tokens occupy the same space, we'll shift their positions a bit
         clashes = {}
@@ -870,6 +905,9 @@ class Board(RelativeLayout):
         return x,y
 
     def iter_between(self, pos1, pos2):
+        '''
+        simple line of site algorithm to yield all map positions on the line between pos1 and pos2
+        '''
         x1,y1 = pos1
         x2,y2 = pos2
         if abs(y2-y1)==0 and abs(x2-x1)==0:
@@ -879,17 +917,18 @@ class Board(RelativeLayout):
             if y1>y2:
                 y1,y2 = y2,y1
                 x1,x2 = x2,x1
-            for y in range(y1+1,y2):
-                x = int(round(x1 + (y-y1)*slope))
-                yield x,y
+            for y in range(int(round(y1+1)),int(round(y2))):
+#            for y in range(int(y1+1),int(y2+1)):
+                x = x1 + (y-y1)*slope
+                yield round(x),y
         else:
             slope = (y2-y1)/(x2-x1)
             if x1>x2:
                 y1,y2 = y2,y1
                 x1,x2 = x2,x1
-            for x in range(x1+1,x2):
-                y = int(round(y1 + (x-x1)*slope))
-                yield x,y
+            for x in range(int(round(x1+1)),int(round(x2))):
+                y = y1 + (x-x1)*slope
+                yield x,round(y)
 
     def iter_types_between(self, pos1, pos2, types):
         for pos in self.iter_between(pos1, pos2):
@@ -897,8 +936,21 @@ class Board(RelativeLayout):
                 yield pos
 
     def has_types_between(self, pos1, pos2, types):
+        bases = [tuple(pos1),tuple(pos2)]
         for pos in self.iter_types_between(pos1, pos2, types):
+            if pos in bases: continue
             return True
+        return False
+
+    def has_line_of_sight(self, pos1, pos2, types):
+        bases = [tuple(pos1),tuple(pos2)]
+        for add1 in [(-0.5,-0.5),(-0.5,0.5),(0.5,-0.5),(0.5,0.5)]:
+            for add2 in [(-0.5,-0.5),(-0.5,0.5),(0.5,-0.5),(0.5,0.5)]:
+                pos1a = (pos1[0]+add1[0],pos1[1]+add1[1])
+                pos2a = (pos2[0]+add2[0],pos2[1]+add2[1])
+                blockers = [p for p in self.iter_types_between(pos1a, pos2a, types) if p not in bases]
+                if len(blockers)==0:
+                    return True
         return False
 
     def iter_all(self,sub_rect=None):
@@ -1095,7 +1147,6 @@ class Stats(BoxLayout):
         if touch.grab_current==self:
             touch.ungrab(self.restart)
             if self.restart.collide_point(*touch.pos):
-                print(self.parent)
                 self.parent.restart_game()
                 self.reset()
                 self.parent.menu_showing=False

@@ -556,7 +556,7 @@ class MoveAction(PlayerAction):
         if not board.active_player_clashing():
             pp = board.active_player_token.map_pos
             spots = board.walkable_spots(pp, dist=moves_left, spots={})
-        board.map_choices = [board.make_choice(p, self, set_choice_type(p,pp)) for p in spots if tuple(p)!=tuple(pp)]
+        board.map_choices = [board.make_choice(p, self, set_choice_type(p,pp,board)) for p in spots if tuple(p)!=tuple(pp)]
         if len(board.map_choices)<1 and self.spent>0:
             playarea.activecardsplay.discard_used(self.cards_unused())
         else:
@@ -582,8 +582,7 @@ class FightAction(PlayerAction):
             if message=='card_action_selected':
                 self.spent = 0
 
-        fight = self.value_allowance()
-        guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert'] and dist(board.active_player_token.map_pos, t.map_pos)==0]
+        guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert'] and self.rounded_remain()>=1 and dist(board.active_player_token.map_pos, t.map_pos)==0]
         map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
         board.map_choices = map_choices
 
@@ -614,7 +613,7 @@ class ClimbAction(PlayerAction):
             if board[board.active_player_token.map_pos] not in 'B':
                 spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, 'B', 1)]
             else:
-                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, ['U','L','L0','L1','L2'], 1)]
+                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, board.path_types, 1)]
         board.map_choices = [board.make_choice(p, self, 'touch') for p in spots]
         if self.spent==1:
             playarea.activecardsplay.discard_used(self.cards_unused())
@@ -668,7 +667,7 @@ class ArrowAction(PlayerAction):
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
             obj.token.state = 'dead'
-            self.spent = 1
+            self.spent = dist(board.active_player_token.map_pos, obj.token.map_pos)
             board.token_update()
         else:
             if message=='card_action_selected':
@@ -676,12 +675,12 @@ class ArrowAction(PlayerAction):
         if not board.active_player_clashing():
             guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert']
                             and 0<dist(board.active_player_token.map_pos, t.map_pos)<=self.value_allowance()
-                            and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
+                            and board.has_line_of_sight(t.map_pos, board.active_player_token.map_pos, 'B')]
             map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
             board.map_choices = map_choices
         else:
             board.map_choices = []
-        if self.spent!=0:
+        if self.spent>0:
             playarea.activecardsplay.discard_used(self.cards_unused())
         else:
             playarea.playerprompt.text = f'SHOOT ARROW {self.rounded_remain()}: Select a guard to shoot.'
@@ -701,25 +700,45 @@ class LockpickAction(PlayerAction):
             return True
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
-            target = [t for t in board.iter_tokens(token_type='T') if t.map_pos==obj.map_pos][0]
-            pick = self.value_allowance()
-            if pick>=target.lock_level:
-                #TODO: Clear the target
-                board.tokens.remove(target)
-                self.spent = pick
-                if self.can_loot:
-                    loot_decks = [playarea.loot1, playarea.loot2, playarea.loot3]
-                    loot_decks[target.loot_level-1].select_draw(1, pick - target.lock_level)
-                    playarea.activecardsplay.discard_used(self.cards_unused())
+            target = [t for t in board.iter_tokens(token_type='T') if t.map_pos==obj.map_pos]
+            if len(target)>0:
+                target = target[0]
+                pick = self.value_allowance()
+                if pick>=target.lock_level:
+                    #TODO: Clear the target
+                    board.tokens.remove(target)
+                    self.spent = pick
+                    if self.can_loot:
+                        loot_decks = [playarea.loot1, playarea.loot2, playarea.loot3]
+                        loot_decks[target.loot_level-1].select_draw(1, pick - target.lock_level)
+                        self.loot_pos = target.map_pos
+            else:
+                if self.loot_pos is None:
+                    self.spent=1
+                board.active_player_token.map_pos = obj.map_pos
+                playarea.activecardsplay.discard_used(self.cards_unused())
                 return
         elif message=='card_action_selected':
             self.spent = 0
+            self.loot_pos=None
+        p = board.active_player_token
+        board.map_choices = []
         if not board.active_player_clashing():
-            target_choices = [t for t in board.iter_targets() if dist(board.active_player_token.map_pos, t)==1]
-            map_choices = [board.make_choice(t, self, 'touch') for t in target_choices]
-            board.map_choices = map_choices
-        else:
-            board.map_choices = []
+            if self.loot_pos is not None:
+                move_choices = [m for m in board.iter_types_in_range(self.loot_pos,board.path_types,radius=1) if dist(self.loot_pos, m)>=1]
+                target_choices = list(set(move_choices))
+                map_choices = [board.make_choice(t, self, set_choice_type(t,p.map_pos,board,3)) for t in target_choices]
+                board.map_choices = map_choices
+                print(self.loot_pos)
+                print(target_choices)
+            elif board[board.active_player_token.map_pos] not in board.building_types:
+                target_choices = [t for t in board.iter_targets() if dist(p.map_pos, t)==1]
+                move_choices = [m for b in board.iter_types_in_range(p.map_pos,'B',radius=1)
+                                    for m in board.iter_types_in_range(b,board.path_types,radius=1)
+                                    if dist(p.map_pos, m)>=1]
+                target_choices += list(set(move_choices))
+                map_choices = [board.make_choice(t, self, set_choice_type(t,p.map_pos,board,3)) for t in target_choices]
+                board.map_choices = map_choices
         if len(board.map_choices)<1 and self.spent!=0:
             playarea.activecardsplay.discard_used(self.cards_unused())
         else:
@@ -751,7 +770,7 @@ class DecoyAction(PlayerAction):
             if message=='card_action_selected':
                 self.spent = 0
         if not board.active_player_clashing():
-            place_choices = [t for t in board.iter_in_range(board.active_player_token.map_pos, ['L','L1','L2','U'], self.value_allowance)
+            place_choices = [t for t in board.iter_in_range(board.active_player_token.map_pos, board.path_types, self.value_allowance)
                              and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
             map_choices = [board.make_token_choice(t, self, 'touch') for t in place_choices]
             board.map_choices = map_choices
@@ -824,9 +843,18 @@ class ArcherStance(StanceCard):
 def stack_all_fn(card):
     return True
 
-def set_choice_type(pos1, pos2):
-    if dist(pos1, pos2)<2:
-        return 'touch'
+def set_choice_type(pos1, pos2, board, dist_cap=2):
+    if dist(pos1, pos2)<dist_cap:
+        visible = False
+        if board[pos1] not in ['B','U']:
+            visible = len([g for g in board.iter_tokens('G')
+                if g.state in ['alert','dozing']
+                and dist(g.map_pos,pos1)<=10
+                and not board.has_types_between(g.map_pos,pos1,'B')])>0
+        if visible:
+            return 'visible'
+        else:
+            return 'touch'
     return 'info'
 
 
@@ -836,10 +864,6 @@ class PlayerCard(Card):
 
 class StartPlayerCard(PlayerCard): #TODO: pretty ugly to use a subclass for this (also not compatible with multiple classes of player characters)
     pass
-
-class LockpickCard(PlayerCard):
-    def get_actions_for_card(self, card, playarea):
-        return {'LOCKPICK 1+': LockpickAction(card, playarea, base_allowance=1)}
 
 class LootCard(PlayerCard):
     pass
@@ -858,7 +882,7 @@ class RopeArrow(MarketCard):
 
 class DecoyArrow(MarketCard):
     def get_actions(self, playarea):
-        return {'SHOOT DECOY 5': DecoyAction(self, playarea, base_allowance=5)}
+        return {'SHOOT DECOY 3': DecoyAction(self, playarea, base_allowance=3, value_per_card=2)}
 
 class SmokeBomb(MarketCard):
     pass
@@ -868,7 +892,7 @@ class Lure(MarketCard):
 
 class BasicMove(StartPlayerCard):
     def get_actions(self, playarea):
-        return {'MOVE 2+': MoveAction(self, playarea, base_allowance=2)}
+        return {'MOVE 2+': MoveAction(self, playarea, base_allowance=2, value_per_card=2)}
 
 class BasicAttack(StartPlayerCard):
     def get_actions(self, playarea):
@@ -880,7 +904,7 @@ class BasicClimb(StartPlayerCard):
 
 class BasicSneak(StartPlayerCard):
     def get_actions(self, playarea):
-        return {'SNEAK 1+': MoveAction(self, playarea, base_allowance=1, moves_per_card=0.5)}
+        return {'SNEAK 1+': MoveAction(self, playarea, base_allowance=1, value_per_card=1)}
 
 class BasicKockout(StartPlayerCard):
     def get_actions(self, playarea):
@@ -888,10 +912,15 @@ class BasicKockout(StartPlayerCard):
 
 class BasicArrow(StartPlayerCard):
     def get_actions(self, playarea):
-        if isinstance(playarea.playerstance.cards[-1], ArcherStance):
-            return {'SHOOT ARROW 5': ArrowAction(self, playarea, base_allowance=5)}
-        else:
-            return {}
+        return {'SHOOT ARROW 3': ArrowAction(self, playarea, base_allowance=3, value_per_card=2)}
+#        if isinstance(playarea.playerstance.cards[-1], ArcherStance):
+#            return {'SHOOT ARROW 3': ArrowAction(self, playarea, base_allowance=3, value_per_card=2)}
+#        else:
+#            return {}
+
+class BasicLockpick(StartPlayerCard):
+    def get_actions(self, playarea):
+        return {'LOCKPICK 1+': LockpickAction(self, playarea, base_allowance=1)}
 
 def make_map_cards(pa, w, h, n):
     return [m(pa=pa, w=w, h=h) for m in MapCard.__subclasses__() for i in range(n)]
