@@ -10,13 +10,28 @@
 	font_size: '20dp'
 	bold: True
 
+<CardSplay>:
+    size_hint:None,None
+    text: 'DECK'
+    canvas.after:
+        Color:
+            rgba: (1,1,1,1) # if not self.can_draw else (240,69,0, 255)
+        Line:
+            width: 1
+            rectangle: root.x, root.y, root.width, root.height
+    Label:
+        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+        text: root.text
+
+
 <CardSplayCloseup>
-    canvas.before:
+    canvas:
         Color:
             rgba: (0,0,0,1)
         Rectangle:
             pos: self.pos
             size: self.size
+
 
 <Map>:
     size_hint: None, None
@@ -56,171 +71,6 @@
         text: str(root.value) if root.letter!='' else ''
         color: app.colors['tile_letter_text']
 
-<ScoreBar>:
-    size_hint: (None, None)
-    score: 0
-    hi_score: 0
-    game_id: -1
-    orientation: 'horizontal'
-    target: [50, 150, 300]
-    BoxLayout:
-        orientation: 'vertical'
-        Label:
-            size_hint: (1, 0.33)
-            text: 'SCORE'
-            color: app.colors['score_text']
-            font_size: self.size[1]/1.2
-            text_size: self.size
-            halign: 'left'
-            valign: 'bottom'
-        Label:
-            size_hint: (1, 0.67)
-            text: str(root.score)
-            color: app.colors['score_text']
-            font_size: self.size[1]/1.2
-            text_size: self.size
-            halign: 'left'
-            valign: 'top'
-    BoxLayout:
-        orientation: 'vertical'
-        Label:
-            size_hint: (1, 0.33)
-            text: 'GAME %i'%(root.game_id) if root.game_id>0 else 'RANDOM GAME'
-            color: app.colors['score_text']
-            font_size: self.size[1]/1.2
-            text_size: self.size
-            halign: 'center'
-            valign: 'top'
-        BoxLayout:
-            size_hint: (1, 0.67)
-            spacing: 10
-            padding: [(self.size[0]-3*(10+self.size[1]))/2, 0]
-            orientation: 'horizontal'
-            Star:
-                active: root.hi_score >= root.target[0]
-                target: root.target[0]
-                color: app.colors['bronze_off']
-                alt_color: app.colors['bronze']
-                size_hint: (None,1)
-                width: self.size[1]
-            Star:
-                active: root.hi_score >= root.target[1]
-                target: root.target[1]
-                color: app.colors['silver_off']
-                alt_color: app.colors['silver']
-                size_hint: (None,1)
-                width: self.size[1]
-            Star:
-                active: root.hi_score >= root.target[2]
-                target: root.target[2]
-                color: app.colors['gold_off']
-                alt_color: app.colors['gold']
-                size_hint: (None,1)
-                width: self.size[1]
-    BoxLayout:
-        orientation: 'vertical'
-        Label:
-            size_hint: (1, 0.33)
-            text: 'BEST'
-            color: app.colors['score_text']
-            font_size: self.size[1]/1.2
-            text_size: self.size
-            halign: 'right'
-            valign: 'bottom'
-        Label:
-            size_hint: (1, 0.67)
-            text: str(root.hi_score)
-            color: app.colors['score_text']
-            font_size: self.size[1]/1.2
-            text_size: self.size
-            halign: 'right'
-            valign: 'top'
-
-<StatusBar>:
-    size_hint: (None, None)
-    orientation: 'vertical'
-    w_word_label: word_label
-    word: ''
-    word_score: 0
-    canvas.before:
-        Color:
-            rgba: app.colors['word_score_background'] if root.word!='' else app.colors['background']
-        Rectangle:
-            pos: self.pos
-            size: self.size
-    BoxLayout:
-        orientation: 'horizontal'
-        Label:
-            id: word_label
-            text: '%s for %i'%(root.word, root.word_score) if root.word_score>0 else root.word if root.word_score<0 else ''
-            font_size: root.size[1]/1.5
-            color: app.colors['word_score_text']
-
-<MessageBar>:
-    size_hint: (None, None)
-    orientation: 'vertical'
-    message: ''
-    Label:
-        text: root.message
-        font_size: root.size[1]/1.5
-        color: app.colors['score_text']
-
-
-<MenuLabel@Label>:
-    active: True
-    canvas.before:
-        Color:
-            rgba: app.colors['menu_button_background']
-        Rectangle:
-            pos: self.pos
-            size: self.size
-    font_size: self.size[1]/2.0
-    color: app.colors['menu_button_foreground'] if self.active else app.colors['menu_button_foreground_disabled']
-
-<InstructionsLabel@Label>:
-    canvas.before:
-        Color:
-            rgba: app.colors['checker']
-        Rectangle:
-            pos: self.pos
-            size: self.size
-
-<Instructions>:
-    m_scrollview: scroller
-    size_hint: (1, 1)
-    orientation: 'vertical'
-    padding: (0.1*self.size[0], 0.05*self.size[1])
-    spacing: int(0.01*self.size[0])
-    canvas.before:
-        Color:
-            rgba: [0,0,0,0.5]
-        Rectangle:
-            pos: self.pos
-            size: self.size
-    InstructionsLabel:
-        left: 0.1*root.size[0]
-        size_hint: (1,0.1)
-        text: 'How to Play'
-        text_size: (self.size[0]*0.9, self.size[1])
-        font_size: '32dp'
-        valign: 'middle'
-        halign: 'center'
-    ScrollView:
-        id: scroller
-        left: 0.1*root.size[0]
-        size_hint: (None, None)
-        size: (0.8*root.size[0], 0.8*root.size[1])
-#        do_scroll_y: True
-#        scroll_y: 0
-        InstructionsLabel:
-            size_hint_y: None
-            height: max(self.texture_size[1], 0.8*root.size[1])
-            text_size: 0.9*self.width, None
-            text: 'Objective: Complete 7 words and amass the largest score you can.\n\n' 'Play: For each row, use one or more letters in the free stack (top of screen) and the current active row to form a word by touching the letter tiles in sequence. A score prompt will show for a valid word, which you can press to score the word. Press any of the selected letters to reset the current word.\n\n' 'Scoring: Each word scores the sum of the tile values multiplied by the length of the word.\n\n' 'End game: The game ends when you have completed all 7 words or you can\'t form a valid word.\n\n'
-            halign: 'left'
-            valign: 'middle'
-            font_size: '20dp'
-
 <Hand>:
     size_hint: None, None
     selected_action: ''
@@ -251,32 +101,6 @@
 
 <EventDiscard>:
     size_hint: None, None
-
-<CardSplay0>:
-    size_hint:None,None
-    text: 'DECK'
-    canvas.after:
-        Color:
-            rgba: (1,1,1,1)
-        Line:
-            width: 1
-            rectangle: root.x, root.y, root.width, root.height
-    Label:
-        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        text: root.text
-
-<CardSplay>:
-    size_hint:None,None
-    text: 'DECK'
-    canvas.after:
-        Color:
-            rgba: (1,1,1,1) # if not self.can_draw else (240,69,0, 255)
-        Line:
-            width: 1
-            rectangle: root.x, root.y, root.width, root.height
-    Label:
-        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        text: root.text
 
 <MapChoice>:
     map_pos: 0,0

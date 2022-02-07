@@ -29,6 +29,8 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.modalview import ModalView
 from kivy.app import App
 from kivy.uix.image import Image
 from kivy.properties import StringProperty, ListProperty, NumericProperty, \
@@ -83,41 +85,107 @@ class TurnState:
     #END TURN (BY TOUCHING EVENT DECK)
     pass
 
-class CardSplayCloseup(RelativeLayout):
+class CardSplayCloseup(ModalView):
+    '''
+    Inspect a closeup of an individual card or from a selection of cards
+    '''
+    #TODO
     cards = ListProperty()
-    def __init__(self,closeup_card,*args,**kwargs):
+    def __init__(self,closeup_card=None,cards=[],*args,**kwargs):
         super().__init__(*args, **kwargs)
-        self.size_hint = (1,1)
+        self.closeup_card = None
+        if closeup_card is None:
+            closeup_card = cards[0]
+        self.size_hint = (0.8,0.8)
+        self.content = RelativeLayout()
+        self.add_widget(self.content)
+        self.scroll_view = ScrollView(size_hint=(None,None))
+        self.scroll_view.bind(on_touch_down=self.on_touch_down_sv)
+        self.content.add_widget(self.scroll_view)
+        self.grid_layout = GridLayout(cols=4, size_hint=(1,None), spacing=1, padding=1)
+        self.grid_layout.bind(minimum_height=self.grid_layout.setter('height'))
+        self.scroll_view.add_widget(self.grid_layout)
+        self.cards = [type(c)() for c in cards]
+        self.aspect = closeup_card.width/closeup_card.height
+        for c,c0 in zip(self.cards,cards):
+            c.height = c0.height
+            c.width = c0.width
+            c.face_up = True
+            c.bind(on_touch_up=self.on_touch_up_card)
+            c.bind(on_touch_down=self.on_touch_down_card)
+            self.grid_layout.add_widget(c)
         if closeup_card is not None:
-            self.aspect = closeup_card.width/closeup_card.height
-            self.closeup_card = type(closeup_card)()
-            self.closeup_card.face_up=True
-            self.add_widget(self.closeup_card)
-            self._touch_down = False
+            self.set_closeup(closeup_card)
+
+    def set_closeup(self, closeup_card):
+        if self.closeup_card is not None:
+            self.content.remove_widget(self.closeup_card)
+        if len(self.cards)>0:
+            self.closeup_card = self.cards[0]
+        self.closeup_card = type(closeup_card)()
+        self.closeup_card.face_up=True
+        self.content.add_widget(self.closeup_card)
+        self.on_size()
 
     def on_size(self,*args):
-        width = int(self.height*self.aspect)
-        self.closeup_card.size = (width,self.height)
-        if len(self.cards) == 0:
-            self.closeup_card.x = (self.width-width)//2
+        pref_width = int(self.height*self.aspect)
+        pref_height = int(self.width/self.aspect)
+        ratio = 1
+        if pref_width<=self.width:
+            if len(self.cards)>0 and pref_width>0.66*self.width:
+                ratio = 0.66*self.width/pref_width
+                pref_width = int(0.66*self.width)
+            self.closeup_card.size = (pref_width,int(self.height*ratio))
+            if len(self.cards) == 0:
+                self.closeup_card.x = (self.width-pref_width)//2
+                self.scroll_view.width = 1
+                self.scroll_view.height = 1
+                self.scroll_view.pos = (-10,-10)
+            else:
+                self.closeup_card.pos = (0,0)
+                self.scroll_view.width = self.width-pref_width
+                self.scroll_view.height = self.height
+                self.scroll_view.pos = (self.closeup_card.width,0)
         else:
-            self.closeup_card.pos = (0,0)
+            if len(self.cards)>0 and pref_height>0.5*self.height:
+                ratio = 0.5*self.height/pref_height
+                pref_height= int(0.5*self.height)
+            self.closeup_card.size = (self.width*ratio,pref_height)
+            if len(self.cards) == 0:
+                self.closeup_card.y = (self.height-pref_height)//2
+                self.scroll_view.width = 1
+                self.scroll_view.height = 1
+                self.scroll_view.pos = (-10,-10)
+            else:
+                self.closeup_card.pos = (0,0)
+                self.scroll_view.width = self.width
+                self.scroll_view.height = self.height-pref_height
+                self.scroll_view.pos = (0,self.closeup_card.height)
+        if len(self.cards)>0:
+            self.grid_layout.cols = int(self.scroll_view.width//self.cards[0].width)
+        for c in self.cards:
+            pass
 
-    def on_touch_down(self,touch):
-       if self.collide_point(*touch.pos):
-           self._touch_down = True
-           return True
+    def on_touch_down_card(self, card, touch):
+        if card.collide_point(*touch.pos):
+            touch.grab(card)
+            return True
 
-    def on_touch_up(self,touch):
-       if self._touch_down and self.collide_point(*touch.pos):
-           self.parent.remove_widget(self)
-           self._touch_down = False
-           return True
-       self._touch_down = False
-#    def on_cards(self,*args):
+    def on_touch_up_card(self, card, touch):
+        if touch.grab_current==card:
+            touch.ungrab(card)
+            if card.collide_point(*touch.pos):
+                for c0 in self.cards:
+                    c0.selected=False
+                card.selected=True
+                self.set_closeup(card)
+            return True
 
-#class CardSplay0(RelativeLayout):
-#    pass
+    def on_touch_down_sv(self, sv, touch):
+        if not self.scroll_view.collide_point(*touch.pos):
+            self.dismiss()
+            return True
+
 
 class CardSplay(FloatLayout):
     cards = ListProperty()
@@ -223,15 +291,19 @@ class CardSplay(FloatLayout):
                 c.selected = False
         self.splay_cards()
 
-    def do_closeup(self, closeup_card, time):
-        self.parent.add_widget(CardSplayCloseup(closeup_card))
+    def do_closeup(self, closeup_card, touch, time):
+#        self.parent.add_widget(CardSplayCloseup(closeup_card))
+        if not closeup_card.face_up:
+            closeup_card = None
+        CardSplayCloseup(closeup_card=closeup_card,cards=self.cards).open()
+        self._clockev = None
 
     def on_touch_down(self, touch):
         for c in self.cards[::-1]:
             if c.collide_point(*self.to_local(*touch.pos)):
                 touch.grab(self)
-                self._clockev = Clock.schedule_once(partial(self.do_closeup,c), 0.5)
-                break
+                self._clockev = Clock.schedule_once(partial(self.do_closeup, c, touch), 0.5)
+                return True
 
     def on_touch_up(self, touch):
         if touch.grab_current!=self:
@@ -241,10 +313,6 @@ class CardSplay(FloatLayout):
             self._clockev.cancel()
             self._clockev = None
             return True
-#        if len(self.cards)>0:
-#            c = self.cards[-1]
-#            if c.collide_point(*self.to_local(*touch.pos)):
-#                self.touch_card = c
 
 
     def move_to(self, cards, deck, pos=None):
@@ -421,11 +489,12 @@ class Hand(CardSplay):
         self.parent.add_widget(self.action_selector) #TODO: This neeeds to handle resize
 
     def cancel_action(self):
-        action = self.selected_action
-        action_fn = self.actions[action]
-        action_fn('card_action_end')
-        self.selected_action = ''
-        self.clear_selection()
+        if self.selected_action!='':
+            action = self.selected_action
+            action_fn = self.actions[action]
+            action_fn('card_action_end')
+            self.selected_action = ''
+            self.clear_selection()
 
     def on_touch_up(self,touch):
         if super().on_touch_up(touch) is None:
@@ -539,9 +608,10 @@ class EventDeck(CardSplay):
             return True
         if len(self.cards)==0:
             return True
+        self.parent.hand.clear_card_actions()
+        self.parent.hand.cancel_action()
         if self.parent.board.active_player_clashing(): #Game over condition
             self.parent.menu_showing=True
-            self.parent.hand.clear_selection()
             self.parent.hand.can_draw=False
             self.parent.playerstance.can_draw=False
             return True
