@@ -10,6 +10,8 @@
 	font_size: '20dp'
 	bold: True
 
+
+
 <CardSplay>:
     size_hint:None,None
     text: 'DECK'
@@ -24,13 +26,64 @@
         text: root.text
 
 
-<CardSplayCloseup>
+<CardSplayCloseup>:
     canvas:
         Color:
             rgba: (0,0,0,1)
         Rectangle:
             pos: self.pos
             size: self.size
+
+
+<ButLabel@Label>:
+    touching: False
+    pressed: False
+    canvas.before:
+        Color:
+            rgba: (0,0,0,1) if not self.touching else (0.25,0.1,0,1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+
+<CardSelector>:
+    card_splay: card_splay
+    but_ok_pressed: but_ok.pressed
+    num_to_pick: 1
+    cards: []
+    rows_needed: max(int(-(-len(self.cards) // 4)), 1)
+    card_size: 70,50
+    size_hint: (None, None)
+    size: self.card_size[0]*5, self.card_size[1]*(1+self.rows_needed)
+    pos_hint: {'center_x':0.5,'center_y':0.5}
+    orientation: 'vertical'
+    spacing: 10
+    padding: 20
+    canvas.before:
+        Color:
+            rgba: (0,0,0,1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    Label:
+        text: 'You may choose a card' if root.num_to_pick==1 else f'You may choose {root.num_to_pick} cards'
+        size_hint: (1, None)
+        height: root.card_size[1]//5
+        font_size: self.height//2
+    GridLayout:
+        id: card_splay
+        size_hint: (1, None)
+        height: root.card_size[1]*root.rows_needed
+        rows: root.rows_needed
+        spacing: root.card_size[1]//10
+    BoxLayout:
+        size_hint: (1, None)
+        height: root.card_size[1]//5
+        orientation: 'horizontal'
+        ButLabel:
+            id: but_ok
+            text: 'Confirm'
+            font_size: self.height//2
 
 
 <Map>:

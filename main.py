@@ -85,6 +85,73 @@ class TurnState:
     #END TURN (BY TOUCHING EVENT DECK)
     pass
 
+class ButLabel(Label):
+    pressed = BooleanProperty(False)
+    touching = BooleanProperty(False)
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            touch.grab(self)
+            self.touching = True
+            return True
+
+    def on_touch_up(self, touch):
+        if touch.grab_current==self:
+            touch.ungrab(self)
+            if self.collide_point(*touch.pos):
+                self.pressed = True
+            self.touching = False
+            return True
+
+
+class CardSelector(BoxLayout):
+    cards = ListProperty()
+    num_to_pick = NumericProperty()
+    but_ok_pressed = BooleanProperty()
+    card_size = ListProperty()
+
+    def on_cards(self, *args):
+        for c in self.card_splay.children[:]:
+            if isinstance(c, cards.Card):
+                c.unbind(on_touch_up=self.on_touch_up_card)
+                c.unbind(on_touch_down=self.on_touch_down_card)
+                self.card_splay.remove_widget(c)
+        for c in self.cards:
+            self.card_splay.add_widget(c)
+            c.bind(on_touch_up=self.on_touch_up_card)
+            c.bind(on_touch_down=self.on_touch_down_card)
+            c.face_up = True
+
+    def on_touch_down_card(self, card, touch):
+        if card.collide_point(*touch.pos):
+            touch.grab(card)
+            return True
+
+    def on_touch_up_card(self, card, touch):
+        if touch.grab_current==card:
+            touch.ungrab(card)
+            if not card.collide_point(*touch.pos):
+                return True
+            if self.num_to_pick>1:
+                sel = [c for c in self.cards if c.selected]
+                print('multipick',sel)
+                if len(sel)>=self.num_to_pick:
+                    return True
+                card.selected = not card.selected
+            else:
+                for c in self.cards:
+                    if c==card:
+                        c.selected = not c.selected
+                    else:
+                        c.selected = False
+                print('single pick',card)
+            return True
+
+    def on_parent(self, *args):
+        if self.parent is not None:
+            self.card_size = self.parent.card_size
+            self.parent.bind(card_size=self.setter('card_size'))
+
+
 class CardSplayCloseup(ModalView):
     '''
     Inspect a closeup of an individual card or from a selection of cards
@@ -111,6 +178,8 @@ class CardSplayCloseup(ModalView):
             c.height = c0.height
             c.width = c0.width
             c.face_up = True
+            if c==closeup_card:
+                c.selected = True
             c.bind(on_touch_up=self.on_touch_up_card)
             c.bind(on_touch_down=self.on_touch_down_card)
             self.grid_layout.add_widget(c)
@@ -174,11 +243,10 @@ class CardSplayCloseup(ModalView):
     def on_touch_up_card(self, card, touch):
         if touch.grab_current==card:
             touch.ungrab(card)
-            if card.collide_point(*touch.pos):
-                for c0 in self.cards:
-                    c0.selected=False
-                card.selected=True
-                self.set_closeup(card)
+            for c0 in self.cards:
+                c0.selected=False
+            card.selected=True
+            self.set_closeup(card)
             return True
 
     def on_touch_down_sv(self, sv, touch):
@@ -556,14 +624,33 @@ class LootDeck(CardSplay):
     def on_touch_up(self,touch):
         super().on_touch_up(touch)
 
-    def select_draw(self, num_to_pick, num_offered):
+    def select_draw(self, num_to_pick=1, num_offered=1):
         #TODO: This is a placeholder that just gives the top card
         #Instead we should pop up a card select that lets the player
         #choose num_to_pick from num_offered cards. Player can turn
         #down some or all of the offer
-        card = self.cards[-1]
-        self.move_to([card], self.parent.hand)
+        print('select_draw', num_to_pick, num_offered)
+        cards = self.cards[-num_offered:]
+        print(cards)
+        for c in cards:
+            self.cards.remove(c)
+        self.parent.cardselector = CardSelector(num_to_pick=num_to_pick)
+        self.parent.add_widget(self.parent.cardselector)
+        self.parent.cardselector.bind(but_ok_pressed=self.card_picked)
+        self.parent.cardselector.cards = cards
 
+    def card_picked(self, cs, pressed):
+        for c in cs.cards:
+            cs.cards.remove(c)
+            if not c.selected:
+                c.face_up = False
+                self.cards.insert(0,c)
+            else:
+                self.parent.hand.cards.append(c)
+                c.face_up = True
+                c.selected = False
+        self.parent.remove_widget(cs)
+        self.parent.cardselector = None
 
 class MarketDeck(CardSplay):
     def on_touch_up(self,touch):
@@ -608,12 +695,7 @@ class EventDeck(CardSplay):
             return True
         if len(self.cards)==0:
             return True
-        self.parent.hand.clear_card_actions()
-        self.parent.hand.cancel_action()
-        if self.parent.board.active_player_clashing(): #Game over condition
-            self.parent.menu_showing=True
-            self.parent.hand.can_draw=False
-            self.parent.playerstance.can_draw=False
+        if self.parent.clear_and_check_end_game():
             return True
         card= self.cards[-1]
         card.face_up = True
@@ -1234,6 +1316,7 @@ class PlayArea(FloatLayout):
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
         self.instructions = None
+        self.cardselector = None
         self.first_start = True
         self.action_selector = None
         self.stats = Stats()
@@ -1264,6 +1347,7 @@ class PlayArea(FloatLayout):
         self.playerdeck.cards[:] = []
         self.playerdiscard.cards[:] = []
         self.playerstance.cards[:] = []
+        self.activecardsplay.cards[:] = []
 
         self.loot1.cards[:] = []
         self.loot2.cards[:] = []
@@ -1298,6 +1382,19 @@ class PlayArea(FloatLayout):
 
         self.eventdeck.can_draw = True
 
+    def clear_and_check_end_game(self):
+        self.hand.clear_card_actions()
+        self.hand.cancel_action()
+        if self.cardselector is not None:
+            self.cardselector.cards = []
+            self.remove_widget(self.cardselector)
+            self.cardselector=None
+        if self.board.active_player_clashing(): #Game over condition
+            self.menu_showing=True
+            self.hand.can_draw=False
+            self.playerstance.can_draw=False
+            return True
+
     def on_menu_showing(self, *args):
         if self.menu_showing:
             if self.stats not in self.children:
@@ -1319,6 +1416,7 @@ class PlayArea(FloatLayout):
         self.board.tokens = [player]+guards+targets
 
     def restart_game(self):
+        self.clear_and_check_end_game()
         self.card_setup()
         self.token_setup()
 

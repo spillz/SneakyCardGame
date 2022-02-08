@@ -710,7 +710,7 @@ class LockpickAction(PlayerAction):
                     self.spent = pick
                     if self.can_loot:
                         loot_decks = [playarea.loot1, playarea.loot2, playarea.loot3]
-                        loot_decks[target.loot_level-1].select_draw(1, pick - target.lock_level)
+                        loot_decks[target.loot_level-1].select_draw(1, 1 + pick - target.lock_level)
                         self.loot_pos = target.map_pos
             else:
                 if self.loot_pos is None:
