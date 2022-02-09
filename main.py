@@ -149,6 +149,14 @@ class CardSelector(BoxLayout):
             self.card_size = self.parent.card_size
             self.parent.bind(card_size=self.setter('card_size'))
 
+    def on_touch_down(self, touch):
+        super().on_touch_down(touch)
+        return True
+
+    def on_touch_up(self, touch):
+        super().on_touch_up(touch)
+        return True
+ 
 
 class CardSplayCloseup(ModalView):
     '''
@@ -424,7 +432,7 @@ class PlayerDeck(CardSplay):
             cards_to_draw = 1 + self.parent.hand.hand_size - len(self.parent.hand.cards)
         self.draw(cards_to_draw)
         self.parent.hand.can_draw=True
-        self.parent.playerstance.can_draw=True
+        self.parent.playertraits.can_draw=True
         self.parent.eventdeck.can_draw=True
         self.can_draw = False
 
@@ -443,7 +451,7 @@ class PlayerDeck(CardSplay):
             self.move_to(cards, self.parent.hand)
 
 
-class PlayerStance(CardSplay):
+class PlayerTraits(CardSplay):
     active_card = ObjectProperty(None, allownone=True)
 
     def on_touch_up(self,touch):
@@ -454,10 +462,8 @@ class PlayerStance(CardSplay):
             return False
         if len(self.cards)==0:
             return False
-        c = self.cards[-1]
-        self.cards.remove(c)
-        self.cards.insert(0,c)
-        self.active_card = self.cards[-1]
+        self.cards = [self.cards[-1]] + self.cards[:-1]
+        return True
 
     def on_cards(self, *args):
         for c in self.cards:
@@ -488,8 +494,6 @@ class ActiveCardSplay(CardSplay):
         return True
 
     def discard_used(self, unused=0):
-        if unused<len(self.cards):
-            self.parent.playerstance.can_draw = False
         if unused>0:
             cards = self.cards[:unused]
             self.move_to(cards, self.parent.hand)
@@ -586,11 +590,12 @@ class Hand(CardSplay):
                     self.selected_action = ''
                     self.parent.board.map_choices = []
                     actions = c.get_actions(self.parent)
-                    if sum(isinstance(a,cards.MoveAction) for a in actions.values())==0:
-                        actions.update({'MOVE 1+': cards.MoveAction(c, self.parent, base_allowance=1)})
-                    if sum(isinstance(a,cards.FightAction) for a in actions.values())==0:
-                        actions.update({'ATTACK 0.5+': cards.FightAction(c, self.parent, base_allowance=0.5, value_per_card=0.5)})
-#                    actions.update(self.parent.playerstance.cards[-1].get_actions_for_card(c, self.parent))
+                    for tc in self.parent.playertraits.cards:
+                        action_types = [type(a) for a in actions.values()]
+                        trait_actions = tc.get_actions_for_card(c, self.parent) #Trait actions are available for all cards so we add the ones that aren't already available for this card
+                        for ta in trait_actions:
+                            if type(trait_actions[ta]) not in action_types:
+                                actions.update({ta: trait_actions[ta]})
                     self.show_card_actions(c, actions)
                     self.parent.playerprompt.text = 'Select an action for this card'
                     return True
@@ -606,7 +611,7 @@ class Hand(CardSplay):
         self.selected_action=''
 
     def allow_stance_select(self):
-        self.parent.playerstance.can_draw=True
+        self.parent.playertraits.can_draw=True
 
     def on_cards(self, *args):
         for c in self.cards:
@@ -1363,7 +1368,7 @@ class PlayArea(FloatLayout):
     def on_parent(self, *args):
         self.mapcards = cards.make_map_cards(self, self.map_card_grid_size[0], self.map_card_grid_size[1], self.map_size[0]*self.map_size[1])
         self.playercards = cards.make_player_cards(self)
-        self.stancecards = cards.make_stance_cards(self)
+        self.traitcards = cards.make_trait_cards(self)
         self.lootcards = cards.make_loot_cards(self)
         self.marketcards = cards.make_market_cards(self)
         self.eventcards = cards.make_event_cards(self)
@@ -1385,7 +1390,7 @@ class PlayArea(FloatLayout):
         self.hand.cards[:] = []
         self.playerdeck.cards[:] = []
         self.playerdiscard.cards[:] = []
-        self.playerstance.cards[:] = []
+        self.playertraits.cards[:] = []
         self.activecardsplay.cards[:] = []
 
         self.loot1.cards[:] = []
@@ -1404,7 +1409,7 @@ class PlayArea(FloatLayout):
 
         self.playerdeck.cards[:] = self.playercards[:]
         self.playerdiscard.cards[:] = []
-        self.playerstance.cards[:] = reversed(self.stancecards[:])
+        self.playertraits.cards[:] = self.traitcards[:]
 
         self.loot1.cards[:] = self.lootcards[0][:]
         self.loot2.cards[:] = self.lootcards[1][:]
@@ -1429,7 +1434,6 @@ class PlayArea(FloatLayout):
         if self.board.active_player_clashing(): #Game over condition
             self.menu_showing=True
             self.hand.can_draw=False
-            self.playerstance.can_draw=False
             return True
 
     def on_menu_showing(self, *args):

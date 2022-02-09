@@ -498,9 +498,8 @@ class MoveEvent(EventCard):
         guard.map_pos = new_pos
 
 
-#Stance cards: player chooses which of their stance cards to activate at the start of each round
-#can change stance mid-round by discarding a card
-class StanceCard(Card):
+#Trait cards: player specific actions and powers are captured in their trait cards. Cards are represented in a stack but their abilities are always available (unless otherwise noted)
+class TraitCard(Card):
     def get_actions_for_card(self, card):
         return {}
 
@@ -541,22 +540,6 @@ class PlayerAction:
 
     def rounded_remain(self):
         return (self.value_allowance() - self.spent)//0.5 /2
-
-class StanceAction(PlayerAction):
-    def __call__(self, message, **kwargs):
-        playarea= self.playarea
-        board = playarea.board
-        if message == 'can_cancel':
-            return True
-        if message == 'can_stack':
-            return False
-        if message=='map_choice_selected':
-            return False
-        if message=='card_action_selected':
-            self.spent=1
-            playarea.activecardsplay.discard_used(self.cards_unused())
-            playarea.hand.allow_stance_select()
-            playarea.playerprompt.text = 'Change your stance or select a card to play'
 
 
 class MoveAction(PlayerAction):
@@ -844,44 +827,37 @@ class MarketAction(PlayerAction):
             playarea.playerprompt.text = f'Buy {self.rounded_remain()}: Select a market card to buy.'
 
 
-class MoveStance(): ##StanceCard
+class MoveTrait(TraitCard): 
     #All move cards gain +1
     #All non-move cards can be used for move 1
     def get_actions_for_card(self, card, playarea):
         return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
-                'STANCE': StanceAction(card, playarea)
                 }
 
 
-class FightStance(StanceCard):
+class FightTrait(TraitCard):
     #Get +1 to attack cards
     #Play 1 non-attack card for attack 1
     def get_actions_for_card(self, card, playarea):
-        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
-                'ATTACK 1+': FightAction(card, playarea, base_allowance=1),
-#                'STANCE': StanceAction(card, playarea)
+        return {'ATTACK 0.5+': FightAction(card, playarea, base_allowance=0.5, value_per_card=0.5),
                 }
 
 
-class ClimbStance(StanceCard):
+class ClimbTrait(TraitCard):
     def get_actions_for_card(self, card, playarea):
-        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
-                'CLIMB 1': ClimbAction(card, playarea),
-#                'STANCE': StanceAction(card, playarea)
+        return {'CLIMB 1': ClimbAction(card, playarea),
                 }
 
-class SneakStance(StanceCard):
+
+class SneakTrait(TraitCard):
     #All cards used for move actions make no noise
     #All cards can be used for move 0.5
     #All non-move cards can be used for KO action on dozing guards from shadows
     def get_actions_for_card(self, card, playarea):
-        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
-                'KNOCKOUT': KnockoutAction(card, playarea, base_allowance=1),
-#                'MOVE 0.5+': MoveAction(card, playarea, base_allowance=0.5, value_per_card=0.5),
-#                'STANCE': StanceAction(card, playarea)
+        return {'KNOCKOUT': KnockoutAction(card, playarea, base_allowance=1),
                 }
 
-class LootStance(StanceCard):
+class LootTrait(TraitCard):
     #Spend card to enter buildings
     #Spend card to gather loot (stacked cards allow extra draws from loot deck)
     #Gain +1 to loot cards
@@ -891,15 +867,13 @@ class LootStance(StanceCard):
     def get_actions_for_card(self, card, playarea):
         return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
                 'LOCKPICK 1+': LockpickAction(card, playarea, base_allowance=1),
-#                'STANCE': StanceAction(card, playarea)
-                }
+               }
 
-class ArcherStance(StanceCard):
+class ArcherTrait(TraitCard):
     #Archer stance (holding your bow) is required to shoot arrows
     #TODO: Upgrading the archer stance should offer additional range etc.
     def get_actions_for_card(self, card, playarea):
-        return {'MOVE 1+': MoveAction(card, playarea, base_allowance=1),
-#                'STANCE': StanceAction(card, playarea)
+        return {'ARROW 3+': ArrowAction(card, playarea, base_allowance=3),
                 }
 
 def stack_all_fn(card):
@@ -976,7 +950,7 @@ class BasicKockout(StartPlayerCard):
 class BasicArrow(StartPlayerCard):
     def get_actions(self, playarea):
         return {'SHOOT ARROW 3': ArrowAction(self, playarea, base_allowance=3, value_per_card=2)}
-#        if isinstance(playarea.playerstance.cards[-1], ArcherStance):
+#        if isinstance(playarea.playerstance.cards[-1], ArcherTrait):
 #            return {'SHOOT ARROW 3': ArrowAction(self, playarea, base_allowance=3, value_per_card=2)}
 #        else:
 #            return {}
@@ -1000,5 +974,5 @@ def make_market_cards(pa):
 def make_player_cards(pa):
     return [m(pa=pa) for m in StartPlayerCard.__subclasses__() for i in range(2)]
 
-def make_stance_cards(pa):
-    return [m(pa=pa) for m in StanceCard.__subclasses__()]
+def make_trait_cards(pa):
+    return [m(pa=pa) for m in [MoveTrait, FightTrait]]

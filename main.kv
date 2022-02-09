@@ -35,7 +35,7 @@
             size: self.size
 
 
-<ButLabel@Label>:
+<ButLabel>:
     touching: False
     pressed: False
     canvas.before:
@@ -134,7 +134,7 @@
 <PlayerDeck>:
     size_hint: None, None
 
-<PlayerStance>:
+<PlayerTraits>:
     size_hint: None, None
 
 <Exhausted>:
@@ -327,7 +327,7 @@
 <PlayArea>:
     playerdiscard: playerdiscard
     playerdeck: playerdeck
-    playerstance: playerstance
+    playertraits: playertraits
     playerprompt: playerprompt
     activecardsplay: activecardsplay
     exhausted: exhausted
@@ -362,9 +362,9 @@
         size: root.card_size[0]*6//5, root.card_size[1]
         x: root.card_size[0]*6//5 if root.height>=root.width else 0
         y: root.card_size[1] if root.height>=root.width else 0
-    PlayerStance:
-        id: playerstance
-        text: 'PLAYER\nSTANCE'
+    PlayerTraits:
+        id: playertraits
+        text: 'PLAYER\nTRAITS'
         size_hint: None, None
         size: root.card_size[0]*6//5, root.card_size[1]
         x: 0
