@@ -662,8 +662,9 @@ class MarketDeck(CardSplay):
         self.parent.cardselector.cards = cards
 
     def card_picked(self, cs, pressed):
-        for c in cs.cards[::-1]:
-            cs.cards.remove(c)
+        cards = cs.cards[:]
+        cs.cards = []
+        for c in cards:
             if not c.selected:
                 c.face_up = False
                 self.cards.append(c) #unpurchased cards go back on top
