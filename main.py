@@ -133,17 +133,15 @@ class CardSelector(BoxLayout):
                 return True
             if self.num_to_pick>1:
                 sel = [c for c in self.cards if c.selected]
-                print('multipick',sel)
                 if len(sel)>=self.num_to_pick:
                     return True
                 card.selected = not card.selected
-            else:
+            elif self.num_to_pick==1:
                 for c in self.cards:
                     if c==card:
                         c.selected = not c.selected
                     else:
                         c.selected = False
-                print('single pick',card)
             return True
 
     def on_parent(self, *args):
@@ -629,9 +627,7 @@ class LootDeck(CardSplay):
         #Instead we should pop up a card select that lets the player
         #choose num_to_pick from num_offered cards. Player can turn
         #down some or all of the offer
-        print('select_draw', num_to_pick, num_offered)
         cards = self.cards[-num_offered:]
-        print(cards)
         for c in cards:
             self.cards.remove(c)
         self.parent.cardselector = CardSelector(num_to_pick=num_to_pick)
@@ -656,19 +652,28 @@ class MarketDeck(CardSplay):
     def on_touch_up(self,touch):
         return super().on_touch_up(touch)
 
+    def select_draw(self, num_to_pick=1, num_offered=1, coin=1):
+        #TODO: Implement coin usage
+        cards = self.cards[-num_offered:]
+        self.cards = self.cards[:-num_offered]
+        self.parent.cardselector = CardSelector(num_to_pick=num_to_pick)
+        self.parent.add_widget(self.parent.cardselector)
+        self.parent.cardselector.bind(but_ok_pressed=self.card_picked)
+        self.parent.cardselector.cards = cards
 
-class MarketOffer(CardSplay):
-    def __init__(self, **kwargs):
-        kwargs['card_spread_scale'] = 1.0
-        super().__init__(**kwargs)
+    def card_picked(self, cs, pressed):
+        for c in cs.cards[::-1]:
+            cs.cards.remove(c)
+            if not c.selected:
+                c.face_up = False
+                self.cards.append(c) #unpurchased cards go back on top
+            else:
+                self.parent.hand.cards.append(c)
+                c.face_up = True
+                c.selected = False
+        self.parent.remove_widget(cs)
+        self.parent.cardselector = None
 
-    def on_touch_up(self,touch):
-        return super().on_touch_up(touch)
-
-    def on_cards(self, *args):
-        for c in self.cards:
-            c.face_up = True
-        super().on_cards(*args)
 
 
 class Exhausted(CardSplay):
@@ -824,6 +829,34 @@ class TargetToken(Token):
                  )
 
 
+class MarketToken(Token):
+    #These should probably be properties so that they can be modified
+    lock_level = 1
+    loot_level = 1
+
+    def draw_token(self):
+        self.canvas.after.clear()
+        with self.canvas.after:
+            Color(0.6,0.4,0,1)
+            x = self.x + self.width//5
+            y = self.y + self.height//5
+            w, h = 3*self.size[0]//5//2*2, 3*self.size[1]//5//2*2
+            Ellipse(pos=(x,y),size=(w,h))
+            #Rectangle(pos = (x,y), size = (3*size[0]//5,3*size[1]//5))
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            touch.grab(self)
+            return True
+
+    def on_touch_up(self, touch):
+        if touch.grab_current==self:
+            touch.ungrab(self)
+            if self.collide_point(*touch.pos):
+                self.parent.parent.parent.marketdeck.select_draw(0,4,0)
+            return True
+
+
 class GuardToken(Token):
     state = StringProperty()
 
@@ -929,9 +962,9 @@ class Board(RelativeLayout):
     space_size = ListProperty()
     w = NumericProperty()
     h = NumericProperty()
-    token_types = {'G': GuardToken, 'P': PlayerToken, 'T': TargetToken}
+    token_types = {'G': GuardToken, 'P': PlayerToken, 'T': TargetToken, 'M': MarketToken}
     path_types = ['U','L','L0','L1','L2']
-    building_types = ['B']
+    building_types = ['B', 'B0']
 
     def on_tokens(self, *args):
         self.active_player_token = None
@@ -986,8 +1019,8 @@ class Board(RelativeLayout):
         #Move guard to player if player is visible
         for t in self.iter_tokens('G'):
             if t.map_pos!=p.map_pos and t.state not in ['dead','unconscious']:
-                if 1<=self.dist(t.map_pos, p.map_pos)<=10 and self[p.map_pos] not in ['U','B']:
-                    if not self.has_types_between(t.map_pos, p.map_pos, 'B'):
+                if 1<=self.dist(t.map_pos, p.map_pos)<=10 and self[p.map_pos] not in ['U']+self.building_types:
+                    if not self.has_types_between(t.map_pos, p.map_pos, self.building_types):
                         t.map_pos = p.map_pos
                         t.state = 'alert'
                         return
@@ -999,8 +1032,8 @@ class Board(RelativeLayout):
                 if t0.state in ['alert','dozing']: continue
                 if t0.map_pos==p.map_pos: continue
                 d = self.dist(t.map_pos, t0.map_pos)
-                if 1<d<=10 and self[t0.map_pos] not in ['U','B']:
-                    if not self.has_types_between(t.map_pos, t0.map_pos, 'B'):
+                if 1<d<=10 and self[t0.map_pos] not in ['U']+self.building_types:
+                    if not self.has_types_between(t.map_pos, t0.map_pos, self.building_types):
                         if d<closest[0]: closest = (d, t0)
                 elif d==0:
                     if t.state!='alert':
@@ -1200,6 +1233,11 @@ class Board(RelativeLayout):
             for t in c.targets:
                 yield self.get_pos_from_card(c,t)
 
+    def iter_markets(self):
+        for c in self.map.cards:
+            for m in c.markets:
+                yield self.get_pos_from_card(c,m)
+
     def nearest_guard(self, map_pos, max_range=None, states = ['dozing', 'alert']):
         gts = [t for t in self.tokens if isinstance(t,GuardToken) and t.state in states]
         dists = [self.dist(map_pos,t.map_pos) for t in gts]
@@ -1247,8 +1285,8 @@ class Board(RelativeLayout):
             spots[tuple(map_pos)] = 0
         if self[map_pos] in ['U','L','L0','L1','L2']:
             walk_costs = {'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
-        elif self[map_pos] == 'B':
-            walk_costs = {'B': 1,'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
+        elif self[map_pos] in self.building_types:
+            walk_costs = {'B': 1,'B0': 1,'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
         for pos in self.iter_in_range(map_pos,1.5):
             if self[pos] in walk_costs:
                 cur_dist = spots[tuple(map_pos)]+walk_costs[self[pos]]*self.dist(pos,map_pos)
@@ -1356,7 +1394,6 @@ class PlayArea(FloatLayout):
         self.exhausted.cards[:] = []
 
         self.marketdeck.cards[:] = []
-        self.marketoffer.cards[:] = []
 
         self.eventdeck.cards[:] = []
         self.eventdiscard.cards[:] = []
@@ -1374,8 +1411,7 @@ class PlayArea(FloatLayout):
 
         self.exhausted.cards[:] = []
 
-        self.marketdeck.cards[:] = self.marketcards[4:]
-        self.marketoffer.cards[:] = self.marketcards[:4]
+        self.marketdeck.cards[:] = self.marketcards[:]
 
         self.eventdeck.cards[:] = self.eventcards[:]
         self.eventdiscard.cards[:] = []
@@ -1405,15 +1441,23 @@ class PlayArea(FloatLayout):
 
     def token_setup(self):
         player = PlayerToken()
+
         spawns = []
         for c in self.map.cards:
             spawns += [self.board.get_pos_from_card(c,s) for s in c.spawns]
         guards = [GuardToken(map_pos=s) for s in spawns]
+
         loot = []
         for c in self.map.cards:
             loot += [self.board.get_pos_from_card(c,s) for s in c.targets]
         targets = [TargetToken(map_pos=s) for s in loot]
-        self.board.tokens = [player]+guards+targets
+
+        mkt = []
+        for c in self.map.cards:
+            mkt += [self.board.get_pos_from_card(c,s) for s in c.markets]
+        markets = [MarketToken(map_pos=s) for s in mkt]
+
+        self.board.tokens = [player]+guards+targets+markets
 
     def restart_game(self):
         self.clear_and_check_end_game()

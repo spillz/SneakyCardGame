@@ -43,6 +43,7 @@ class Card(BoxLayout):
 
 
 class MapCard(Card):
+    building_types = ['B','B0']
     def __init__(self,**kwargs):
         self.w = 10
         self.h = 14
@@ -72,7 +73,7 @@ class MapCard(Card):
                 x = self.x + (i)*self.width//self.w
                 y = self.y + (j)*self.height//self.h
                 tile = self.map[(i,j)]
-                if tile != 'B': #non-building tile
+                if tile not in self.building_types: #non-building tile
                     Rectangle(pos = (x,y), size = size)
                 else: #Draw in roof line tile
                     s = size[0]+1, size[1]+1
@@ -80,7 +81,7 @@ class MapCard(Card):
                     Color(0,0,0)
                     cx = x+s[0]//2
                     cy = y+s[1]//2
-                    adj = [p for p in self.map.iter_types_in_range((i,j),'B',1)]
+                    adj = [p for p in self.map.iter_types_in_range((i,j),self.building_types,1)]
                     tl = tr = bl = br = 0
                     if (i+1,j) in adj:
                         Line(width = 0.5, points = (cx,cy,x+s[0],cy))
@@ -295,6 +296,7 @@ class CityMap(MapCard):
         self.add_spawns()
         self.add_waypoints()
         self.add_targets()
+        self.add_markets()
 
     def clamp(self, pos):
         return max(min(pos[0],self.w-1),0),max(min(pos[1],self.h-1),0)
@@ -387,7 +389,6 @@ class CityMap(MapCard):
 
     def add_targets(self):
         '''loot targets, but at a risk -- hmmm, how to convey the risk...'''
-        '''selects the waypoints where guards spwan'''
         self.targets=[]
         num_targets = random.randint(1,2)
         for s in range(num_targets):
@@ -403,9 +404,28 @@ class CityMap(MapCard):
             else:
                 break
 
+    def add_markets(self):
+        '''markets let you buy cards from a river. Spend treasure cards to access them'''
+        self.markets=[]
+        num_markets = random.choice([0,0,1])
+        for s in range(num_markets):
+            new_market = None
+            options = [p for p in self.map.iter_types('B', sub_rect=[1,1,self.map.w-1,self.map.h-1])]
+            random.shuffle(options)
+            for pos in options:
+                if len(self.markets)==0 or min([dist(pos,s) for s in self.markets])>5:
+                    new_market = pos
+                    break
+            if new_market is not None:
+                self.markets.append(new_market)
+            else:
+                break
+
+
 class EventCard(Card):
     def activate(self, board):
         pass
+
 
 class SpawnEvent(EventCard):
     #TODO: Do we want to spawn globally or just the card (as implemented). Should prioritize empty cells if a tie.
@@ -425,6 +445,7 @@ class SpawnEvent(EventCard):
             g = board.token_types['G']()
             board.tokens.append(g)
             g.map_pos = np
+
 
 class PatrolEvent(EventCard):
     def activate(self, board):
@@ -448,6 +469,7 @@ class PatrolEvent(EventCard):
             ind = ind-1 if ind>0 else len(pts)-1
             g.map_pos = board.get_pos_from_card(gcard, pts[ind])
 
+
 class AlertEvent(EventCard):
     def activate(self, board):
         self.board = board
@@ -461,6 +483,7 @@ class AlertEvent(EventCard):
             if g.state=='dozing':
                 g.state = 'alert'
 
+
 class MoveEvent(EventCard):
     def activate(self, board):
         self.board = board
@@ -473,6 +496,7 @@ class MoveEvent(EventCard):
             inc_player = True
         new_pos = self.board.guard_nearest_move(guard.map_pos, self.board.active_player_token.map_pos, include_player = inc_player)
         guard.map_pos = new_pos
+
 
 #Stance cards: player chooses which of their stance cards to activate at the start of each round
 #can change stance mid-round by discarding a card
@@ -610,8 +634,8 @@ class ClimbAction(PlayerAction):
                 self.spent = 0
         spots = []
         if not board.active_player_clashing():
-            if board[board.active_player_token.map_pos] not in 'B':
-                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, 'B', 1)]
+            if board[board.active_player_token.map_pos] not in ['B','B0']:
+                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, ['B','B0'], 1)]
             else:
                 spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, board.path_types, 1)]
         board.map_choices = [board.make_choice(p, self, 'touch') for p in spots]
@@ -675,7 +699,7 @@ class ArrowAction(PlayerAction):
         if not board.active_player_clashing():
             guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert']
                             and 0<dist(board.active_player_token.map_pos, t.map_pos)<=self.value_allowance()
-                            and board.has_line_of_sight(t.map_pos, board.active_player_token.map_pos, 'B')]
+                            and board.has_line_of_sight(t.map_pos, board.active_player_token.map_pos, ['B','B0'])]
             map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
             board.map_choices = map_choices
         else:
@@ -683,7 +707,7 @@ class ArrowAction(PlayerAction):
         if self.spent>0:
             playarea.activecardsplay.discard_used(self.cards_unused())
         else:
-            playarea.playerprompt.text = f'SHOOT ARROW {self.rounded_remain()}: Select a guard to shoot.'
+            playarea.playerprompt.text = f'Shoot arrow {self.rounded_remain()}: Select a guard to shoot.'
 
 
 class LockpickAction(PlayerAction):
@@ -746,7 +770,7 @@ class LockpickAction(PlayerAction):
 
 
 class DecoyAction(PlayerAction):
-    base_allowance = 4
+    base_allowance = 3
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
@@ -779,7 +803,45 @@ class DecoyAction(PlayerAction):
         if self.spent!=0:
             playarea.activecardsplay.discard_used(self.cards_unused())
         else:
-            playarea.playerprompt.text = f'SHOOT DECOY {self.rounded_remain()}: Select a tile to shoot the decoy to.'
+            playarea.playerprompt.text = f'Shoot decoy {self.rounded_remain()}: Select a tile to shoot the decoy to.'
+
+
+class MarketAction(PlayerAction):
+    base_allowance = 1
+    def __call__(self, message, **kwargs):
+        playarea= self.playarea
+        board = playarea.board
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
+        if message == 'can_stack':
+            return isinstance(kwargs['stacked_card'],TreasureCard) #TODO: Instead base on wheter the card has a MarketAction action
+        if message=='map_choice_selected':
+            obj = kwargs['touch_object']
+            market = [t for t in board.iter_tokens(token_type='M') if t.map_pos==obj.map_pos]
+            if len(market)>0:
+                self.spent = self.value_allowance() #TODO: Use the sum of MarketAction values
+                self.market_pos = obj.map_pos
+                playarea.marketdeck.select_draw(1,4,self.spent)
+        elif message=='card_action_selected':
+            self.spent = 0
+            self.market_pos=None
+        p = board.active_player_token
+        board.map_choices = []
+        if not board.active_player_clashing():
+            if self.market_pos is not None:
+                move_choices = [m for m in board.iter_types_in_range(self.market_pos,board.path_types,radius=1) if dist(self.market_pos, m)>=1]
+                target_choices = list(set(move_choices))
+                map_choices = [board.make_choice(t, self, set_choice_type(t,p.map_pos,board,3)) for t in target_choices]
+                board.map_choices = map_choices
+            elif board[board.active_player_token.map_pos] not in board.building_types:
+                target_choices = [t for t in board.iter_markets() if dist(p.map_pos, t)==1]
+                map_choices = [board.make_choice(t, self, set_choice_type(t,p.map_pos,board,3)) for t in target_choices]
+                board.map_choices = map_choices
+        if len(board.map_choices)<1 and self.spent!=0:
+            playarea.activecardsplay.discard_used(self.cards_unused())
+        else:
+            playarea.playerprompt.text = f'Buy {self.rounded_remain()}: Select a market card to buy.'
 
 
 class MoveStance(): ##StanceCard
@@ -869,7 +931,8 @@ class LootCard(PlayerCard):
     pass
 
 class TreasureCard(LootCard):
-    pass
+    def get_actions(self, playarea):
+        return {'BUY 1+': MarketAction(self, playarea, base_allowance=1, value_per_card=1)}
 
 class MarketCard(PlayerCard):
     pass
@@ -882,7 +945,7 @@ class RopeArrow(MarketCard):
 
 class DecoyArrow(MarketCard):
     def get_actions(self, playarea):
-        return {'SHOOT DECOY 3': DecoyAction(self, playarea, base_allowance=3, value_per_card=2)}
+        return {'SHOOT DECOY 3+': DecoyAction(self, playarea, base_allowance=3, value_per_card=2)}
 
 class SmokeBomb(MarketCard):
     pass
