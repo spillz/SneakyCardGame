@@ -570,6 +570,40 @@ class MoveAction(PlayerAction):
             playarea.playerprompt.text = f'Move {self.rounded_remain()}: Touch the highlighted board spaces to move across the map.'
 
 
+class GlideAction(PlayerAction):
+    def __call__(self, message, **kwargs):
+        playarea= self.playarea
+        board = playarea.board
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
+        if message == 'can_stack':
+            return False
+        if message=='map_choice_selected':
+            obj = kwargs['touch_object']
+            print('glide action selected',obj.map_pos,board.active_player_token.map_pos)
+            self.spent += dist(obj.map_pos,board.active_player_token.map_pos)
+            board.active_player_token.map_pos = obj.map_pos
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
+        else:
+            if message=='card_action_selected':
+                self.spent = 0
+        spots = []
+        pp = board.active_player_token.map_pos
+        if not board.active_player_clashing():
+            if board[board.active_player_token.map_pos] in board.building_types:
+                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, board.building_types, radius=self.value_allowance()) 
+                    if board.has_types_between(p,pp,board.path_types)]
+            else:
+                spots = []
+        board.map_choices = [board.make_choice(p, self, set_choice_type(p,pp,board,self.value_allowance()+1)) for p in spots if tuple(p)!=tuple(pp)]
+        if len(board.map_choices)<1 and self.spent>0:
+            playarea.activecardsplay.discard_used(self.cards_unused())
+        else:
+            playarea.playerprompt.text = f'Glide {self.rounded_remain()}: Touch the highlighted board spaces to move building to building.'
+
+
 class FightAction(PlayerAction):
     base_allowance = 1
     def __call__(self, message, **kwargs):
@@ -611,18 +645,18 @@ class ClimbAction(PlayerAction):
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
             playarea.board.active_player_token.map_pos = obj.map_pos
-            self.spent = 1
+            self.spent = self.value_allowance()
         else:
             if message=='card_action_selected':
                 self.spent = 0
         spots = []
         if not board.active_player_clashing():
             if board[board.active_player_token.map_pos] not in ['B','B0']:
-                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, ['B','B0'], 1)]
+                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, board.building_types, self.value_allowance())]
             else:
                 spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, board.path_types, 1)]
         board.map_choices = [board.make_choice(p, self, 'touch') for p in spots]
-        if self.spent==1:
+        if self.spent>=1:
             playarea.activecardsplay.discard_used(self.cards_unused())
         else:
             playarea.playerprompt.text = f'Climb {self.rounded_remain()}: Touch the highlighted board spaces to climb an adjacent building.'
@@ -693,6 +727,41 @@ class ArrowAction(PlayerAction):
             playarea.playerprompt.text = f'Shoot arrow {self.rounded_remain()}: Select a guard to shoot.'
 
 
+class GasAction(PlayerAction):
+    radius = 0
+    def __call__(self, message, **kwargs):
+        playarea= self.playarea
+        board = playarea.board
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
+        if message == 'can_stack':
+            return True
+        if message=='map_choice_selected':
+            obj = kwargs['touch_object']
+            self.spent = dist(board.active_player_token.map_pos, obj.map_pos)
+            guards_affected = [t for t in board.iter_tokens('G') if t.state in ['dozing','alert'] and 0<dist(obj.map_pos, t.map_pos)<=self.radius]
+            print('guards affected')
+            for g in guards_affected:
+                g.state = 'unconscious'
+            board.token_update()
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
+        else:
+            if message=='card_action_selected':
+                self.spent = 0
+        if not board.active_player_clashing():
+            pp = board.active_player_token.map_pos
+            map_choices = [board.make_choice(t, self, 'touch') for t in board.iter_types_in_range(pp, board.path_types, radius=self.value_allowance()) if board.has_line_of_sight(t, pp, board.building_types)]
+            board.map_choices = map_choices
+        else:
+            board.map_choices = []
+        if self.spent>0:
+            playarea.activecardsplay.discard_used(self.cards_unused())
+        else:
+            playarea.playerprompt.text = f'Shoot arrow {self.rounded_remain()}: Select a guard to shoot.'
+
+
 class LockpickAction(PlayerAction):
     base_allowance = 1
     can_loot = True
@@ -736,8 +805,6 @@ class LockpickAction(PlayerAction):
                 target_choices = list(set(move_choices))
                 map_choices = [board.make_choice(t, self, set_choice_type(t,p.map_pos,board,3)) for t in target_choices]
                 board.map_choices = map_choices
-                print(self.loot_pos)
-                print(target_choices)
             elif board[board.active_player_token.map_pos] not in board.building_types:
                 target_choices = [t for t in board.iter_targets() if dist(p.map_pos, t)==1]
                 move_choices = [m for b in board.iter_types_in_range(p.map_pos,'B',radius=1)
@@ -763,23 +830,29 @@ class DecoyAction(PlayerAction):
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
-            player_c, p = board.get_card_and_pos(board.active_player_token.map_pos)
+#TODO: Could use this and commented block below to implement a noisy decoy that drags all enemies on card to one place (might be a bit op)
+#            player_c, p = board.get_card_and_pos(board.active_player_token.map_pos)
             obj = kwargs['touch_object']
             for t in board.tokens:
-                if isinstance(t,board.token_types['G']) and t.state in['alert','dozing'] and t.map_pos!=board.active_player_token.map_pos:
-                    c, p = board.get_card_and_pos(board.active_player_token.map_pos)
-                    if c != player_c:
-                       continue
+                if isinstance(t,board.token_types['G']) and t.state in['alert','dozing'] and 0<dist(t.map_pos,board.active_player_token.map_pos)<=10:
+                    if not board.has_types_between(t.map_pos, board.active_player_token.map_pos):
+                        continue
+#                    c, p = board.get_card_and_pos(t.map_pos)
+#                    if c != player_c:
+#                       continue
                     t.map_pos = obj.map_pos
                     t.state = 'alert'
             self.spent = dist(obj.map_pos, board.active_player_token.map_pos)
+            playarea.activecardsplay.discard_used(self.cards_unused())
+            return
         else:
             if message=='card_action_selected':
                 self.spent = 0
         if not board.active_player_clashing():
-            place_choices = [t for t in board.iter_in_range(board.active_player_token.map_pos, board.path_types, self.value_allowance)
-                             and not board.has_types_between(t.map_pos, board.active_player_token.map_pos, 'B')]
-            map_choices = [board.make_token_choice(t, self, 'touch') for t in place_choices]
+            pp = board.active_player_token.map_pos
+            place_choices = [t for t in board.iter_types_in_range(pp, board.path_types, self.value_allowance())
+                             if not board.has_types_between(t, pp, board.building_types)]
+            map_choices = [board.make_choice(t, self, 'touch') for t in place_choices]
             board.map_choices = map_choices
         else:
             board.map_choices = []
@@ -806,6 +879,10 @@ class MarketAction(PlayerAction):
                 self.spent = self.value_allowance() #TODO: Use the sum of MarketAction values
                 self.market_pos = obj.map_pos
                 playarea.marketdeck.select_draw(1,4,self.spent)
+            else:
+                board.active_player_token.map_pos = obj.map_pos
+                playarea.activecardsplay.discard_used(self.cards_unused())
+                return
         elif message=='card_action_selected':
             self.spent = 0
             self.market_pos=None
@@ -911,20 +988,26 @@ class TreasureCard(LootCard):
 class MarketCard(PlayerCard):
     pass
 
-class PoisonArrow(MarketCard):
-    pass
+class GasArrow(MarketCard):
+    def get_actions(self, playarea):
+        return {'SHOOT GAS 3+': GasAction(self, playarea, base_allowance=3, value_per_card=2, radius=1)}
 
 class RopeArrow(MarketCard):
-    pass
+    def get_actions(self, playarea):
+        return {'CLIMB 1.5': ClimbAction(self, playarea, base_allowance=1.5, value_per_card=1, max_height=2),
+                'TRAVERSE 2': GlideAction(self, playarea, base_allowance=2, value_per_card=1, max_height=2)
+        }
 
 class DecoyArrow(MarketCard):
     def get_actions(self, playarea):
         return {'SHOOT DECOY 3+': DecoyAction(self, playarea, base_allowance=3, value_per_card=2)}
 
 class SmokeBomb(MarketCard):
+    #Clashing guards become KOd until end of your turn.
     pass
 
 class Lure(MarketCard):
+    #Lures but does not alert guard in sight of player to a position adjacent
     pass
 
 class BasicMove(StartPlayerCard):
@@ -972,7 +1055,7 @@ def make_market_cards(pa):
     return [h(pa=pa) for h in MarketCard.__subclasses__() for i in range (20)]
 
 def make_player_cards(pa):
-    return [m(pa=pa) for m in StartPlayerCard.__subclasses__() for i in range(2)]
+    return [m(pa=pa) for m in StartPlayerCard.__subclasses__() for i in range(2)] + [m(pa=pa) for m in [DecoyArrow, RopeArrow, GasArrow]]
 
 def make_trait_cards(pa):
     return [m(pa=pa) for m in [MoveTrait, FightTrait]]
