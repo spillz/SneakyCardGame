@@ -593,7 +593,7 @@ class GlideAction(PlayerAction):
         pp = board.active_player_token.map_pos
         if not board.active_player_clashing():
             if board[board.active_player_token.map_pos] in board.building_types:
-                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, board.building_types, radius=self.value_allowance()) 
+                spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, board.building_types, radius=self.value_allowance())
                     if board.has_types_between(p,pp,board.path_types)]
             else:
                 spots = []
@@ -740,7 +740,7 @@ class GasAction(PlayerAction):
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
             self.spent = dist(board.active_player_token.map_pos, obj.map_pos)
-            guards_affected = [t for t in board.iter_tokens('G') if t.state in ['dozing','alert'] and 0<dist(obj.map_pos, t.map_pos)<=self.radius]
+            guards_affected = [t for t in board.iter_tokens('G') if t.state in ['dozing','alert'] and 0<=dist(obj.map_pos, t.map_pos)<=self.radius]
             print('guards affected')
             for g in guards_affected:
                 g.state = 'unconscious'
@@ -834,14 +834,10 @@ class DecoyAction(PlayerAction):
 #            player_c, p = board.get_card_and_pos(board.active_player_token.map_pos)
             obj = kwargs['touch_object']
             for t in board.tokens:
-                if isinstance(t,board.token_types['G']) and t.state in['alert','dozing'] and 0<dist(t.map_pos,board.active_player_token.map_pos)<=10:
-                    if not board.has_types_between(t.map_pos, board.active_player_token.map_pos):
-                        continue
-#                    c, p = board.get_card_and_pos(t.map_pos)
-#                    if c != player_c:
-#                       continue
-                    t.map_pos = obj.map_pos
-                    t.state = 'alert'
+                if isinstance(t,board.token_types['G']) and t.state in['alert','dozing'] and 0<dist(t.map_pos,obj.map_pos)<=10:
+                    if not board.has_types_between(t.map_pos, obj.map_pos, board.building_types):
+                        t.map_pos = obj.map_pos
+                        t.state = 'alert'
             self.spent = dist(obj.map_pos, board.active_player_token.map_pos)
             playarea.activecardsplay.discard_used(self.cards_unused())
             return
@@ -904,7 +900,7 @@ class MarketAction(PlayerAction):
             playarea.playerprompt.text = f'Buy {self.rounded_remain()}: Select a market card to buy.'
 
 
-class MoveTrait(TraitCard): 
+class MoveTrait(TraitCard):
     #All move cards gain +1
     #All non-move cards can be used for move 1
     def get_actions_for_card(self, card, playarea):
