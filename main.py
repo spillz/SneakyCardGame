@@ -493,10 +493,12 @@ class ActiveCardSplay(CardSplay):
             self.parent.hand.cancel_action()
         return True
 
-    def discard_used(self, unused=0, noise=0):
+    def discard_used(self, unused=0, noise=0, exhaust=False):
         if unused>0:
             cards = self.cards[:unused]
             self.move_to(cards, self.parent.hand)
+        if exhaust:
+            self.move_to(self.cards[-1:], self.parent.exhausted)
         cards = self.cards[:]
         self.move_to(cards, self.parent.playerdiscard)
         self.parent.hand.clear_selection()
@@ -741,7 +743,7 @@ class NoiseTracker(Label):
         pp = board.active_player_token.map_pos
         for t in board.iter_tokens('G'):
             if board.dist(pp,t.map_pos)<=self.noise:
-                if t.state == 'alert':
+                if t.state == 'alert' and board[pp] not in board.building_types:
                     t.map_pos = pp
                 elif t.state == 'dozing':
                     t.state = 'alert'
@@ -1473,7 +1475,6 @@ class PlayArea(FloatLayout):
         self.eventdeck.can_draw = True
 
     def clear_and_check_end_game(self):
-        self.noisetracker.reset()
         self.hand.clear_card_actions()
         self.hand.cancel_action()
         if self.cardselector is not None:
@@ -1494,6 +1495,7 @@ class PlayArea(FloatLayout):
                 self.remove_widget(self.stats)
 
     def token_setup(self):
+        self.noisetracker.reset()
         player = PlayerToken()
 
         spawns = []
