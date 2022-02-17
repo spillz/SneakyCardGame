@@ -155,6 +155,27 @@
 <EventDiscard>:
     size_hint: None, None
 
+<NoiseTracker>:
+    size_hint: None, None
+    noise: 0
+    text: str(self.noise)
+    font_size: 4*self.height//5
+    canvas.before:
+        Color:
+            rgb: (0,0.2,0.5)
+        Line:
+            width: 1+self.width//20
+            points:
+                self.x, self.center_y, \
+                self.x+1*self.width//8, self.center_y+self.noise*self.height//(12*4), \
+                self.x+2*self.width//8, self.center_y-self.noise*self.height//(12*3), \
+                self.x+3*self.width//8, self.center_y+self.noise*self.height//(12*2), \
+                self.x+4*self.width//8, self.center_y-self.noise*self.height//12, \
+                self.x+5*self.width//8, self.center_y+self.noise*self.height//(12*2), \
+                self.x+6*self.width//8, self.center_y-self.noise*self.height//(12*3), \
+                self.x+7*self.width//8, self.center_y+self.noise*self.height//(12*4), \
+                self.x+self.width, self.center_y
+
 <MapChoice>:
     map_pos: 0,0
     pos: self.map_pos[0]*self.size[0], self.map_pos[1]*self.size[1]
@@ -331,6 +352,7 @@
     playerprompt: playerprompt
     activecardsplay: activecardsplay
     exhausted: exhausted
+    noisetracker: noisetracker
     hand: hand
     map: map
     loot1: loot1
@@ -381,6 +403,11 @@
         size: root.card_size[0]*6//5, root.card_size[1]
         y: root.height - root.card_size[1]
         x: root.card_size[0]*6//5 if root.height>=root.width else 0
+    NoiseTracker:
+        id: noisetracker
+        size: root.card_size[0]//5, root.card_size[0]//5
+        y: root.height - root.card_size[1] if root.height>=root.width else 2*root.card_size[1]
+        x: 2*root.card_size[0]*6//5 if root.height>=root.width else (6*root.card_size[0]//5-self.width)//2
     LootDeck:
         id: loot1
         text: 'LOOT1'

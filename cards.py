@@ -507,6 +507,8 @@ class TraitCard(Card):
 class PlayerAction:
     value_per_card = 1
     base_allowance = 1
+    base_noise = 1
+    noise_per_stack = 0
     def __init__(self, card, playarea, **kwargs):
         self.spent = 0
         self.card = card
@@ -541,13 +543,16 @@ class PlayerAction:
     def rounded_remain(self):
         return (self.value_allowance() - self.spent)//0.5 /2
 
+    def noise_made(self):
+        return self.base_noise + self.noise_per_stack*(len(self.playarea.activecardsplay.cards)-1-self.cards_unused())
 
 class MoveAction(PlayerAction):
+    noise_per_stack = 1
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return True
@@ -565,7 +570,7 @@ class MoveAction(PlayerAction):
             spots = board.walkable_spots(pp, dist=moves_left, spots={})
         board.map_choices = [board.make_choice(p, self, set_choice_type(p,pp,board)) for p in spots if tuple(p)!=tuple(pp)]
         if len(board.map_choices)<1 and self.spent>0:
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
         else:
             playarea.playerprompt.text = f'Move {self.rounded_remain()}: Touch the highlighted board spaces to move across the map.'
 
@@ -575,7 +580,7 @@ class GlideAction(PlayerAction):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return False
@@ -584,7 +589,7 @@ class GlideAction(PlayerAction):
             print('glide action selected',obj.map_pos,board.active_player_token.map_pos)
             self.spent += dist(obj.map_pos,board.active_player_token.map_pos)
             board.active_player_token.map_pos = obj.map_pos
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         else:
             if message=='card_action_selected':
@@ -599,18 +604,19 @@ class GlideAction(PlayerAction):
                 spots = []
         board.map_choices = [board.make_choice(p, self, set_choice_type(p,pp,board,self.value_allowance()+1)) for p in spots if tuple(p)!=tuple(pp)]
         if len(board.map_choices)<1 and self.spent>0:
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
         else:
             playarea.playerprompt.text = f'Glide {self.rounded_remain()}: Touch the highlighted board spaces to move building to building.'
 
 
 class FightAction(PlayerAction):
+    noise_per_stack = 1
     base_allowance = 1
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return True
@@ -628,7 +634,7 @@ class FightAction(PlayerAction):
         board.map_choices = map_choices
 
         if len(board.map_choices)<1 and self.spent!=0:
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
         else:
             playarea.playerprompt.text = f'Fight {self.rounded_remain()}: Select a highlighted guard to attack.'
 
@@ -638,7 +644,7 @@ class ClimbAction(PlayerAction):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return False
@@ -657,18 +663,19 @@ class ClimbAction(PlayerAction):
                 spots = [p for p in board.iter_types_in_range(board.active_player_token.map_pos, board.path_types, 1)]
         board.map_choices = [board.make_choice(p, self, 'touch') for p in spots]
         if self.spent>=1:
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
         else:
             playarea.playerprompt.text = f'Climb {self.rounded_remain()}: Touch the highlighted board spaces to climb an adjacent building.'
 
 
 class KnockoutAction(PlayerAction):
+    base_noise = 0
     can_loot = True
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return False
@@ -689,11 +696,11 @@ class KnockoutAction(PlayerAction):
             board.map_choices = []
         if len(board.map_choices)<1 and self.spent!=0:
             draw = len(playarea.activecardsplay.cards)
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             if self.can_loot:
                 playarea.loot1.select_draw(1, draw)
         else:
-            playarea.playerprompt.text = f'Sneak {self.rounded_remain()}: Select a guard to knockout.'
+            playarea.playerprompt.text = f'Knockout {self.rounded_remain()}: Select a guard to knockout.'
 
 
 class ArrowAction(PlayerAction):
@@ -701,7 +708,7 @@ class ArrowAction(PlayerAction):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return True
@@ -722,7 +729,7 @@ class ArrowAction(PlayerAction):
         else:
             board.map_choices = []
         if self.spent>0:
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
         else:
             playarea.playerprompt.text = f'Shoot arrow {self.rounded_remain()}: Select a guard to shoot.'
 
@@ -733,7 +740,7 @@ class GasAction(PlayerAction):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return True
@@ -741,11 +748,10 @@ class GasAction(PlayerAction):
             obj = kwargs['touch_object']
             self.spent = dist(board.active_player_token.map_pos, obj.map_pos)
             guards_affected = [t for t in board.iter_tokens('G') if t.state in ['dozing','alert'] and 0<=dist(obj.map_pos, t.map_pos)<=self.radius]
-            print('guards affected')
             for g in guards_affected:
                 g.state = 'unconscious'
             board.token_update()
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         else:
             if message=='card_action_selected':
@@ -757,20 +763,21 @@ class GasAction(PlayerAction):
         else:
             board.map_choices = []
         if self.spent>0:
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
         else:
-            playarea.playerprompt.text = f'Shoot arrow {self.rounded_remain()}: Select a guard to shoot.'
+            playarea.playerprompt.text = f'Shoot arrow {self.rounded_remain()}: Select a space to shoot gas arrow.'
 
 
 class LockpickAction(PlayerAction):
     base_allowance = 1
+    noise_per_stack = 1
     can_loot = True
     max_loot = 3
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return True
@@ -792,7 +799,7 @@ class LockpickAction(PlayerAction):
                 if self.loot_pos is None:
                     self.spent=1
                 board.active_player_token.map_pos = obj.map_pos
-                playarea.activecardsplay.discard_used(self.cards_unused())
+                playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
                 return
         elif message=='card_action_selected':
             self.spent = 0
@@ -814,7 +821,7 @@ class LockpickAction(PlayerAction):
                 map_choices = [board.make_choice(t, self, set_choice_type(t,p.map_pos,board,3)) for t in target_choices]
                 board.map_choices = map_choices
         if len(board.map_choices)<1 and self.spent!=0:
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
         else:
             playarea.playerprompt.text = f'Lockpick {self.rounded_remain()}: Select a guard to knockout.'
 
@@ -825,7 +832,7 @@ class DecoyAction(PlayerAction):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return True
@@ -839,7 +846,7 @@ class DecoyAction(PlayerAction):
                         t.map_pos = obj.map_pos
                         t.state = 'alert'
             self.spent = dist(obj.map_pos, board.active_player_token.map_pos)
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         else:
             if message=='card_action_selected':
@@ -847,13 +854,13 @@ class DecoyAction(PlayerAction):
         if not board.active_player_clashing():
             pp = board.active_player_token.map_pos
             place_choices = [t for t in board.iter_types_in_range(pp, board.path_types, self.value_allowance())
-                             if not board.has_types_between(t, pp, board.building_types)]
+                             if board.has_line_of_sight(t, pp, board.building_types)]
             map_choices = [board.make_choice(t, self, 'touch') for t in place_choices]
             board.map_choices = map_choices
         else:
             board.map_choices = []
         if self.spent!=0:
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
         else:
             playarea.playerprompt.text = f'Shoot decoy {self.rounded_remain()}: Select a tile to shoot the decoy to.'
 
@@ -864,7 +871,7 @@ class MarketAction(PlayerAction):
         playarea= self.playarea
         board = playarea.board
         if message=='card_action_end':
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
             return
         if message == 'can_stack':
             return isinstance(kwargs['stacked_card'],TreasureCard) #TODO: Instead base on wheter the card has a MarketAction action
@@ -877,7 +884,7 @@ class MarketAction(PlayerAction):
                 playarea.marketdeck.select_draw(1,4,self.spent)
             else:
                 board.active_player_token.map_pos = obj.map_pos
-                playarea.activecardsplay.discard_used(self.cards_unused())
+                playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
                 return
         elif message=='card_action_selected':
             self.spent = 0
@@ -895,7 +902,7 @@ class MarketAction(PlayerAction):
                 map_choices = [board.make_choice(t, self, set_choice_type(t,p.map_pos,board,3)) for t in target_choices]
                 board.map_choices = map_choices
         if len(board.map_choices)<1 and self.spent!=0:
-            playarea.activecardsplay.discard_used(self.cards_unused())
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made())
         else:
             playarea.playerprompt.text = f'Buy {self.rounded_remain()}: Select a market card to buy.'
 
@@ -1020,7 +1027,7 @@ class BasicClimb(StartPlayerCard):
 
 class BasicSneak(StartPlayerCard):
     def get_actions(self, playarea):
-        return {'SNEAK 1+': MoveAction(self, playarea, base_allowance=1, value_per_card=1)}
+        return {'SNEAK 1+': MoveAction(self, playarea, base_allowance=1, value_per_card=1, base_noise=0, noise_per_stack=0)}
 
 class BasicKockout(StartPlayerCard):
     def get_actions(self, playarea):
@@ -1029,10 +1036,6 @@ class BasicKockout(StartPlayerCard):
 class BasicArrow(StartPlayerCard):
     def get_actions(self, playarea):
         return {'SHOOT ARROW 3': ArrowAction(self, playarea, base_allowance=3, value_per_card=2)}
-#        if isinstance(playarea.playerstance.cards[-1], ArcherTrait):
-#            return {'SHOOT ARROW 3': ArrowAction(self, playarea, base_allowance=3, value_per_card=2)}
-#        else:
-#            return {}
 
 class BasicLockpick(StartPlayerCard):
     def get_actions(self, playarea):

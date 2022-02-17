@@ -156,7 +156,7 @@ class CardSelector(BoxLayout):
     def on_touch_up(self, touch):
         super().on_touch_up(touch)
         return True
- 
+
 
 class CardSplayCloseup(ModalView):
     '''
@@ -493,13 +493,14 @@ class ActiveCardSplay(CardSplay):
             self.parent.hand.cancel_action()
         return True
 
-    def discard_used(self, unused=0):
+    def discard_used(self, unused=0, noise=0):
         if unused>0:
             cards = self.cards[:unused]
             self.move_to(cards, self.parent.hand)
         cards = self.cards[:]
         self.move_to(cards, self.parent.playerdiscard)
         self.parent.hand.clear_selection()
+        self.parent.noisetracker.noise += noise
 
 
 class ActionSelectorOption(Label):
@@ -708,6 +709,7 @@ class EventDeck(CardSplay):
             return True
         if self.parent.clear_and_check_end_game():
             return True
+        self.parent.noisetracker.apply_noise()
         card= self.cards[-1]
         card.face_up = True
         self.move_to([card], self.parent.eventdiscard)
@@ -728,6 +730,22 @@ class EventDiscard(CardSplay):
         super().on_cards(*args)
         for c in self.cards:
             c.face_up = True
+
+
+class NoiseTracker(Label):
+    def reset(self):
+        self.noise = 0
+
+    def apply_noise(self):
+        board = self.parent.board
+        pp = board.active_player_token.map_pos
+        for t in board.iter_tokens('G'):
+            if board.dist(pp,t.map_pos)<=self.noise:
+                if t.state == 'alert':
+                    t.map_pos = pp
+                elif t.state == 'dozing':
+                    t.state = 'alert'
+        self.noise = 0
 
 
 class Map(GridLayout):
@@ -1107,23 +1125,46 @@ class Board(RelativeLayout):
         x2a,y2a=x2+ox2,y2+oy2
         if abs(y2-y1)==0 and abs(x2-x1)==0:
             return
+        if abs(y2a-y1a)==0 and abs(x2a-x1a)==0:
+            return
         if abs(y2a-y1a)>abs(x2a-x1a):
             slope = (x2a-x1a)/(y2a-y1a)
             if y1>y2:
                 y1,y2 = y2,y1
                 x1,x2 = x2,x1
-            for y in range(y1+1,y2):
-#            for y in range(int(y1+1),int(y2+1)):
-                x = x1a + (y-y1a)*slope
-                yield round(x),y
+                y1a,y2a = y2a,y1a
+                x1a,x2a = x2a,x1a
+            y=int(y1)
+            while y<y2:
+                yo = y+0.5
+                xo = x1a + (yo-y1a)*slope
+                x = int(xo)
+                if xo-x<=0.5:
+                    yield x,y
+                    yield x,y+1
+                if xo-x>=0.5:
+                    yield x+1,y
+                    yield x+1,y+1
+                y+=1
         else:
             slope = (y2a-y1a)/(x2a-x1a)
             if x1>x2:
                 y1,y2 = y2,y1
                 x1,x2 = x2,x1
-            for x in range(x1+1,x2):
-                y = y1a + (x-x1a)*slope
-                yield x,round(y)
+                x1a,x2a = x2a,x1a
+                y1a,y2a = y2a,y1a
+            x=int(x1)
+            while x<x2:
+                xo = x+0.5
+                yo = y1a + (xo-x1a)*slope
+                y = int(yo)
+                if yo-y<=0.5+1e-4:
+                    yield x,y
+                    yield x+1,y
+                if yo-y>=0.5-1e-4:
+                    yield x,y+1
+                    yield x+1,y+1
+                x+=1
 
     def iter_types_between(self, pos1, pos2, types,off1=(0,0), off2=(0,0)):
         for pos in self.iter_between(pos1, pos2, off1, off2):
@@ -1132,17 +1173,24 @@ class Board(RelativeLayout):
 
     def has_types_between(self, pos1, pos2, types):
         bases = [tuple(pos1),tuple(pos2)]
+#        print('CHECKING',pos1, pos2, types, [p for p in self.iter_types_between(pos1, pos2, types)])
         for pos in self.iter_types_between(pos1, pos2, types):
             if pos in bases: continue
             return True
+#        print('CLEAR',pos1, pos2, types, [p for p in self.iter_between(pos1, pos2)])
+#        import pdb
+#        pdb.set_trace()
+#        [p for p in self.iter_between(pos1, pos2)]
         return False
 
     def has_line_of_sight(self, pos1, pos2, types):
         bases = [tuple(pos1),tuple(pos2)]
-        for add1 in [(-0.5,-0.5),(-0.5,0.5),(0.5,-0.5),(0.5,0.5)]:
-            for add2 in [(-0.5,-0.5),(-0.5,0.5),(0.5,-0.5),(0.5,0.5)]:
+        e = 0.5
+        for add1 in [(-e,-e),(-e,e),(e,-e),(e,e)]:
+            for add2 in [(-e,-e),(-e,e),(e,-e),(e,e)]:
                 blockers = [p for p in self.iter_types_between(pos1, pos2, types, add1, add2) if p not in bases]
                 if len(blockers)==0:
+                    blockers = [p for p in self.iter_types_between(pos1, pos2, types, add1, add2) if p not in bases]
                     return True
         return False
 
@@ -1425,6 +1473,7 @@ class PlayArea(FloatLayout):
         self.eventdeck.can_draw = True
 
     def clear_and_check_end_game(self):
+        self.noisetracker.reset()
         self.hand.clear_card_actions()
         self.hand.cancel_action()
         if self.cardselector is not None:
