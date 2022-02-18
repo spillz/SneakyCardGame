@@ -1334,7 +1334,9 @@ class Board(RelativeLayout):
         pass
 
     def dist(self, map_pos1, map_pos2):
-        return ((map_pos1[0]-map_pos2[0])**2 + (map_pos1[1]-map_pos2[1])**2)**0.5
+        d0 = abs(map_pos1[0]-map_pos2[0])
+        d1 = abs(map_pos1[1]-map_pos2[1])
+        return max(d0,d1) + 0.5*min(d0,d1)
 
     def walkable_spots(self, map_pos, dist, spots):
         if len(spots)==0:

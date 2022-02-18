@@ -15,9 +15,9 @@ import math
 import random
 
 def dist(pos1, pos2):
-    dx = pos1[0]-pos2[0]
-    dy = pos1[1]-pos2[1]
-    return (dx*dx + dy*dy)**0.5
+    dx = abs(pos1[0]-pos2[0])
+    dy = abs(pos1[1]-pos2[1])
+    return max(dx,dy)+0.5*min(dx,dy)
 
 
 class Card(BoxLayout):
