@@ -836,7 +836,8 @@ class TargetToken(Token):
     #These should probably be properties so that they can be modified
     lock_level = 1
     loot_level = 1
-    can_loot = True
+    has_loot = BooleanProperty(True)
+    picked = BooleanProperty(False)
 
     def draw_token(self):
         self.canvas.after.clear()
@@ -953,6 +954,40 @@ class GuardToken(Token):
                 Ellipse(pos = (self.x+(self.width)*2//5,self.y+(self.height)//4), size = (self.width//5,self.height//5))
             else:
                 Line(width=1+self.height//30, points=(self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3))
+
+class ObjectiveToken(TargetToken):
+    has_loot = BooleanProperty(False)
+
+    def on_picked(self, value):
+        if self.picked:
+            pa = self.parent.parent.parent
+            pa.level_complete()
+
+    def draw_token(self):
+        self.canvas.after.clear()
+        with self.canvas.after:
+            Color(0.8,0.8,0.0,1)
+            x = self.x + self.width//5
+            y = self.y + self.height//5
+            w, h = 3*self.size[0]//5//2*2, 3*self.size[1]//5//2*2
+            #Rectangle(pos = (x,y), size = (3*size[0]//5,3*size[1]//5))
+            vertices1 = [x+w//2,y,0,0,
+                         x,y+3*h//4,0,0,
+                         x+w,y+3*h//4,0,0,
+                         ]
+            vertices2 = [x+w//2,y+h,0,0,
+                         x,y+h//4,0,0,
+                         x+w,y+h//4,0,0,
+                         ]
+            indices = [0,1,2]
+            Mesh(vertices = vertices1,
+                 indices = indices,
+                 mode = 'triangle_fan'
+                 )
+            Mesh(vertices = vertices2,
+                 indices = indices,
+                 mode = 'triangle_fan'
+                 )
 
 
 class TokenMapChoice(BoxLayout):
@@ -1377,6 +1412,7 @@ class Stats(BoxLayout):
     contacts = NumericProperty()
     loot = NumericProperty()
     rounds = NumericProperty()
+    missions = NumericProperty()
     showing = BooleanProperty()
     t_kills = NumericProperty()
     t_knockouts = NumericProperty()
@@ -1414,8 +1450,8 @@ class Stats(BoxLayout):
         anim.start(self)
 
     def on_touch_down(self, touch):
-        for but in self.restart, self.quit:
-            if but.collide_point(*touch.pos):
+        for but in self.restart, self.quit, self.next:
+            if but.collide_point(*touch.pos) and but.active:
                 touch.grab(self)
                 return True
         return True
@@ -1426,6 +1462,11 @@ class Stats(BoxLayout):
             if self.restart.collide_point(*touch.pos):
                 self.parent.restart_game()
                 self.reset()
+                self.parent.menu_showing=False
+                return True
+            if self.next.collide_point(*touch.pos):
+                self.parent.next_level()
+                self.reset(False)
                 self.parent.menu_showing=False
                 return True
             if self.quit.collide_point(*touch.pos):
@@ -1452,8 +1493,7 @@ class PlayArea(FloatLayout):
         self.marketcards = cards.make_market_cards(self)
         self.eventcards = cards.make_event_cards(self)
 
-        self.card_setup()
-        self.token_setup()
+        self.restart_game()
 
     def card_setup(self):
         random.shuffle(self.playercards)
@@ -1503,15 +1543,19 @@ class PlayArea(FloatLayout):
 
         self.eventdeck.can_draw = True
 
-    def clear_and_check_end_game(self):
+    def clear_state(self):
         self.hand.clear_card_actions()
         self.hand.cancel_action()
         if self.cardselector is not None:
             self.cardselector.cards = []
             self.remove_widget(self.cardselector)
             self.cardselector=None
+
+    def clear_and_check_end_game(self):
+        self.clear_state()
         if self.board.active_player_clashing(): #Game over condition
             self.menu_showing=True
+            self.stats.title.text = 'MISSION FAILED'
             self.hand.can_draw=False
             return True
 
@@ -1535,19 +1579,38 @@ class PlayArea(FloatLayout):
         loot = []
         for c in self.map.cards:
             loot += [self.board.get_pos_from_card(c,s) for s in c.targets]
-        targets = [TargetToken(map_pos=s) for s in loot]
+        targets = [TargetToken(map_pos=s) for s in loot[:-1]]
+        objective = ObjectiveToken(map_pos=loot[-1])
 
         mkt = []
         for c in self.map.cards:
             mkt += [self.board.get_pos_from_card(c,s) for s in c.markets]
         markets = [MarketToken(map_pos=s) for s in mkt]
 
-        self.board.tokens = [player]+guards+targets+markets
+        self.board.tokens = [player]+guards+targets+markets+[objective]
 
     def restart_game(self):
-        self.clear_and_check_end_game()
+        self.clear_state()
         self.card_setup()
         self.token_setup()
+        self.stats.title.text = 'MISSION IN PROGRESS'
+
+    def next_level(self):
+        self.clear_state()
+        self.card_setup()
+        self.token_setup()
+        self.stats.next.active=False
+        self.stats.title.text = 'MISSION IN PROGRESS'
+
+    def level_complete(self):
+        self.clear_state()
+        self.stats.next.active=True
+        self.menu_showing=True
+        self.hand.can_draw=False
+        self.stats.missions += 1
+        self.eventdeck.can_draw=False
+        self.stats.title.text = 'MISSION COMPLETED'
+
 
     def path_state(self):
         return os.path.join(get_user_path(),'gamestate.pickle')

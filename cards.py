@@ -548,7 +548,6 @@ class PlayerAction:
         return self.base_noise + self.noise_per_stack*(len(self.playarea.activecardsplay.cards)-1-self.cards_unused())
 
 class MoveAction(PlayerAction):
-    noise_per_stack = 1
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
@@ -672,7 +671,10 @@ class ClimbAction(PlayerAction):
 
 class KnockoutAction(PlayerAction):
     base_noise = 0
-    can_loot = True
+    can_loot = True #has loot that you can take
+    grapple = True #drags into your space
+    alert = False #can knockout if alert (also allows KO of guards sharing player's space)
+
     def __call__(self, message, **kwargs):
         playarea= self.playarea
         board = playarea.board
@@ -691,7 +693,10 @@ class KnockoutAction(PlayerAction):
                 self.fight = 1
                 self.spent = 0
         if not board.active_player_clashing():
-            guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing'] and dist(board.active_player_token.map_pos, t.map_pos)<=1]
+            if self.alert:
+                guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing','alert'] and dist(board.active_player_token.map_pos, t.map_pos)<=1]
+            else:
+                guard_choices = [t for t in board.tokens if isinstance(t,board.token_types['G']) and t.state in ['dozing'] and dist(board.active_player_token.map_pos, t.map_pos)<=1]
             map_choices = [board.make_token_choice(t, self, 'touch') for t in guard_choices]
             board.map_choices = map_choices
         else:
@@ -699,6 +704,11 @@ class KnockoutAction(PlayerAction):
         if len(board.map_choices)<1 and self.spent!=0:
             draw = len(playarea.activecardsplay.cards)
             playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust)
+            pt = board.active_player_token
+            if board[pt.map_pos] in board.building_types:
+                pt.map_pos = obj.map_pos
+            elif self.grapple:
+                obj.map_pos = pt.map_pos
             if self.can_loot:
                 playarea.loot1.select_draw(1, draw)
         else:
@@ -793,9 +803,10 @@ class LockpickAction(PlayerAction):
                 pick = self.value_allowance()
                 if pick>=target.lock_level:
                     #TODO: Clear the target
+                    target.picked=True
                     board.tokens.remove(target)
                     self.spent = pick
-                    if self.can_loot:
+                    if target.has_loot:
                         loot_decks = [playarea.loot1, playarea.loot2, playarea.loot3]
                         loot_decks[target.loot_level-1].select_draw(1, 1 + pick - target.lock_level)
                         self.loot_pos = target.map_pos
