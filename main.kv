@@ -275,9 +275,14 @@
     quit: quit
     kills: 0
     knockouts: 0
-    alerted: 0
+    contacts: 0
     loot: 0
     rounds: 0
+    t_kills: 0
+    t_knockouts: 0
+    t_contacts: 0
+    t_loot: 0
+    t_rounds: 0
     showing: False
     canvas.before:
         Color:
@@ -303,19 +308,19 @@
             size_hint: 1,0.7
             Label:
                 size_hint: 1,1/6
-                text: 'Kills: {value}'.format(value=root.kills)
+                text: 'Kills: {value} / {tvalue}'.format(value=root.kills, tvalue=root.t_kills)
             Label:
                 size_hint: 1,1/6
-                text: 'Knockouts: {value}'.format(value=root.knockouts)
+                text: 'Knockouts: {value} / {tvalue}'.format(value=root.knockouts, tvalue=root.t_knockouts)
             Label:
                 size_hint: 1,1/6
-                text: 'Guards Alerted: {value}'.format(value=root.alerted)
+                text: 'Guard contacts: {value} / {tvalue}'.format(value=root.contacts, tvalue=root.t_contacts)
             Label:
                 size_hint: 1,1/6
-                text: 'Loot collected: {value}'.format(value=root.loot)
+                text: 'Loot collected: {value} / {tvalue}'.format(value=root.loot, tvalue=root.t_loot)
             Label:
                 size_hint: 1,1/6
-                text: 'Rounds played: {value}'.format(value=root.rounds)
+                text: 'Rounds played: {value} / {tvalue}'.format(value=root.rounds, tvalue=root.t_rounds)
             BoxLayout:
                 size_hint: 1,1/6
                 orientation: 'horizontal'
@@ -497,5 +502,5 @@
         size_hint: None, None
         font_size: root.card_size[1]*0.3//3
         size: root.width, root.card_size[1]//5
-        y: root.card_size[1]*2 if root.height>=root.width else root.height - root.card_size[1]//5
+        y: root.height - 6*root.card_size[1]//5 if root.height>=root.width else root.height - root.card_size[1]//5
         x: root.width//40

@@ -655,6 +655,8 @@ class LootDeck(CardSplay):
                 c.selected = False
         self.parent.remove_widget(cs)
         self.parent.cardselector = None
+        self.parent.stats.loot+=1
+        self.parent.stats.t_loot+=1
 
 class MarketDeck(CardSplay):
     def on_touch_up(self,touch):
@@ -717,6 +719,8 @@ class EventDeck(CardSplay):
         self.move_to([card], self.parent.eventdiscard)
         card.activate(self.parent.board)
         self.parent.playerdeck.draw_hand()
+        self.parent.stats.rounds+=1
+        self.parent.stats.t_rounds+=1
         return True
 
 
@@ -888,6 +892,17 @@ class GuardToken(Token):
 
     def on_state(self, *args):
         self.draw_token()
+        if self.state!='dozing':
+            stats=self.parent.parent.parent.stats
+            if self.state=='dead':
+                stats.kills+=1
+                stats.t_kills+=1
+            if self.state=='unconscious':
+                stats.knockouts+=1
+                stats.t_knockouts+=1
+            if self.state=='alert' and self.parent.active_player_token.map_pos==self.map_pos:
+                stats.contacts+=1
+                stats.t_contacts+=1
 
     def draw_token(self):
         self.canvas.after.clear()
@@ -1359,17 +1374,29 @@ class Board(RelativeLayout):
 class Stats(BoxLayout):
     kills = NumericProperty()
     knockouts = NumericProperty()
-    alerted = NumericProperty()
+    contacts = NumericProperty()
     loot = NumericProperty()
     rounds = NumericProperty()
     showing = BooleanProperty()
-    def reset(self):
+    t_kills = NumericProperty()
+    t_knockouts = NumericProperty()
+    t_contacts = NumericProperty()
+    t_loot = NumericProperty()
+    t_rounds = NumericProperty()
+    def reset(self, totals=True):
         self.kills = 0
         self.knockouts = 0
-        self.alerted = 0
+        self.contacts = 0
         self.loot = 0
         self.rounds = 0
         self.showing = False
+        if totals:
+            self.t_kills = 0
+            self.t_knockouts = 0
+            self.t_contacts = 0
+            self.t_loot = 0
+            self.t_rounds = 0
+            self.t_showing = False
 
     def on_parent1(self, *args):
         parent = self.parent
