@@ -707,16 +707,21 @@ class EventDeck(CardSplay):
             return
         if not self.collide_point(*touch.pos):
             return True
+        return self.draw()
+
+    def draw(self):
         if not self.can_draw:
             return True
         if len(self.cards)==0:
             return True
         if self.parent.clear_and_check_end_game():
             return True
-        self.parent.noisetracker.apply_noise()
+        for t in self.parent.board.iter_tokens('G'):
+            t.frozen=False
         card= self.cards[-1]
         card.face_up = True
         self.move_to([card], self.parent.eventdiscard)
+        self.parent.noisetracker.apply_noise()
         card.activate(self.parent.board)
         self.parent.playerdeck.draw_hand()
         self.parent.stats.rounds+=1
@@ -890,6 +895,7 @@ class MarketToken(Token):
 
 class GuardToken(Token):
     state = StringProperty()
+    frozen = BooleanProperty(False)
 
     def on_state(self, *args):
         self.draw_token()
@@ -958,7 +964,7 @@ class GuardToken(Token):
 class ObjectiveToken(TargetToken):
     has_loot = BooleanProperty(False)
 
-    def on_picked(self, value):
+    def on_picked(self, obj, value):
         if self.picked:
             pa = self.parent.parent.parent
             pa.level_complete()
@@ -1094,7 +1100,7 @@ class Board(RelativeLayout):
         p = self.active_player_token
         #Move guard to player if player is visible
         for t in self.iter_tokens('G'):
-            if t.map_pos!=p.map_pos and t.state not in ['dead','unconscious']:
+            if t.map_pos!=p.map_pos and t.state not in ['dead','unconscious'] and not t.frozen:
                 if 1<=self.dist(t.map_pos, p.map_pos)<=10 and self[p.map_pos] not in ['U']+self.building_types:
                     if not self.has_types_between(t.map_pos, p.map_pos, self.building_types):
                         t.map_pos = p.map_pos
@@ -1102,7 +1108,7 @@ class Board(RelativeLayout):
                         return
         #Move guard to a downed guard if visible
         for t in self.iter_tokens('G'):
-            if t.map_pos==p.map_pos or t.state in ['unconscious','dead']: continue
+            if t.map_pos==p.map_pos or t.state in ['unconscious','dead'] or t.frozen: continue
             closest = (100, None)
             for t0 in self.iter_tokens('G'):
                 if t0.state in ['alert','dozing']: continue
@@ -1192,11 +1198,13 @@ class Board(RelativeLayout):
                 xo = x1a + (yo-y1a)*slope
                 x = int(xo)
                 if xo-x<=0.5:
-                    yield x,y
-                    yield x,y+1
+                    if 0<=x<self.w:
+                        yield x,y
+                        yield x,y+1
                 if xo-x>=0.5:
-                    yield x+1,y
-                    yield x+1,y+1
+                    if 0<=x+1<self.w:
+                        yield x+1,y
+                        yield x+1,y+1
                 y+=1
         else:
             slope = (y2a-y1a)/(x2a-x1a)
@@ -1211,17 +1219,25 @@ class Board(RelativeLayout):
                 yo = y1a + (xo-x1a)*slope
                 y = int(yo)
                 if yo-y<=0.5+1e-4:
-                    yield x,y
-                    yield x+1,y
+                    if 0<=y<self.h:
+                        yield x,y
+                        yield x+1,y
                 if yo-y>=0.5-1e-4:
-                    yield x,y+1
-                    yield x+1,y+1
+                    if 0<=y+1<self.h:
+                        yield x,y+1
+                        yield x+1,y+1
                 x+=1
 
     def iter_types_between(self, pos1, pos2, types,off1=(0,0), off2=(0,0)):
-        for pos in self.iter_between(pos1, pos2, off1, off2):
-            if self[pos] in types:
-                yield pos
+        try:
+            for pos in self.iter_between(pos1, pos2, off1, off2):
+                if self[pos] in types:
+                    yield pos
+        except IndexError:
+            import pdb
+            pdb.set_trace()
+            for pos in self.iter_between(pos1, pos2, off1, off2):
+                print(pos, self[pos])
 
     def has_types_between(self, pos1, pos2, types):
         bases = [tuple(pos1),tuple(pos2)]
@@ -1266,7 +1282,8 @@ class Board(RelativeLayout):
         rad = math.ceil(radius)
         for xoff in range(-rad,rad+1):
             for yoff in range(-rad,rad+1):
-                if xoff*xoff+yoff*yoff<=radius*radius:
+                if max(abs(xoff),abs(yoff))+0.5*min(abs(xoff),abs(yoff))<=radius:
+#                if xoff*xoff+yoff*yoff<=radius*radius:
                     x0 = x+xoff
                     y0 = y+yoff
                     if 0<=y0<self.h and 0<=x0<self.w:
@@ -1289,7 +1306,7 @@ class Board(RelativeLayout):
                     yield t
 
     def active_player_clashing(self):
-        return sum([g.map_pos==self.active_player_token.map_pos and g.state in ['alert','dozing'] for g in self.iter_tokens('G')])
+        return sum([g.map_pos==self.active_player_token.map_pos and g.state in ['alert','dozing'] and g.frozen==False for g in self.iter_tokens('G')])
 
     def num_in_range(self, pos, types, radius=3, blocker_types=None):
         num = 0
@@ -1343,6 +1360,25 @@ class Board(RelativeLayout):
         for c in self.map.cards:
             for m in c.markets:
                 yield self.get_pos_from_card(c,m)
+
+    def iter_lights(self):
+        for c in self.map.cards:
+            for l in c.lights:
+                yield self.get_pos_from_card(c,l)
+
+    def hide_light(self, pos, permanent=False):
+        c,p = self.get_card_and_pos(pos)
+        print(p, c.lights)
+        if p not in c.lights:
+            return False
+        ind = c.lights.index(p)
+        lights = c.lights[:ind]+c.lights[ind+1:]
+        c.light_map(lights)
+        c.draw_grid()
+        def relight_fn(card, *args):
+            card.light_map(card.lights)
+            card.draw_grid()
+        self.parent.parent.eventdiscard.bind(cards = partial(relight_fn, c))
 
     def nearest_guard(self, map_pos, max_range=None, states = ['dozing', 'alert']):
         gts = [t for t in self.tokens if isinstance(t,GuardToken) and t.state in states]
@@ -1543,33 +1579,10 @@ class PlayArea(FloatLayout):
 
         self.eventdeck.can_draw = True
 
-    def clear_state(self):
-        self.hand.clear_card_actions()
-        self.hand.cancel_action()
-        if self.cardselector is not None:
-            self.cardselector.cards = []
-            self.remove_widget(self.cardselector)
-            self.cardselector=None
-
-    def clear_and_check_end_game(self):
-        self.clear_state()
-        if self.board.active_player_clashing(): #Game over condition
-            self.menu_showing=True
-            self.stats.title.text = 'MISSION FAILED'
-            self.hand.can_draw=False
-            return True
-
-    def on_menu_showing(self, *args):
-        if self.menu_showing:
-            if self.stats not in self.children:
-                self.add_widget(self.stats)
-        else:
-            if self.stats in self.children:
-                self.remove_widget(self.stats)
-
     def token_setup(self):
         self.noisetracker.reset()
-        player = PlayerToken()
+#        player = PlayerToken(map_pos=(self.board.w-1,self.board.h-1))
+        player = PlayerToken(map_pos=(0,0))
 
         spawns = []
         for c in self.map.cards:
@@ -1588,6 +1601,31 @@ class PlayArea(FloatLayout):
         markets = [MarketToken(map_pos=s) for s in mkt]
 
         self.board.tokens = [player]+guards+targets+markets+[objective]
+
+    def clear_state(self):
+        if self.cardselector is not None:
+            self.cardselector.cards = []
+            self.remove_widget(self.cardselector)
+            self.cardselector=None
+        self.hand.clear_card_actions()
+        self.hand.cancel_action()
+        self.board.map_choices=[]
+
+    def clear_and_check_end_game(self):
+        self.clear_state()
+        if self.board.active_player_clashing(): #Game over condition
+            self.menu_showing=True
+            self.stats.title.text = 'MISSION FAILED'
+            self.hand.can_draw=False
+            return True
+
+    def on_menu_showing(self, *args):
+        if self.menu_showing:
+            if self.stats not in self.children:
+                self.add_widget(self.stats)
+        else:
+            if self.stats in self.children:
+                self.remove_widget(self.stats)
 
     def restart_game(self):
         self.clear_state()

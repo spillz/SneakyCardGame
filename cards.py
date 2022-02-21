@@ -349,8 +349,16 @@ class CityMap(MapCard):
             if len(best_lightables) == 0:
                 break
             self.lights.append(random.choice(best_lightables))
-            for pos in self.map.iter_types_in_range(self.lights[-1], 'U', blocker_types='B', radius=2):
-                d = dist(pos, self.lights[-1])
+            self.light_map(self.lights[-1:], reset=False)
+
+    def light_map(self, lights, reset=True):
+        if reset:
+            for p in self.map.iter_all():
+                if self.map[p].startswith('L'):
+                    self.map[p] = 'U'
+        for l in lights:
+            for pos in self.map.iter_types_in_range(l, 'U', blocker_types='B', radius=2):
+                d = dist(pos, l)
                 self.map[pos] = f'L{d:1.0f}'
 
     def add_spawns(self):
@@ -640,6 +648,46 @@ class FightAction(PlayerAction):
             playarea.playerprompt.text = f'Fight {self.rounded_remain()}: Select a highlighted guard to attack.'
 
 
+class SmokeBombAction(PlayerAction):
+    base_allowance = 1
+    exhaust = True
+    def __call__(self, message, **kwargs):
+        playarea= self.playarea
+        board = playarea.board
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust)
+            return
+        if message == 'can_stack':
+            return True
+        if message=='map_choice_selected':
+            obj = kwargs['touch_object']
+            guard_choices = [t for t in board.iter_tokens('G') if
+                             t.state in ['dozing','alert'] and
+                             self.rounded_remain()>=1 and
+                             dist(obj.map_pos, t.map_pos)==0]
+            for g in guard_choices:
+                g.frozen = True
+            self.spent += 1
+            board.token_update()
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust)
+            return
+        else:
+            if message=='card_action_selected':
+                self.spent = 0
+
+        guard_choices = [t for t in board.iter_tokens('G') if
+                         t.state in ['dozing','alert'] and
+                         self.rounded_remain()>=1 and
+                         dist(board.active_player_token.map_pos, t.map_pos)==0]
+        map_choices = [board.make_choice(board.active_player_token.map_pos, self, 'touch')]
+        board.map_choices = map_choices
+
+        if len(board.map_choices)<1 and self.spent!=0:
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust)
+        else:
+            playarea.playerprompt.text = f'Fight {self.rounded_remain()}: Select a highlighted guard to attack.'
+
+
 class ClimbAction(PlayerAction):
     def __call__(self, message, **kwargs):
         playarea= self.playarea
@@ -672,7 +720,7 @@ class ClimbAction(PlayerAction):
 class KnockoutAction(PlayerAction):
     base_noise = 0
     can_loot = True #has loot that you can take
-    grapple = True #drags into your space
+    grapple = False #drags into your space
     alert = False #can knockout if alert (also allows KO of guards sharing player's space)
 
     def __call__(self, message, **kwargs):
@@ -706,9 +754,9 @@ class KnockoutAction(PlayerAction):
             playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust)
             pt = board.active_player_token
             if board[pt.map_pos] in board.building_types:
-                pt.map_pos = obj.map_pos
+                pt.map_pos = obj.token.map_pos
             elif self.grapple:
-                obj.map_pos = pt.map_pos
+                obj.token.map_pos = pt.map_pos
             if self.can_loot:
                 playarea.loot1.select_draw(1, draw)
         else:
@@ -782,9 +830,43 @@ class GasAction(PlayerAction):
             playarea.playerprompt.text = f'Shoot arrow {self.rounded_remain()}: Select a space to shoot gas arrow.'
 
 
+class DimmerAction(PlayerAction):
+    radius = 0
+    exhaust=True
+    def __call__(self, message, **kwargs):
+        playarea= self.playarea
+        board = playarea.board
+        if message=='card_action_end':
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust)
+            return
+        if message == 'can_stack':
+            return True
+        if message=='map_choice_selected':
+            obj = kwargs['touch_object']
+            self.spent = dist(board.active_player_token.map_pos, obj.map_pos)
+            board.hide_light(obj.map_pos)
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust)
+            return
+        else:
+            if message=='card_action_selected':
+                self.spent = 0
+        if not board.active_player_clashing():
+            pp = board.active_player_token.map_pos
+            map_choices = [board.make_choice(p, self, 'touch') for p in board.iter_lights()
+                            if 0<=dist(p, pp)<=self.value_allowance() and
+                            board.has_line_of_sight(p, pp, board.building_types)]
+            board.map_choices = map_choices
+        else:
+            board.map_choices = []
+        if self.spent>0:
+            playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust)
+        else:
+            playarea.playerprompt.text = f'Shoot dimmer arrow {self.rounded_remain()}: Select a space to shoot gas arrow.'
+
+
 class LockpickAction(PlayerAction):
     base_allowance = 1
-    noise_per_stack = 1
+#    noise_per_stack = 1
     can_loot = True
     max_loot = 3
     def __call__(self, message, **kwargs):
@@ -853,8 +935,8 @@ class DecoyAction(PlayerAction):
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
-#TODO: Could use this and commented block below to implement a noisy decoy that drags all enemies on card to one place (might be a bit op)
-#            player_c, p = board.get_card_and_pos(board.active_player_token.map_pos)
+            #TODO: Could use this and commented block below to implement a noisy decoy that drags all enemies on card to one place (might be a bit op)
+            #            player_c, p = board.get_card_and_pos(board.active_player_token.map_pos)
             obj = kwargs['touch_object']
             for t in board.tokens:
                 if isinstance(t,board.token_types['G']) and t.state in['alert','dozing'] and 0<dist(t.map_pos,obj.map_pos)<=10:
@@ -981,7 +1063,7 @@ def set_choice_type(pos1, pos2, board, dist_cap=2):
         visible = False
         if board[pos1] not in ['B','U']:
             visible = len([g for g in board.iter_tokens('G')
-                if g.state in ['alert','dozing']
+                if g.state in ['alert','dozing'] and not g.frozen
                 and dist(g.map_pos,pos1)<=10
                 and not board.has_types_between(g.map_pos,pos1,'B')])>0
         if visible:
@@ -1005,6 +1087,10 @@ class TreasureCard(LootCard):
     def get_actions(self, playarea):
         return {'BUY 1+': MarketAction(self, playarea, base_allowance=1, value_per_card=1)}
 
+class SkeletonKey(LootCard):
+    def get_actions(self, playarea):
+        return {'LOCKPICK 4+': LockpickAction(self, playarea, base_allowance=4, value_per_card=1, exhaust=True)}
+
 class MarketCard(PlayerCard):
     pass
 
@@ -1018,13 +1104,17 @@ class RopeArrow(MarketCard):
                 'TRAVERSE 2': GlideAction(self, playarea, base_allowance=2, value_per_card=1, max_height=2)
         }
 
+class DimmerArrow(MarketCard):
+    def get_actions(self, playarea):
+        return {'SHOOT DIMMER 3+': DimmerAction(self, playarea, base_allowance=3, value_per_card=2)}
+
 class DecoyArrow(MarketCard):
     def get_actions(self, playarea):
         return {'SHOOT DECOY 3+': DecoyAction(self, playarea, base_allowance=3, value_per_card=2)}
 
 class SmokeBomb(MarketCard):
-    #Clashing guards become KOd until end of your turn.
-    pass
+    def get_actions(self, playarea):
+        return {'SMOKE BOMB': SmokeBombAction(self, playarea, base_allowance=3, value_per_card=2)}
 
 class Lure(MarketCard):
     #Lures but does not alert guard in sight of player to a position adjacent
@@ -1071,7 +1161,7 @@ def make_market_cards(pa):
     return [h(pa=pa) for h in MarketCard.__subclasses__() for i in range (20)]
 
 def make_player_cards(pa):
-    return [m(pa=pa) for m in StartPlayerCard.__subclasses__() for i in range(2)] + [m(pa=pa) for m in [DecoyArrow, RopeArrow, GasArrow]]
+    return [m(pa=pa) for m in StartPlayerCard.__subclasses__() for i in range(2)] + [m(pa=pa) for m in [DecoyArrow, RopeArrow, GasArrow, SmokeBomb, DimmerArrow]]
 
 def make_trait_cards(pa):
     return [m(pa=pa) for m in [MoveTrait, FightTrait]]

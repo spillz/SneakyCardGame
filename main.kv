@@ -219,14 +219,15 @@
             points: self.right-self.width//10, self.top, self.right, self.top, self.right, self.top-self.width//10
 
 
-
 <Token>:
     map_pos: 0,0
     off: 0,0
     size_hint: None, None
 
+
 <GuardToken>:
     state: 'dozing' #dozing, alert, unconscious, dead
+    frozen: False #can't move despite their state
 
 
 <TargetToken>:
