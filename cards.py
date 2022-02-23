@@ -43,7 +43,12 @@ class Card(BoxLayout):
 
 
 class MapCard(Card):
+    def __init__(self, card, **kwargs):
+        for k in kwargs:
+            self.__dict__[k] = kwargs[k]
     building_types = ['B','B0']
+    card_level = 1 #Difficulty level of the card 1-5
+
     def __init__(self,**kwargs):
         self.w = 10
         self.h = 14
@@ -277,7 +282,7 @@ class CityMap(MapCard):
     def make_map(self):
         self.map = Map(w=self.w,h=self.h)
 
-        density = random.uniform(0.3, 0.7)
+        density = random.uniform(0.2, 0.55) + 0.05*self.card_level
         filled_area = 0
         filled_borders = [0,0,0,0] #left, bottom, right, top
         i=0
@@ -343,7 +348,7 @@ class CityMap(MapCard):
 
     def add_lights(self):
         self.lights = []
-        num_lights = random.randint(1,3)
+        num_lights = random.randint(1,self.card_level)
         for i in range(num_lights):
             best_lightables = self.get_best_lightables()
             if len(best_lightables) == 0:
@@ -364,13 +369,13 @@ class CityMap(MapCard):
     def add_spawns(self):
         '''add the waypoints where guards spwan'''
         self.spawns=[]
-        num_spawns = random.randint(3,4)
+        num_spawns = random.randint(self.card_level,self.card_level+1)
         for s in range(num_spawns):
             new_spawn = None
             options = [p for p in self.map.iter_types(self.pavement, sub_rect=[1,1,self.map.w-1,self.map.h-1])] #,sub_rect=[1,1,self.map.w-1,self.map.h-1]
             random.shuffle(options)
             for pos in options:
-                if len(self.spawns)==0 or min([dist(pos,s) for s in self.spawns])>5:
+                if len(self.spawns)==0 or min([dist(pos,s) for s in self.spawns])>6-self.card_level:
                     new_spawn = pos
                     break
             if new_spawn is not None:
@@ -381,7 +386,7 @@ class CityMap(MapCard):
     def add_waypoints(self):
         '''add the waypoints where guards traverse'''
         self.waypoints=[]
-        num_waypoints = 8-len(self.spawns)
+        num_waypoints = 4 + self.card_level - len(self.spawns) - random.randint(0,1)
         for s in range(num_waypoints):
             new_wp = None
             options = [p for p in self.map.iter_types(self.pavement, sub_rect=[1,1,self.map.w-1,self.map.h-1])]
@@ -595,7 +600,6 @@ class GlideAction(PlayerAction):
             return False
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
-            print('glide action selected',obj.map_pos,board.active_player_token.map_pos)
             self.spent += dist(obj.map_pos,board.active_player_token.map_pos)
             board.active_player_token.map_pos = obj.map_pos
             playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust)

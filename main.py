@@ -1187,13 +1187,13 @@ class Board(RelativeLayout):
             return
         if abs(y2a-y1a)>abs(x2a-x1a):
             slope = (x2a-x1a)/(y2a-y1a)
-            if y1>y2:
+            if y1a>y2a:
                 y1,y2 = y2,y1
                 x1,x2 = x2,x1
                 y1a,y2a = y2a,y1a
                 x1a,x2a = x2a,x1a
             y=int(y1)
-            while y<y2:
+            while y<y2a:
                 yo = y+0.5
                 xo = x1a + (yo-y1a)*slope
                 x = int(xo)
@@ -1208,13 +1208,13 @@ class Board(RelativeLayout):
                 y+=1
         else:
             slope = (y2a-y1a)/(x2a-x1a)
-            if x1>x2:
+            if x1a>x2a:
                 y1,y2 = y2,y1
                 x1,x2 = x2,x1
                 x1a,x2a = x2a,x1a
                 y1a,y2a = y2a,y1a
             x=int(x1)
-            while x<x2:
+            while x<x2a:
                 xo = x+0.5
                 yo = y1a + (xo-x1a)*slope
                 y = int(yo)
@@ -1258,7 +1258,13 @@ class Board(RelativeLayout):
             for add2 in [(-e,-e),(-e,e),(e,-e),(e,e)]:
                 blockers = [p for p in self.iter_types_between(pos1, pos2, types, add1, add2) if p not in bases]
                 if len(blockers)==0:
-                    blockers = [p for p in self.iter_types_between(pos1, pos2, types, add1, add2) if p not in bases]
+#                    tmp = [p for p in self.iter_between(pos1, pos2, add1, add2)]
+#                    print('CLEAR',pos1, pos2, add1, add2, types, tmp)
+#                    if len(tmp)==0:
+#                        import pdb
+#                        pdb.set_trace()
+#                        [p for p in self.iter_between(pos1, pos2, add1, add2)]
+#                    blockers = [p for p in self.iter_types_between(pos1, pos2, types, add1, add2) if p not in bases]
                     return True
         return False
 
@@ -1368,7 +1374,6 @@ class Board(RelativeLayout):
 
     def hide_light(self, pos, permanent=False):
         c,p = self.get_card_and_pos(pos)
-        print(p, c.lights)
         if p not in c.lights:
             return False
         ind = c.lights.index(p)
@@ -1440,6 +1445,13 @@ class Board(RelativeLayout):
                     spots[tuple(pos)] = cur_dist
                     self.walkable_spots(pos, dist, spots)
         return spots
+
+
+class Mission:
+    def events(self):
+        pass
+    def maps(self):
+        pass
 
 
 class Stats(BoxLayout):
