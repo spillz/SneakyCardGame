@@ -119,6 +119,7 @@ class CardSelector(BoxLayout):
             self.card_splay.add_widget(c)
             c.bind(on_touch_up=self.on_touch_up_card)
             c.bind(on_touch_down=self.on_touch_down_card)
+            c.size = self.card_size
             c.face_up = True
 
     def on_touch_down_card(self, card, touch):
@@ -288,6 +289,7 @@ class CardSplay(FloatLayout):
                 c.selected=False
         for c in self.cards:
             self.add_widget(c)
+            c.size = self.parent.card_size
             c.selected=False
         self.shown_card = None
         self.splay_cards()
@@ -493,16 +495,23 @@ class ActiveCardSplay(CardSplay):
             self.parent.hand.cancel_action()
         return True
 
-    def discard_used(self, unused=0, noise=0, exhaust=False):
+    def discard_used(self, unused=0, noise=0, exhaust_on_use=None, tap_on_use=None):
         if unused>0:
-            cards = self.cards[:unused]
-            self.move_to(cards, self.parent.hand)
-        if exhaust:
-            self.move_to(self.cards[-1:], self.parent.exhausted)
-        cards = self.cards[:]
-        self.move_to(cards, self.parent.playerdiscard)
+            cards0 = self.cards[:unused]
+            self.move_to(cards0, self.parent.hand)
+        if len(self.cards)>0:
+            if exhaust_on_use is not None:
+                if isinstance(exhaust_on_use, cards.TraitCard):
+                    self.parent.playertraits.move_to([exhaust_on_use], self.parent.exhausted)
+                else:
+                    self.move_to([exhaust_on_use], self.parent.exhausted)
+            if tap_on_use is not None:
+                if isinstance(tap_on_use, cards.TraitCard):
+                    tap_on_use.tapped = True
+        cards0 = self.cards[:]
+        self.move_to(cards0, self.parent.playerdiscard)
         self.parent.hand.clear_selection()
-        self.parent.noisetracker.noise += noise
+#        self.parent.noisetracker.noise += noise
 
 
 class ActionSelectorOption(Label):
@@ -720,8 +729,10 @@ class EventDeck(CardSplay):
             t.frozen=False
         card= self.cards[-1]
         card.face_up = True
+        for c in self.parent.playertraits.cards:
+            c.tapped = False
         self.move_to([card], self.parent.eventdiscard)
-        self.parent.noisetracker.apply_noise()
+#        self.parent.noisetracker.apply_noise()
         card.activate(self.parent.board)
         self.parent.playerdeck.draw_hand()
         self.parent.stats.rounds+=1
@@ -743,20 +754,20 @@ class EventDiscard(CardSplay):
             c.face_up = True
 
 
-class NoiseTracker(Label):
-    def reset(self):
-        self.noise = 0
-
-    def apply_noise(self):
-        board = self.parent.board
-        pp = board.active_player_token.map_pos
-        for t in board.iter_tokens('G'):
-            if board.dist(pp,t.map_pos)<=self.noise:
-                if t.state == 'alert' and board[pp] not in board.building_types:
-                    t.map_pos = pp
-                elif t.state == 'dozing':
-                    t.state = 'alert'
-        self.noise = 0
+#class NoiseTracker(Label):
+#    def reset(self):
+#        self.noise = 0
+#
+#    def apply_noise(self):
+#        board = self.parent.board
+#        pp = board.active_player_token.map_pos
+#        for t in board.iter_tokens('G'):
+#            if board.dist(pp,t.map_pos)<=self.noise:
+#                if t.state == 'alert' and board[pp] not in board.building_types:
+#                    t.map_pos = pp
+#                elif t.state == 'dozing':
+#                    t.state = 'alert'
+#        self.noise = 0
 
 
 class Map(GridLayout):
@@ -772,6 +783,7 @@ class Map(GridLayout):
                 self.remove_widget(c)
         for c in self.cards:
             c.face_up = True
+            c.size_hint = (1,1)
             self.add_widget(c)
 
     def on_touch_up(self,touch):
@@ -1081,7 +1093,7 @@ class Board(RelativeLayout):
             (self.parent.width - self.active_player_token.width)//4,
             (self.parent.height - self.active_player_token.height)//4
         )
-        self.parent.scroll_to(self.active_player_token,padding=pad)
+        self.parent.scroll_to(self.active_player_token,padding=200)
 
 
     def on_space_size(self, *args):
@@ -1193,7 +1205,7 @@ class Board(RelativeLayout):
                 y1a,y2a = y2a,y1a
                 x1a,x2a = x2a,x1a
             y=int(y1)
-            while y<y2a:
+            while y<=y2:
                 yo = y+0.5
                 xo = x1a + (yo-y1a)*slope
                 x = int(xo)
@@ -1214,7 +1226,7 @@ class Board(RelativeLayout):
                 x1a,x2a = x2a,x1a
                 y1a,y2a = y2a,y1a
             x=int(x1)
-            while x<x2a:
+            while x<=x2:
                 xo = x+0.5
                 yo = y1a + (xo-x1a)*slope
                 y = int(yo)
@@ -1447,13 +1459,6 @@ class Board(RelativeLayout):
         return spots
 
 
-class Mission:
-    def events(self):
-        pass
-    def maps(self):
-        pass
-
-
 class Stats(BoxLayout):
     kills = NumericProperty()
     knockouts = NumericProperty()
@@ -1530,69 +1535,67 @@ class PlayArea(FloatLayout):
         self.instructions = None
         self.cardselector = None
         self.first_start = True
+        self.mission = None
         self.action_selector = None
         self.stats = Stats()
 
     def on_parent(self, *args):
-        self.mapcards = cards.make_map_cards(self, self.map_card_grid_size[0], self.map_card_grid_size[1], self.map_size[0]*self.map_size[1])
         self.playercards = cards.make_player_cards(self)
         self.traitcards = cards.make_trait_cards(self)
         self.lootcards = cards.make_loot_cards(self)
         self.marketcards = cards.make_market_cards(self)
-        self.eventcards = cards.make_event_cards(self)
 
         self.restart_game()
 
-    def card_setup(self):
-        random.shuffle(self.playercards)
-        random.shuffle(self.mapcards)
-        for l in self.lootcards:
-            random.shuffle(l)
-        random.shuffle(self.marketcards)
-        random.shuffle(self.eventcards)
-
+    def card_setup(self, restart=False):
         #First clear everything out (this will remove all card widgets from the splay objects)
-        self.map.cards[:] = []
+        self.map.cards = []
 
-        self.hand.cards[:] = []
-        self.playerdeck.cards[:] = []
-        self.playerdiscard.cards[:] = []
-        self.playertraits.cards[:] = []
-        self.activecardsplay.cards[:] = []
+        self.loot1.cards = []
+        self.loot2.cards = []
+        self.loot3.cards = []
 
-        self.loot1.cards[:] = []
-        self.loot2.cards[:] = []
-        self.loot3.cards[:] = []
+        self.exhausted.cards = []
 
-        self.exhausted.cards[:] = []
+        self.marketdeck.cards = []
 
-        self.marketdeck.cards[:] = []
+        self.eventdeck.cards = []
+        self.eventdiscard.cards = []
 
-        self.eventdeck.cards[:] = []
-        self.eventdiscard.cards[:] = []
+        if not restart:
+            player_cards = self.playerdeck.cards + self.playerdiscard.cards + self.hand.cards + self.activecardsplay.cards
+        self.hand.cards = []
+        self.playerdeck.cards = []
+        self.playerdiscard.cards = []
+        self.activecardsplay.cards = []
+        if restart:
+            self.playertraits.cards = []
 
         #Now assign cards to decks
-        self.map.cards[:] = self.mapcards #[:self.map.rows*self.map.cols]
+        if restart:
+            random.shuffle(self.playercards)
+            self.playerdeck.cards = self.playercards
+            self.playertraits.cards = self.traitcards[:]
+        else:
+            random.shuffle(player_cards)
+            self.playerdeck.cards = player_cards
 
-        self.playerdeck.cards[:] = self.playercards[:]
-        self.playerdiscard.cards[:] = []
-        self.playertraits.cards[:] = self.traitcards[:]
-
+        for l in self.lootcards:
+            random.shuffle(l)
         self.loot1.cards[:] = self.lootcards[0][:]
         self.loot2.cards[:] = self.lootcards[1][:]
         self.loot3.cards[:] = self.lootcards[2][:]
 
-        self.exhausted.cards[:] = []
-
+        random.shuffle(self.marketcards)
         self.marketdeck.cards[:] = self.marketcards[:]
 
-        self.eventdeck.cards[:] = self.eventcards[:]
-        self.eventdiscard.cards[:] = []
-
+        self.mission = cards.ContactMission(mission_level=self.stats.missions+1)
+        self.map.cards[:] = self.mission.setup_map(self) #[:self.map.rows*self.map.cols]
+        self.eventdeck.cards[:] = self.mission.setup_events(self)
         self.eventdeck.can_draw = True
 
     def token_setup(self):
-        self.noisetracker.reset()
+#        self.noisetracker.reset()
 #        player = PlayerToken(map_pos=(self.board.w-1,self.board.h-1))
         player = PlayerToken(map_pos=(0,0))
 
@@ -1613,6 +1616,8 @@ class PlayArea(FloatLayout):
         markets = [MarketToken(map_pos=s) for s in mkt]
 
         self.board.tokens = [player]+guards+targets+markets+[objective]
+        self.board.scroll_to_player()
+
 
     def clear_state(self):
         if self.cardselector is not None:
@@ -1641,7 +1646,7 @@ class PlayArea(FloatLayout):
 
     def restart_game(self):
         self.clear_state()
-        self.card_setup()
+        self.card_setup(restart=True)
         self.token_setup()
         self.stats.title.text = 'MISSION IN PROGRESS'
 
