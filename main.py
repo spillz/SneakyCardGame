@@ -1205,7 +1205,7 @@ class Board(RelativeLayout):
                 y1a,y2a = y2a,y1a
                 x1a,x2a = x2a,x1a
             y=int(y1)
-            while y<=y2:
+            while y<y2:
                 yo = y+0.5
                 xo = x1a + (yo-y1a)*slope
                 x = int(xo)
@@ -1226,7 +1226,7 @@ class Board(RelativeLayout):
                 x1a,x2a = x2a,x1a
                 y1a,y2a = y2a,y1a
             x=int(x1)
-            while x<=x2:
+            while x<x2:
                 xo = x+0.5
                 yo = y1a + (xo-x1a)*slope
                 y = int(yo)
