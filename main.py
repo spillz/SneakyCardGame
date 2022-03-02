@@ -635,6 +635,40 @@ class Hand(CardSplay):
             self.parent.playerprompt.text = 'Select a card from your hand to play'
 
 
+class SkillDeck(CardSplay):
+    def on_touch_up(self,touch):
+        super().on_touch_up(touch)
+
+    def select_draw(self, num_to_pick=2, num_offered=4):
+        #TODO: This is a placeholder that just gives the top card
+        #Instead we should pop up a card select that lets the player
+        #choose num_to_pick from num_offered cards. Player can turn
+        #down some or all of the offer
+        cards = self.cards[-num_offered:]
+        if len(cards)==0:
+            print('Warning: No skill cards available to pick')
+            return
+        for c in cards:
+            self.cards.remove(c)
+        self.parent.cardselector = CardSelector(num_to_pick=num_to_pick)
+        self.parent.add_widget(self.parent.cardselector)
+        self.parent.cardselector.bind(but_ok_pressed=self.card_picked)
+        self.parent.cardselector.cards = cards
+
+    def card_picked(self, cs, pressed):
+        for c in cs.cards:
+            cs.cards.remove(c)
+            if not c.selected:
+                c.face_up = False
+                self.cards.insert(0,c)
+            else:
+                self.parent.hand.cards.append(c)
+                c.face_up = True
+                c.selected = False
+        self.parent.remove_widget(cs)
+        self.parent.cardselector = None
+
+
 class LootDeck(CardSplay):
     def on_touch_up(self,touch):
         super().on_touch_up(touch)
@@ -1093,7 +1127,7 @@ class Board(RelativeLayout):
             (self.parent.width - self.active_player_token.width)//4,
             (self.parent.height - self.active_player_token.height)//4
         )
-        self.parent.scroll_to(self.active_player_token,padding=200)
+        self.parent.scroll_to(self.active_player_token,padding=pad)
 
 
     def on_space_size(self, *args):
@@ -1157,6 +1191,7 @@ class Board(RelativeLayout):
         for p in clashes:
             for t,o in zip(clashes[p],[[-0.25,-0.25],[0.25,0.25],[-0.25,0.25],[0.25,-0.25]][:len(clashes[p])]):
                 t.off = o
+        self.scroll_to_player()
 
     def __getitem__(self, pos):
         card, card_pos = self.get_card_and_pos(pos)
@@ -1544,20 +1579,14 @@ class PlayArea(FloatLayout):
         self.traitcards = cards.make_trait_cards(self)
         self.lootcards = cards.make_loot_cards(self)
         self.marketcards = cards.make_market_cards(self)
+        self.skillcards = cards.make_skill_cards(self)
 
         self.restart_game()
 
     def card_setup(self, restart=False):
         #First clear everything out (this will remove all card widgets from the splay objects)
         self.map.cards = []
-
-        self.loot1.cards = []
-        self.loot2.cards = []
-        self.loot3.cards = []
-
         self.exhausted.cards = []
-
-        self.marketdeck.cards = []
 
         self.eventdeck.cards = []
         self.eventdiscard.cards = []
@@ -1570,24 +1599,29 @@ class PlayArea(FloatLayout):
         self.activecardsplay.cards = []
         if restart:
             self.playertraits.cards = []
+            self.loot1.cards = []
+            self.loot2.cards = []
+            self.loot3.cards = []
+            self.marketdeck.cards = []
+            self.skilldeck.cards = []
 
         #Now assign cards to decks
         if restart:
             random.shuffle(self.playercards)
             self.playerdeck.cards = self.playercards
             self.playertraits.cards = self.traitcards[:]
+            for l in self.lootcards:
+                random.shuffle(l)
+            self.loot1.cards[:] = self.lootcards[0][:]
+            self.loot2.cards[:] = self.lootcards[1][:]
+            self.loot3.cards[:] = self.lootcards[2][:]
+            random.shuffle(self.marketcards)
+            self.marketdeck.cards[:] = self.marketcards[:]
+            random.shuffle(self.skillcards)
+            self.skilldeck.cards[:] = self.skillcards[:]
         else:
             random.shuffle(player_cards)
             self.playerdeck.cards = player_cards
-
-        for l in self.lootcards:
-            random.shuffle(l)
-        self.loot1.cards[:] = self.lootcards[0][:]
-        self.loot2.cards[:] = self.lootcards[1][:]
-        self.loot3.cards[:] = self.lootcards[2][:]
-
-        random.shuffle(self.marketcards)
-        self.marketdeck.cards[:] = self.marketcards[:]
 
         self.mission = cards.ContactMission(mission_level=self.stats.missions+1)
         self.map.cards[:] = self.mission.setup_map(self) #[:self.map.rows*self.map.cols]
@@ -1656,6 +1690,7 @@ class PlayArea(FloatLayout):
         self.token_setup()
         self.stats.next.active=False
         self.stats.title.text = 'MISSION IN PROGRESS'
+        self.skilldeck.select_draw(2,4)
 
     def level_complete(self):
         self.clear_state()

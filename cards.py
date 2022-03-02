@@ -997,6 +997,7 @@ class MarketAction(PlayerAction):
         else:
             playarea.playerprompt.text = f'Buy {self.rounded_remain()}: Select a market card to buy.'
 
+
 #Trait cards: player specific actions and powers are captured in their trait cards. Cards are represented in a stack but their abilities are always available (unless otherwise noted)
 class TraitCard(Card):
     tapped = BooleanProperty(False)
@@ -1101,6 +1102,9 @@ class StartPlayerCard(PlayerCard): #TODO: pretty ugly to use a subclass for this
 class LootCard(PlayerCard):
     pass
 
+class SkillCard(PlayerCard):
+    pass
+
 class TreasureCard(LootCard):
     def get_actions(self, playarea):
         return {'BUY 1+': MarketAction(self, playarea, base_allowance=1, value_per_card=1, exhaust_on_use=self)}
@@ -1140,11 +1144,11 @@ class Lure(MarketCard):
 
 class BasicMove(StartPlayerCard):
     def get_actions(self, playarea):
-        return {'MOVE 2+': MoveAction(self, playarea, base_allowance=2, value_per_card=2)}
+        return {'MOVE 1+': MoveAction(self, playarea, base_allowance=1, value_per_card=1)}
 
 class BasicAttack(StartPlayerCard):
     def get_actions(self, playarea):
-        return {'ATTACK 2+': FightAction(self, playarea, base_allowance=2)}
+        return {'ATTACK 1+': FightAction(self, playarea, base_allowance=2)}
 
 class BasicClimb(StartPlayerCard):
     def get_actions(self, playarea):
@@ -1165,6 +1169,34 @@ class BasicArrow(StartPlayerCard):
 class BasicLockpick(StartPlayerCard):
     def get_actions(self, playarea):
         return {'LOCKPICK 1+': LockpickAction(self, playarea, base_allowance=1)}
+
+class EfficientMove(SkillCard):
+    def get_actions(self, playarea):
+        return {'MOVE 1.5+': MoveAction(self, playarea, base_allowance=1, value_per_card=1)}
+
+class EfficientAttack(SkillCard):
+    def get_actions(self, playarea):
+        return {'ATTACK 2+': FightAction(self, playarea, base_allowance=2)}
+
+class EfficientClimb(SkillCard):
+    def get_actions(self, playarea):
+        return {'CLIMB 1.5': ClimbAction(self, playarea)}
+
+class EfficientSneak(SkillCard):
+    def get_actions(self, playarea):
+        return {'SNEAK 1+': MoveAction(self, playarea, base_allowance=1, value_per_card=1, base_noise=0, noise_per_stack=0)}
+
+class EfficientKockout(SkillCard):
+    def get_actions(self, playarea):
+        return {'KNOCKOUT': KnockoutAction(self, playarea)} #TODO: FIXME
+
+class EfficientArrow(SkillCard):
+    def get_actions(self, playarea):
+        return {'SHOOT ARROW 5': ArrowAction(self, playarea, base_allowance=5, value_per_card=2, exhaust_on_use=self)}
+
+class EfficientLockpick(SkillCard):
+    def get_actions(self, playarea):
+        return {'LOCKPICK 2+': LockpickAction(self, playarea, base_allowance=2)}
 
 
 class Mission(Card):
@@ -1218,12 +1250,14 @@ class AssassinMission(Mission):
     def setup_map(self):
         pass
 
-
 def make_map_cards(pa, w, h, n):
     return [m(pa=pa, w=w, h=h) for m in MapCard.__subclasses__() for i in range(n)]
 
 def make_event_cards(pa):
     return [m(pa=pa) for m in EventCard.__subclasses__() for i in range(3)]
+
+def make_skill_cards(pa):
+    return [h(pa=pa) for h in SkillCard.__subclasses__() for j in range(10)]
 
 def make_loot_cards(pa):
     return [[h(pa=pa) for h in LootCard.__subclasses__() for j in range(10)] for i in range(3)]

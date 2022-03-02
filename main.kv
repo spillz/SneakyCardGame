@@ -140,6 +140,9 @@
 <Exhausted>:
     size_hint: None, None
 
+<SkillDeck>:
+    size_hint: None, None
+
 <LootDeck>:
     size_hint: None, None
 
@@ -388,6 +391,7 @@
     loot2: loot2
     loot3: loot3
     marketdeck: marketdeck
+    skilldeck: skilldeck
     eventdeck: eventdeck
     eventdiscard: eventdiscard
     board: board
@@ -458,6 +462,13 @@
         size: root.card_size[0]*6//5, root.card_size[1]
         x: root.width
         y: 2*root.card_size[1]
+    SkillDeck:
+        id: skilldeck
+        text: 'SKILLS'
+        size_hint: None, None
+        size: root.card_size[0]*6//5, root.card_size[1]
+        x: root.width
+        y: 3*root.card_size[1]
     Exhausted:
         id: exhausted
         text: 'EXHAUSTED\nCARDS PILE'
