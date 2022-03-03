@@ -13,6 +13,7 @@ import os
 import math
 #from PIL import Image as PImage, ImageDraw, ImageFont
 import random
+import time
 
 def dist(pos1, pos2):
     dx = abs(pos1[0]-pos2[0])
@@ -1144,7 +1145,7 @@ class Lure(MarketCard):
 
 class BasicMove(StartPlayerCard):
     def get_actions(self, playarea):
-        return {'MOVE 1+': MoveAction(self, playarea, base_allowance=1, value_per_card=1)}
+        return {'MOVE 1.5+': MoveAction(self, playarea, base_allowance=1.5, value_per_card=1.5)}
 
 class BasicAttack(StartPlayerCard):
     def get_actions(self, playarea):
@@ -1172,7 +1173,7 @@ class BasicLockpick(StartPlayerCard):
 
 class EfficientMove(SkillCard):
     def get_actions(self, playarea):
-        return {'MOVE 1.5+': MoveAction(self, playarea, base_allowance=1, value_per_card=1)}
+        return {'MOVE 2+': MoveAction(self, playarea, base_allowance=2, value_per_card=2)}
 
 class EfficientAttack(SkillCard):
     def get_actions(self, playarea):
@@ -1184,7 +1185,7 @@ class EfficientClimb(SkillCard):
 
 class EfficientSneak(SkillCard):
     def get_actions(self, playarea):
-        return {'SNEAK 1+': MoveAction(self, playarea, base_allowance=1, value_per_card=1, base_noise=0, noise_per_stack=0)}
+        return {'SNEAK 1.5+': MoveAction(self, playarea, base_allowance=1, value_per_card=1.5, base_noise=0, noise_per_stack=0)}
 
 class EfficientKockout(SkillCard):
     def get_actions(self, playarea):
@@ -1220,6 +1221,7 @@ class ContactMission(Mission):
         return events
 
     def setup_map(self, playarea):
+        t = time.time()
         w, h = playarea.map_card_grid_size
         map_cards = []
         #Mission level scaling
@@ -1229,6 +1231,7 @@ class ContactMission(Mission):
             for x in range(playarea.map_size[0]):
                 lev = 1+x//2 + (x>=lev_thresh)*lev_add_on #cards ramp up difficulty from left to right
                 map_cards.append(CityMap(pa=playarea, w=w, h=h, card_level=lev))
+        print('Map build took',time.time()-t,'seconds.')
         return map_cards
 
 class DeliveryMission(Mission):

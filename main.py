@@ -1679,10 +1679,13 @@ class PlayArea(FloatLayout):
                 self.remove_widget(self.stats)
 
     def restart_game(self):
+        import time
+        t = time.time()
         self.clear_state()
         self.card_setup(restart=True)
         self.token_setup()
         self.stats.title.text = 'MISSION IN PROGRESS'
+        print('restart game took',time.time()-t,'seconds')
 
     def next_level(self):
         self.clear_state()
