@@ -1221,7 +1221,6 @@ class ContactMission(Mission):
         return events
 
     def setup_map(self, playarea):
-        t = time.time()
         w, h = playarea.map_card_grid_size
         map_cards = []
         #Mission level scaling
@@ -1231,7 +1230,6 @@ class ContactMission(Mission):
             for x in range(playarea.map_size[0]):
                 lev = 1+x//2 + (x>=lev_thresh)*lev_add_on #cards ramp up difficulty from left to right
                 map_cards.append(CityMap(pa=playarea, w=w, h=h, card_level=lev))
-        print('Map build took',time.time()-t,'seconds.')
         return map_cards
 
 class DeliveryMission(Mission):
