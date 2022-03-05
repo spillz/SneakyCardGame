@@ -568,7 +568,8 @@ class MoveAction(PlayerAction):
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
             self.spent += dist(obj.map_pos,board.active_player_token.map_pos)
-            playarea.board.active_player_token.map_pos = obj.map_pos
+            board.alert_nearby_guards(self.base_noise)
+            board.active_player_token.map_pos = obj.map_pos
         else:
             if message=='card_action_selected':
                 self.spent = 0
@@ -596,6 +597,7 @@ class GlideAction(PlayerAction):
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
             self.spent += dist(obj.map_pos,board.active_player_token.map_pos)
+            board.alert_nearby_guards(self.base_noise)
             board.active_player_token.map_pos = obj.map_pos
             playarea.activecardsplay.discard_used(self.cards_unused(), self.noise_made(), self.exhaust_on_use, self.tap_on_use)
             return
@@ -633,6 +635,12 @@ class FightAction(PlayerAction):
             obj.token.state = 'dead'
             self.spent += 1
             board.token_update()
+            #Fighting wakes up all guards on the player's card
+            c, p = board.get_card_and_pos(board.active_player_token.map_pos)
+            for g in board.iter_tokens('G'):
+                if g.state == 'dozing':
+                    if board.get_card_and_pos(g.map_pos)[0] == c:
+                        g.state = 'alert'
         else:
             if message=='card_action_selected':
                 self.spent = 0
@@ -697,6 +705,7 @@ class ClimbAction(PlayerAction):
             return False
         if message=='map_choice_selected':
             obj = kwargs['touch_object']
+            board.alert_nearby_guards(self.base_noise)
             playarea.board.active_player_token.map_pos = obj.map_pos
             self.spent = self.value_allowance()
         else:
@@ -771,6 +780,7 @@ class ArrowAction(PlayerAction):
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
+            board.alert_nearby_guards(self.base_noise)
             obj = kwargs['touch_object']
             obj.token.state = 'dead'
             self.spent = dist(board.active_player_token.map_pos, obj.token.map_pos)
@@ -803,6 +813,7 @@ class GasAction(PlayerAction):
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
+            board.alert_nearby_guards(self.base_noise)
             obj = kwargs['touch_object']
             self.spent = dist(board.active_player_token.map_pos, obj.map_pos)
             guards_affected = [t for t in board.iter_tokens('G') if t.state in ['dozing','alert'] and 0<=dist(obj.map_pos, t.map_pos)<=self.radius]
@@ -837,6 +848,7 @@ class DimmerAction(PlayerAction):
         if message == 'can_stack':
             return True
         if message=='map_choice_selected':
+            board.alert_nearby_guards(self.base_noise)
             obj = kwargs['touch_object']
             self.spent = dist(board.active_player_token.map_pos, obj.map_pos)
             board.hide_light(obj.map_pos)
@@ -878,8 +890,8 @@ class LockpickAction(PlayerAction):
             if len(target)>0:
                 target = target[0]
                 pick = self.value_allowance()
-                if pick>=target.lock_level:
-                    #TODO: Clear the target
+                board.alert_nearby_guards(self.base_noise)
+                if pick>=target.lock_level: #TODO: This check should happen earlier
                     target.picked=True
                     board.tokens.remove(target)
                     self.spent = pick
@@ -888,6 +900,7 @@ class LockpickAction(PlayerAction):
                         loot_decks[target.loot_level-1].select_draw(1, 1 + pick - target.lock_level)
                         self.loot_pos = target.map_pos
             else:
+                board.alert_nearby_guards(self.base_noise)
                 if self.loot_pos is None:
                     self.spent=1
                 board.active_player_token.map_pos = obj.map_pos
@@ -968,6 +981,7 @@ class MarketAction(PlayerAction):
         if message == 'can_stack':
             return isinstance(kwargs['stacked_card'],TreasureCard) #TODO: Instead base on wheter the card has a MarketAction action
         if message=='map_choice_selected':
+            board.alert_nearby_guards(self.base_noise)
             obj = kwargs['touch_object']
             market = [t for t in board.iter_tokens(token_type='M') if t.map_pos==obj.map_pos]
             if len(market)>0:

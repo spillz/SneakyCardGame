@@ -1545,6 +1545,12 @@ class Board(RelativeLayout):
                     self.walkable_spots(pos, dist, spots)
         return spots
 
+    def alert_nearby_guards(self, radius):
+        p = self.active_player_token
+        for g in self.iter_tokens('G'):
+            if g.state == 'dozing':
+                if self.dist(g.map_pos, p.map_pos)<=radius:
+                    g.state = 'alert'
 
 class Stats(BoxLayout):
     kills = NumericProperty()
