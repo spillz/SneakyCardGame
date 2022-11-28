@@ -21,10 +21,10 @@ class InputHandler {
 //        document.addEventListener('ondblclick', function(ev){that.process_dblclick(ev);}, true);
 //        document.addEventListener('onmouseenter', function(ev){that.process_mouseenter(ev);}, true);
 //        document.addEventListener('onmouseleave', function(ev){that.process_mouseleave(ev);}, true);
-        canvas.addEventListener('mousedown', function(ev){that.process_mouse(ev, 'touch_down');}, true);
-        canvas.addEventListener('mousemove', function(ev){that.process_mouse(ev, 'touch_move');}, true);
-        canvas.addEventListener('mouseout', function(ev){that.process_mouse(ev, 'touch_cancel');}, true);
-        canvas.addEventListener('mouseup', function(ev){that.process_mouse(ev, 'touch_up');}, true);
+        canvas.addEventListener('mousedown', function(ev){that.process_mouse(ev, 'mouse_down');}, true);
+        canvas.addEventListener('mousemove', function(ev){that.process_mouse(ev, 'mouse_move');}, true);
+        canvas.addEventListener('mouseout', function(ev){that.process_mouse(ev, 'mouse_cancel');}, true);
+        canvas.addEventListener('mouseup', function(ev){that.process_mouse(ev, 'mouse_up');}, true);
 //        document.addEventListener('onmouseover', function(ev){that.process_mouseover(ev);}, true);
 
         canvas.addEventListener('touchstart', function(ev){that.process_touch(ev, 'touch_down');}, false);
@@ -32,6 +32,9 @@ class InputHandler {
         canvas.addEventListener('touchcancel', function(ev){that.process_touch(ev, 'touch_cancel');}, false);
         canvas.addEventListener('touchend', function(ev){that.process_touch(ev, 'touch_up');}, false);
         document.addEventListener('backbutton', function(ev){that.process_back(ev);}, true);
+
+        canvas.addEventListener("wheel", function(ev){that.process_wheel(ev, 'wheel');}, false);
+
 
     }
     process_back(ev) {
@@ -54,6 +57,17 @@ class InputHandler {
         ev.preventDefault();
     }
     process_mouse(ev, name) {
+        // Use the event's data to call out to the appropriate gesture handlers
+        let canvas = this.canvas;
+        //t.identifier, t.clientX, t.clientY
+        for(let w of game.board.iter()) {
+            if(w.processTouches) {
+                if(w.emit(name, ev)) break;
+            }
+        }
+        ev.preventDefault();
+    }
+    process_wheel(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
         let canvas = this.canvas;
         //t.identifier, t.clientX, t.clientY

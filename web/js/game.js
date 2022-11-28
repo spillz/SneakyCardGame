@@ -57,20 +57,23 @@ class Game {
     
         this.board = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
 
-//        this.board.addChild(new Card([1,1,4,6], "TEST CARD", "This is a very long string of card text", null, true));
-        let deck = new Deck([1,1,4,8], 'down');
-        let card1 = new Card([1,1,4,6], "CARD 1", "This is a very long string of card text", null, true)
-        let card2 = new Card([1,1,4,6], "CARD 2", "This is a very long string of card text", null, true)
-        let card3 = new Card([1,1,4,6], "CARD 3", "This is a very long string of card text", null, true)
-        let mapcard1 = new CityMap([8,1,5,7]);
-        let mapcard2 = new CityMap([13,1,5,7]);
-        card3.processTouches = true;
-        deck.addChild(card1);
-        deck.addChild(card2);
-        deck.addChild(card3);
+        let deck = new Deck([1,1,4,8], {orientation:'down'});
+        for(let i=0; i<52;i++) {
+            let card = new Card([1,1,4,6], {name: "CARD "+i, text:"This is a very long string of card text", faceUp:true});
+            card.processTouches = true;
+            deck.addChild(card);
+        }
+
+        let mapboard = new GridLayout([8,1,40,28],{numX:8});
+        for(let i = 0; i<32; i++) {
+            mapboard.addChild(new CityMap([0,0,5,7], {cardLevel:3}));
+        }
+        let label = new Label([8,0,6,1], {text:'Sneaky Game'})
+        let mapview = new ScrollView([8,1,20,14])
+        mapview.addChild(mapboard);
         this.board.addChild(deck);
-        this.board.addChild(mapcard1);
-        this.board.addChild(mapcard2);
+        this.board.addChild(mapview);
+        this.board.addChild(label);
 
         this.ready();
     }
@@ -450,3 +453,201 @@ class Game {
     }    
 }
 
+class PlayArea extends Widget {
+	menu_showing = ObjectProperty (false);
+	__init__() {
+		__super__ (PlayArea, '__init__') (self, __kwargtrans__ (kwargs));
+		this.instructions = null;
+		this.cardselector = null;
+		this.first_start = true;
+		this.mission = null;
+		this.action_selector = null;
+		this.stats = Stats ();
+	}
+	on_parent() {
+		var args = tuple ([].slice.apply (arguments).slice (1));
+		this.playercards = cards.make_player_cards (self);
+		this.traitcards = cards.make_trait_cards (self);
+		this.lootcards = cards.make_loot_cards (self);
+		this.marketcards = cards.make_market_cards (self);
+		this.skillcards = cards.make_skill_cards (self);
+		this.restart_game ();
+	}
+	card_setup(restart) {
+		if (typeof restart == 'undefined' || (restart != null && restart.hasOwnProperty ("__kwargtrans__"))) {;
+			var restart = false;
+		};
+		this.map.cards = [];
+		this.exhausted.cards = [];
+		this.eventdeck.cards = [];
+		this.eventdiscard.cards = [];
+		if (!(restart)) {
+			var player_cards = ((this.playerdeck.cards + this.playerdiscard.cards) + this.hand.cards) + this.activecardsplay.cards;
+		}
+		this.hand.cards = [];
+		this.playerdeck.cards = [];
+		this.playerdiscard.cards = [];
+		this.activecardsplay.cards = [];
+		if (restart) {
+			this.playertraits.cards = [];
+			this.loot1.cards = [];
+			this.loot2.cards = [];
+			this.loot3.cards = [];
+			this.marketdeck.cards = [];
+			this.skilldeck.cards = [];
+		}
+		if (restart) {
+			random.shuffle (this.playercards);
+			this.playerdeck.cards = this.playercards;
+			this.playertraits.cards = this.traitcards.__getslice__ (0, null, 1);
+			for (var l of this.lootcards) {
+				random.shuffle (l);
+			}
+			this.loot1.cards.__setslice__ (0, null, null, this.lootcards [0].__getslice__ (0, null, 1));
+			this.loot2.cards.__setslice__ (0, null, null, this.lootcards [1].__getslice__ (0, null, 1));
+			this.loot3.cards.__setslice__ (0, null, null, this.lootcards [2].__getslice__ (0, null, 1));
+			random.shuffle (this.marketcards);
+			this.marketdeck.cards.__setslice__ (0, null, null, this.marketcards.__getslice__ (0, null, 1));
+			random.shuffle (this.skillcards);
+			this.skilldeck.cards.__setslice__ (0, null, null, this.skillcards.__getslice__ (0, null, 1));
+		}
+		else {
+			random.shuffle (player_cards);
+			this.playerdeck.cards = player_cards;
+		}
+		this.mission = cards.ContactMission (__kwargtrans__ ({mission_level: this.stats.missions + 1}));
+		this.map.cards.__setslice__ (0, null, null, this.mission.setup_map (self));
+		this.eventdeck.cards.__setslice__ (0, null, null, this.mission.setup_events (self));
+		this.eventdeck.can_draw = true;
+	}
+	token_setup() {
+		var player = PlayerToken (__kwargtrans__ ({map_pos: tuple ([0, 0])}));
+		var spawns = [];
+		for (var c of this.map.cards) {
+			spawns += (function () {
+				var __accu0__ = [];
+				for (var s of c.spawns) {
+					__accu0__.append (this.board.get_pos_from_card (c, s));
+				}
+				return __accu0__;
+			}) ();
+		}
+		var guards = (function () {
+			var __accu0__ = [];
+			for (var s of spawns) {
+				__accu0__.append (GuardToken (__kwargtrans__ ({map_pos: s})));
+			}
+			return __accu0__;
+		}) ();
+		var loot = [];
+		for (var c of this.map.cards) {
+			loot += (function () {
+				var __accu0__ = [];
+				for (var s of c.targets) {
+					__accu0__.append (this.board.get_pos_from_card (c, s));
+				}
+				return __accu0__;
+			}) ();
+		}
+		var targets = (function () {
+			var __accu0__ = [];
+			for (var s of loot.__getslice__ (0, -(1), 1)) {
+				__accu0__.append (TargetToken (__kwargtrans__ ({map_pos: s})));
+			}
+			return __accu0__;
+		}) ();
+		var objective = ObjectiveToken (__kwargtrans__ ({map_pos: loot [-(1)]}));
+		var mkt = [];
+		for (var c of this.map.cards) {
+			mkt += (function () {
+				var __accu0__ = [];
+				for (var s of c.markets) {
+					__accu0__.append (this.board.get_pos_from_card (c, s));
+				}
+				return __accu0__;
+			}) ();
+		}
+		var markets = (function () {
+			var __accu0__ = [];
+			for (var s of mkt) {
+				__accu0__.append (MarketToken (__kwargtrans__ ({map_pos: s})));
+			}
+			return __accu0__;
+		}) ();
+		this.board.tokens = ((([player] + guards) + targets) + markets) + [objective];
+		this.board.scroll_to_player ();
+	}
+	clear_state() {
+		if (this.cardselector !== null) {
+			this.cardselector.cards = [];
+			this.remove_widget (this.cardselector);
+			this.cardselector = null;
+		}
+		this.hand.clear_card_actions ();
+		this.hand.cancel_action ();
+		this.board.map_choices = [];
+	}
+	clear_and_check_end_game() {
+		this.clear_state ();
+		if (this.board.active_player_clashing ()) {
+			this.menu_showing = true;
+			this.stats.title.text = 'MISSION FAILED';
+			this.hand.can_draw = false;
+			return true;
+		}
+	}
+	on_menu_showing() {
+		var args = tuple ([].slice.apply (arguments).slice (1));
+		if (this.menu_showing) {
+			if (!__in__ (this.stats, this.children)) {
+				this.add_widget (this.stats);
+			}
+		}
+		else if (__in__ (this.stats, this.children)) {
+			this.remove_widget (this.stats);
+		}
+	}
+	restart_game() {
+		this.clear_state ();
+		this.card_setup (__kwargtrans__ ({restart: true}));
+		this.token_setup ();
+		this.stats.title.text = 'MISSION IN PROGRESS';
+	}
+	next_level() {
+		this.clear_state ();
+		this.card_setup ();
+		this.token_setup ();
+		this.stats.py_next.active = false;
+		this.stats.title.text = 'MISSION IN PROGRESS';
+		this.skilldeck.select_draw (2, 4);
+	}
+	level_complete() {
+		this.clear_state ();
+		this.stats.py_next.active = true;
+		this.menu_showing = true;
+		this.hand.can_draw = false;
+		this.stats.missions++;
+		this.eventdeck.can_draw = false;
+		this.stats.title.text = 'MISSION COMPLETED';
+	}
+	path_state() {
+		return os.path.join (get_user_path (), 'gamestate.pickle');
+	}
+	load_state() {
+		var path = this.path_state ();
+		if (!(os.path.exists (path))) {
+			return false;
+		}
+		Logger.info ('loading game data');
+	}
+	save_state() {
+		Logger.info ('saved game data');
+	}
+}
+
+class Instructions extends BoxLayout {
+	m_scrollview = ObjectProperty ();
+	__init__() {
+		__super__ (Instructions, '__init__') (self);
+	}
+}

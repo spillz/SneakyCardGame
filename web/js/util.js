@@ -96,16 +96,14 @@ function screenshake(){
     game.shakeY = Math.round(Math.sin(shakeAngle)*game.shakeAmount);
 }
 
-function drawText(text, size, centered, textY, color){
+function drawText(text, size, centered, rect, color){
     game.ctx.fillStyle = color;
     game.ctx.font = size + "px monospace";
-    let textX;
+    let textX = rect.x;
+    let textY = rect.y+rect.h-(rect.h-size)/2;
     if(centered){
-        textX = (game.canvas.width-game.ctx.measureText(text).width)/2;
-    }else{
-        textX = game.canvas.width-game.uiWidth*(game.tileSize-1);
+        textX += (rect.w-game.ctx.measureText(text).width)/2;
     }
-
     game.ctx.fillText(text, textX, textY);
 }
 
@@ -288,8 +286,15 @@ class Vec2 extends Array {
 }
 
 class Rect extends Array {
-    constructor(rect){
+    constructor(rect=null){
         super()
+        if(rect==null) {
+            this[0] = 0;
+            this[1] = 0;
+            this[2] = 0;
+            this[3] = 0;
+            return;
+        }
         this[0] = rect[0];
         this[1] = rect[1];
         this[2] = rect[2];

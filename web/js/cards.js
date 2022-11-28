@@ -145,13 +145,26 @@ class Map {
 }
 
 
-class MapCard extends Card {
+class MapCard extends Widget {
+	cardLevel = 1;
+	buildingTypes = ['B','B0'];
+	faceUp = true;
 	constructor(rect, properties=null) {
 		super(rect);
-		this.cardLevel = 1; //properties['cardLevel'];
-		this.buildingTypes = ['B', 'B0'];
+		this.processTouches=true;
+		this.updateProperties(properties);
 		}
+	on_touch_up(event, touch) {
+        if(this.renderRect().collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) this.faceUp = !this.faceUp;
+	}
+	on_mouse_up(event, touch) {
+        if(this.renderRect().collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) this.faceUp = !this.faceUp;
+	}
 	draw() {
+		if(!this.faceUp) {
+			super.draw();
+			return;
+		}
         let rr = this.renderRect();
         var size = [rr.w / this.w - 1, rr.h / this.h - 1];
         let color0 = colorString([0,0,0]);
@@ -314,9 +327,10 @@ class CityMap extends MapCard {
 					'S': ['Guard search and spawn point', [0.9, 0.6, 0.6, 1]], 
 					'Z': ['Loot Zone', [0.6, 0.6, 0.6, 1]], 
 					'M': ['Market', [0.6, 0.9, 0.6, 1]]};
-	constructor(rect) {
+	pavement = ['U','L0','L1','L2'];
+	constructor(rect, properties=null) {
 		super(rect);
-		this.pavement = ['U','L0','L1','L2'];
+		this.updateProperties(properties);
 		this.make_map();
 	}
 	make_map(){
@@ -430,7 +444,7 @@ class CityMap extends MapCard {
 			var new_spawn = null;
 			var options = [...this.map.iter_types (this.pavement, [1, 1, this.map.w - 1, this.map.h - 1])];
 			shuffle(options);
-            new_spawn = options.find(pos => this.spawns.length==0 || Math.min(...this.spawns.map(dist, pos))>6-this.card_level);
+            new_spawn = options.find(pos => this.spawns.length==0 || Math.min(...this.spawns.map(p=>dist(p, pos)))>6-this.cardLevel);
 			if (new_spawn != null) this.spawns.push(new_spawn);
 			else break;
 		}
@@ -442,7 +456,7 @@ class CityMap extends MapCard {
 			var new_wp = null;
 			var options = [...this.map.iter_types (this.pavement, [1, 1, this.map.w - 1, this.map.h - 1])];
 			shuffle (options);
-            new_wp = options.find(pos => this.spawns.length+this.waypoints.length==0 || Math.min(...[...this.spawns,...this.waypoints].map(dist, pos))>3);
+            new_wp = options.find(pos => this.spawns.length+this.waypoints.length==0 || Math.min(...[...this.spawns,...this.waypoints].map(p=>dist(p, pos)))>3);
 			if (new_wp != null) this.waypoints.push(new_wp);
 			else break;
 		}
@@ -454,7 +468,7 @@ class CityMap extends MapCard {
 			var new_target = null;
 			var options = [...this.map.iter_types('B', [1, 1, this.map.w - 1, this.map.h - 1])];
 			shuffle (options);
-            new_target = options.find(pos => this.targets.length==0 || Math.min(...this.targets.map(dist, pos))>5);
+            new_target = options.find(pos => this.targets.length==0 || Math.min(...this.targets.map(p=>dist(p, pos)))>5);
 			if (new_target != null) this.targets.push(new_target);
             else break;
 		}
@@ -466,7 +480,7 @@ class CityMap extends MapCard {
 			var new_market = null;
 			var options = [...this.map.iter_types ('B', [1, 1, this.map.w - 1, this.map.h - 1])];
 			shuffle(options);
-            new_market = options.find(pos => this.markets.length==0 || Math.min(...this.markets.map(dist, pos))>5);
+            new_market = options.find(pos => this.markets.length==0 || Math.min(...this.markets.map(p=>dist(p, pos)))>5);
 			if (new_market != null) this.markets.push(new_market);
             else break;
 		}
