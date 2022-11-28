@@ -1,4 +1,112 @@
 
+class App {
+    constructor() {
+        this.pixelSize = 1;
+        this.fillScreen = false;
+        this.dimW = this.prefDimW = 32;
+        this.dimH = this.prefDimH = 16;
+        this.tileSize = this.getTileScale()*this.pixelSize;
+
+        this.gameOffsetX = 0;
+        this.gameOffsetY = 0;
+        this.inputHandler = new InputHandler();
+        this.shakeX = 0;                 
+        this.shakeY = 0;      
+
+        this.baseWidget = null; // widget container
+    }
+
+    start() {
+        let that = this;
+        window.onresize = (() => that.updateWindowSize());
+        this.setupCanvas();
+
+        this.baseWidget = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
+
+        let deck = new Deck([1,1,4,8], {orientation:'down'});
+        for(let i=0; i<52;i++) {
+            let card = new Card([1,1,4,6], {name: "CARD "+i, text:"This is a very long string of card text", faceUp:true});
+            card.processTouches = true;
+            deck.addChild(card);
+        }
+
+        let mapboard = new GridLayout([8,1,40,28],{numX:8});
+        for(let i = 0; i<32; i++) {
+            mapboard.addChild(new CityMap([0,0,5,7], {cardLevel:3}));
+        }
+        let label = new Label([8,0,6,1], {text:'Sneaky Game'})
+        let mapview = new ScrollView([8,1,20,14])
+        mapview.addChild(mapboard);
+        this.board.addChild(deck);
+        this.board.addChild(mapview);
+        this.board.addChild(label);
+
+        this.update();
+    }
+
+    update() {
+        let millis = 15;
+        let n_timer_tick = Date.now();
+        if(this.timer_tick!=null){
+            millis = Math.min(n_timer_tick - this.timer_tick, 30); //maximum of 30 ms refresh
+        }
+        this.baseWidget.update(millis);
+        this.draw(millis);
+
+        let that = this;
+        window.requestAnimationFrame(() => that.update());
+    }
+    
+    draw(millis){
+        this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
+        this.shakeX = 0;
+        this.shakeY = 0;
+//        screenshake();
+
+        this.bsaeWidget.draw();
+    }
+        
+    setupCanvas(){
+        this.canvas = document.querySelector("canvas");
+    
+        this.canvas.width = window.innerWidth; //this.tileSize*(this.dimW);
+        this.canvas.height = window.innerHeight; //this.tileSize*(this.dimH);
+        this.canvas.style.width = this.canvas.width + 'px';
+        this.canvas.style.height = this.canvas.height + 'px';
+
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.imageSmoothingEnabled = false;
+
+        this.gameOffsetX = Math.floor((window.innerWidth - this.tileSize*this.dimW)/2);
+        this.gameOffsetY =  Math.floor((window.innerHeight - this.tileSize*this.dimH)/2);
+   
+    }
+
+    getTileScale() {
+        let sh = window.innerHeight;
+        let sw = window.innerWidth;
+        let scale;
+        scale = Math.min(sh/(this.prefDimH)/this.pixelSize,sw/(this.prefDimW)/this.pixelSize);
+        if(!this.fillScreen) { //pixel perfect scaling
+            scale = Math.floor(scale);
+        }    
+        return scale;
+    }
+    
+    fitMaptoTileSize(scale) {
+        let sh = window.innerHeight;
+        let sw = window.innerWidth;
+        this.dimH = Math.floor(sh/scale);
+        this.dimW = Math.floor(sw/scale);    
+    }
+    
+    updateWindowSize() {
+        this.tileSize = this.getTileScale()*this.pixelSize;
+        this.fitMaptoTileSize(this.tileSize);
+        this.setupCanvas();
+    }
+
+}
 
 
 class Widget extends Rect {
