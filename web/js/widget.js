@@ -49,11 +49,11 @@ class Widget extends Rect {
             if(func(event, this, data)) return true;
         return false;
     }
-    *iter(recursive=true) {
+    *iter(recursive=true, inView=true) {
         yield this;
         if(!recursive) return;
         for(let c of this._children) {
-            yield *c.iter(recursive);
+            yield *c.iter(...arguments);
         }
     }
     addChild(child) {
@@ -109,6 +109,22 @@ class Widget extends Rect {
     }
     get h() {
         return this[3];
+    }
+    on_touch_down(event, touch) {
+        for(let c of this.children) if(c.emit(event, touch)) return true;
+        return false;
+    }
+    on_touch_up(event, touch) {
+        for(let c of this.children) if(c.emit(event, touch)) return true;
+        return false;
+    }
+    on_touch_move(event, touch) {
+        for(let c of this.children) if(c.emit(event, touch)) return true;
+        return false;
+    }
+    on_touch_cancel(event, touch) {
+        for(let c of this.children) if(c.emit(event, touch)) return true;
+        return false;
     }
     layoutChildren() { //The default widget does not layout it's children, a la kivy FloatLayout
         for(let c of this.children) c.layoutChildren();
@@ -378,6 +394,19 @@ class ScrollView extends Widget {
         this.children[0].y = this.y-this.scrollY;
         this.children[0].layoutChildren();
     }
+    *iter(recursive=true, inView=true) {
+        yield this;
+        if(!recursive) return;
+        if(inView) {
+            for(let c of this._children) {
+                if(this.contains(c)) yield *c.iter(...arguments);
+            }
+        } else {
+            for(let c of this._children) {
+                yield *c.iter(...arguments);
+            }
+        }
+    }
     on_scrollW(event, value) {
         this._needsLayout = true;
     }
@@ -390,24 +419,60 @@ class ScrollView extends Widget {
     on_scrollY(event, value) {
         this._needsLayout = true;
     }
+    on_touch_down(event, touch) {
+        this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
+        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        for(let c of this.children) if(this.renderRect().collide(r) && c.emit(event, touch)) return true;
+        return false;
+    }
+    on_touch_up(event, touch) {
+        this.oldTouch = null;
+        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        for(let c of this.children) if(this.renderRect().collide(r) && c.emit(event, touch)) return true;
+        return false;
+    }
     on_touch_move(event, touch) {
-        let r = this.renderRect();
-        if(r.collide(new Rect([touch.clientX, touch.clientY,0,0]))) {
+        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        if(this.renderRect().collide(r)) {
             if(this.oldTouch==null || touch.identifier!=this.oldTouch[2]) {
                 this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
-                return;
+            } else {
+                if(this.scrollW) {
+                    this.scrollX += (this.oldTouch[0]-touch.clientX)/game.tileSize;
+                    this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
+                }
+                if(this.scrollH) {
+                    this.scrollY += (this.oldTouch[1]-touch.clientY)/game.tileSize; 
+                    this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
+                }
+                this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];    
             }
-            if(this.scrollW) {
-                this.scrollX += (this.oldTouch[0]-touch.clientX)/game.tileSize;
-                this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
-            }
-            if(this.scrollH) {
-                this.scrollY += (this.oldTouch[1]-touch.clientY)/game.tileSize; 
-                this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
-            }
-            this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
+            for(let c of this.children) if(c.emit(event, touch)) return true;
         }
+        return false;
     }
+    on_touch_cancel(event, touch) {
+        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        for(let c of this.children) if(this.renderRect().collide(r) && c.emit(event, touch)) return true;
+        return false;
+    }
+    // on_touch_move(event, touch) {
+    //     if(this.renderRect().collide(r)) {
+    //         if(this.oldTouch==null || touch.identifier!=this.oldTouch[2]) {
+    //             this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
+    //             return;
+    //         }
+    //         if(this.scrollW) {
+    //             this.scrollX += (this.oldTouch[0]-touch.clientX)/game.tileSize;
+    //             this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
+    //         }
+    //         if(this.scrollH) {
+    //             this.scrollY += (this.oldTouch[1]-touch.clientY)/game.tileSize; 
+    //             this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
+    //         }
+    //         this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
+    //     }
+    // }
     on_mouse_move(event, mouse) {
         let r = this.renderRect();
         if(r.collide(new Rect([mouse.clientX, mouse.clientY,0,0]))) {

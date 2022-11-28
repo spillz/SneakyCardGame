@@ -48,11 +48,12 @@ class InputHandler {
         let canvas = this.canvas;
         for(let t of ev.changedTouches) { 
             //t.identifier, t.clientX, t.clientY
-            for(let w of game.board.iter()) {
-                if(w.processTouches) {
-                    if(w.emit(name, t)) break;
-                }
-            }
+            game.board.emit(name, t);
+            // for(let w of game.board.iter()) {
+            //     if(w.processTouches) {
+            //         if(w.emit(name, t)) break;
+            //     }
+            // }
         }   
         ev.preventDefault();
     }

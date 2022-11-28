@@ -388,6 +388,9 @@ class Rect extends Array {
             return true;
         return false;
     }
+    contains(rect) {
+        return this.x <= rect.x && this.y<= rect.y && this.x+this.w>=rect.x+rect.w && this.y+this.h>=rect.y+rect.h;
+    }
     contact(rect) {
         if(this.x <= rect.x + rect.w &&
             this.x + this.w >= rect.x &&
