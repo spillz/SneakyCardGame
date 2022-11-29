@@ -116,8 +116,8 @@ class Card extends Widget {
             r2.y += r1.h;
             r2.h -= r1.h;
             //TODO: Get rid of the ugly scale transforms
-            drawWrappedText(this.name, this.h/12*game.tileSize, true, r1.mult(game.tileSize).shift([game.gameOffsetX,game.gameOffsetY]), "yellow");
-            drawWrappedText(this.text, this.h/18*game.tileSize, true, r2.mult(game.tileSize).shift([game.gameOffsetX,game.gameOffsetY]), "white");    
+            drawWrappedText(this.app.ctx, this.name, this.h/12*this.app.tileSize, true, r1.mult(this.app.tileSize).shift([this.app.offsetX,this.app.offsetY]), "yellow");
+            drawWrappedText(this.app.ctx, this.text, this.h/18*this.app.tileSize, true, r2.mult(this.app.tileSize).shift([this.app.offsetX,this.app.offsetY]), "white");    
         } else {
             super.draw();
             //TODO: draw card back

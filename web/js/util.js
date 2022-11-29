@@ -87,35 +87,35 @@ class MathArray extends Array {
     }
 }
 
-function screenshake(){
-    if(game.shakeAmount){
-        game.shakeAmount--;
+function screenshake(app){
+    if(app.shakeAmount){
+        app.shakeAmount--;
     }
     let shakeAngle = Math.random()*Math.PI*2;
-    game.shakeX = Math.round(Math.cos(shakeAngle)*game.shakeAmount);
-    game.shakeY = Math.round(Math.sin(shakeAngle)*game.shakeAmount);
+    app.shakeX = Math.round(Math.cos(shakeAngle)*app.shakeAmount);
+    app.shakeY = Math.round(Math.sin(shakeAngle)*app.shakeAmount);
 }
 
-function drawText(text, size, centered, rect, color){
-    game.ctx.fillStyle = color;
-    game.ctx.font = size + "px monospace";
+function drawText(ctx, text, size, centered, rect, color){
+    ctx.fillStyle = color;
+    ctx.font = size + "px monospace";
     let textX = rect.x;
     let textY = rect.y+rect.h-(rect.h-size)/2;
     if(centered){
-        textX += (rect.w-game.ctx.measureText(text).width)/2;
+        textX += (rect.w-ctx.measureText(text).width)/2;
     }
-    game.ctx.fillText(text, textX, textY);
+    ctx.fillText(text, textX, textY);
 }
 
-function drawWrappedText(text, size, centered, rect, color){
+function drawWrappedText(ctx, text, size, centered, rect, color){
     //TODO: handle explicit newlines in text
-    game.ctx.fillStyle = color;
-    game.ctx.font = size + "px monospace";
+    ctx.fillStyle = color;
+    ctx.font = size + "px monospace";
 
     let y = rect.y+size;
     while(text!="") {
         let x = rect.x;
-        let rowsNeeded = game.ctx.measureText(text).width / rect.w;
+        let rowsNeeded = ctx.measureText(text).width / rect.w;
         let maxletters = Math.floor(text.length/rowsNeeded);
         let substr = text.substring(0,maxletters);
         let lastIndex = substr.lastIndexOf(" ");
@@ -126,45 +126,13 @@ function drawWrappedText(text, size, centered, rect, color){
         text = text.substring(lastIndex+1);
 
         if(centered) {
-            let w = game.ctx.measureText(substr).width;
+            let w = ctx.measureText(substr).width;
             x = x + (rect.w - w)/2
         }
-        game.ctx.fillText(substr, x, y);
+        ctx.fillText(substr, x, y);
 
         y += size;
     }
-}
-
-
-function drawTileText(text, text_size, pos, color){
-    game.ctx.fillStyle = color;
-    game.ctx.font = text_size + "px monospace";
-    let textY = (pos.y + 1 - (1-text_size/game.tileSize)/2)*game.tileSize + game.gameOffsetY + game.shakeY;
-    let textX = (pos.x + (1-game.ctx.measureText(text).width/game.tileSize)/2)*game.tileSize + game.gameOffsetX + game.shakeX;
-    game.ctx.fillText(text, textX, textY);
-}
-
-function nearestPlayer(pos) {
-    let bestd = 1e9;
-    let bestp = null;
-    for(let p of game.activePlayers) {
-        if(!p.dead) {
-            let d = p.pos.dist(pos);
-            bestp = d<bestd?p:bestp;
-            bestd = d<bestd?d:bestd;
-        }
-    }
-    return [bestp, bestd];
-}
-
-//TODO: This is a shitty way to find random places
-function tryTo(description, callback){
-    for(let timeout=1000;timeout>0;timeout--){
-        if(callback()){
-            return;
-        }
-    }
-    throw 'Timeout while trying to '+description;
 }
 
 function getRandomInt(m1, m2=0) {
@@ -177,53 +145,6 @@ function getRandomInt(m1, m2=0) {
 function getRandomPos(max1, max2) {
     return [getRandomInt(max1), getRandomInt(max2)];
 }
-
-function monsters_and_players(forcePlayers=true, exclude = null) {
-    if(!forcePlayers && (!game.competitiveMode || game.levelTime>game.startLevelTime-10000)) {
-        return game.monsters.filter(m => m!=exclude);
-    }
-    return game.monsters.concat(game.activePlayers).filter(m => m!=exclude);
-}
-
-
-function monsters_with_other_players(player) {
-    if(!game.competitiveMode || game.levelTime>game.startLevelTime-10000)
-        return game.monsters;
-    let i = game.activePlayers.indexOf(player);
-    let pl = game.activePlayers.slice(0,i).concat(game.activePlayers.slice(i+1));
-    let all = game.monsters.concat(pl);
-    return all;
-}
-
-function other_players(player) {
-    let i = game.activePlayers.indexOf(player);
-    return game.activePlayers.slice(0,i).concat(game.activePlayers.slice(i+1));
-}
-
-
-function remove(items, item) {
-    for(let i=0;i<items.length;i++) 
-        if (items[i]==item){
-            items.splice(i,1);
-            return;
-        }
-}
-
-function remove_dead(items) {
-    for(let k=items.length-1;k>=0;k--)
-        if(items[k].dead)
-            items.splice(k,1);
-}
-
-function remove_dropped(players) {
-    for(let k=players.length-1;k>=0;k--)
-        if(players[k].dropFromGame) {
-            players[k].controller.attach_to_player();
-            game.items.push(new DeadPlayer(players[k]));
-            players.splice(k,1);
-        }
-}
-
 
 function shuffle(array) {
     let currentIndex = array.length,  randomIndex;

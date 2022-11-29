@@ -1,7 +1,8 @@
 class InputHandler {
-    constructor() {
-        this.canvas = document.getElementById("canvas");
-        let canvas = this.canvas
+    constructor(app) {
+        this.app = app;
+        this.canvas = app.canvas;
+        let canvas = this.canvas;
         // Register touch event handlers
         let that = this;
 
@@ -47,21 +48,14 @@ class InputHandler {
         // Use the event's data to call out to the appropriate gesture handlers
         let canvas = this.canvas;
         for(let t of ev.changedTouches) { 
-            //t.identifier, t.clientX, t.clientY
-            game.board.emit(name, t);
-            // for(let w of game.board.iter()) {
-            //     if(w.processTouches) {
-            //         if(w.emit(name, t)) break;
-            //     }
-            // }
+            this.app.emit(name, t);
         }   
         ev.preventDefault();
     }
     process_mouse(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
-        let canvas = this.canvas;
         //t.identifier, t.clientX, t.clientY
-        for(let w of game.board.iter()) {
+        for(let w of this.app.iter()) {
             if(w.processTouches) {
                 if(w.emit(name, ev)) break;
             }
@@ -72,7 +66,7 @@ class InputHandler {
         // Use the event's data to call out to the appropriate gesture handlers
         let canvas = this.canvas;
         //t.identifier, t.clientX, t.clientY
-        for(let w of game.board.iter()) {
+        for(let w of this.app.iter()) {
             if(w.processTouches) {
                 if(w.emit(name, ev)) break;
             }

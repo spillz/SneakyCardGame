@@ -6,44 +6,32 @@ class App {
         this.dimW = this.prefDimW = 32;
         this.dimH = this.prefDimH = 16;
         this.tileSize = this.getTileScale()*this.pixelSize;
+        this.canvasName = "canvas";
 
-        this.gameOffsetX = 0;
-        this.gameOffsetY = 0;
-        this.inputHandler = new InputHandler();
+        this.offsetX = 0;
+        this.offsetY = 0;
         this.shakeX = 0;                 
         this.shakeY = 0;      
 
-        this.baseWidget = null; // widget container
-    }
+        // widget container
+        this.baseWidget = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
+        this.baseWidget.parent = this;
+        this.baseWidget.app = this;
 
+    }
     start() {
         let that = this;
         window.onresize = (() => that.updateWindowSize());
         this.setupCanvas();
-
-        this.baseWidget = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
-
-        let deck = new Deck([1,1,4,8], {orientation:'down'});
-        for(let i=0; i<52;i++) {
-            let card = new Card([1,1,4,6], {name: "CARD "+i, text:"This is a very long string of card text", faceUp:true});
-            card.processTouches = true;
-            deck.addChild(card);
-        }
-
-        let mapboard = new GridLayout([8,1,40,28],{numX:8});
-        for(let i = 0; i<32; i++) {
-            mapboard.addChild(new CityMap([0,0,5,7], {cardLevel:3}));
-        }
-        let label = new Label([8,0,6,1], {text:'Sneaky Game'})
-        let mapview = new ScrollView([8,1,20,14])
-        mapview.addChild(mapboard);
-        this.board.addChild(deck);
-        this.board.addChild(mapview);
-        this.board.addChild(label);
-
+        this.inputHandler = new InputHandler(this);
         this.update();
     }
-
+    emit(event, data) {
+        this.baseWidget.emit(event, data);
+    }
+    *iter(recursive=true, inView=true) {
+            yield *this.baseWidget.iter(...arguments);
+    }
     update() {
         let millis = 15;
         let n_timer_tick = Date.now();
@@ -56,18 +44,17 @@ class App {
         let that = this;
         window.requestAnimationFrame(() => that.update());
     }
-    
     draw(millis){
         this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
         this.shakeX = 0;
         this.shakeY = 0;
-//        screenshake();
+        this.shakeAmount = 0;
+        screenshake(this);
 
-        this.bsaeWidget.draw();
-    }
-        
+        this.baseWidget.draw();
+    }        
     setupCanvas(){
-        this.canvas = document.querySelector("canvas");
+        this.canvas = document.querySelector(this.canvasName);
     
         this.canvas.width = window.innerWidth; //this.tileSize*(this.dimW);
         this.canvas.height = window.innerHeight; //this.tileSize*(this.dimH);
@@ -77,8 +64,8 @@ class App {
         this.ctx = this.canvas.getContext("2d");
         this.ctx.imageSmoothingEnabled = false;
 
-        this.gameOffsetX = Math.floor((window.innerWidth - this.tileSize*this.dimW)/2);
-        this.gameOffsetY =  Math.floor((window.innerHeight - this.tileSize*this.dimH)/2);
+        this.offsetX = Math.floor((window.innerWidth - this.tileSize*this.dimW)/2);
+        this.offsetY =  Math.floor((window.innerHeight - this.tileSize*this.dimH)/2);
    
     }
 
@@ -110,14 +97,14 @@ class App {
 
 
 class Widget extends Rect {
-    //TODO: Do we want pos_hint, size_hint a la kivy (hint dict)?
-    //TODO: Touch / mouse event handling (i.e., emits when touched)
+    //TODO: Do we want pos_hint, size_hint?? maybe just "hint" collaspsing all hints in one object
     bgColor = "black";
     outlineColor = "gray";
     constructor(rect, properties=null) {
         super(rect);
         this.vel = new Vec2([0, 0]);
         this.parent = null;
+        this.app = null;
         this.processTouches = false;
         this._children = []; //widget has arbitrarily many children
         this._needsLayout = true;
@@ -168,12 +155,16 @@ class Widget extends Rect {
         this._children.push(child);
         this.emit('child_added', child);
         child.parent = this;
+        child.app = this.app;
+        for(let c of child.iter(true,false)) c.app = this.app;
         this._needsLayout = true;
     }
     removeChild(child) {
         this._children = this.children.filter(c => c!=child);
         this.emit('child_removed', child);
         child.parent = null;
+        child.app = null;
+        for(let c of child.iter(true,false)) c.app = null;
         this._needsLayout = true;
     }
     get children() {
@@ -183,6 +174,8 @@ class Widget extends Rect {
         for(let c of this._children) {
             this.emit('child_removed', child);
             child.parent = null;
+            child.app = null;
+            for(let c of child.iter(true,false)) c.app = null;
             this._needsLayout = true;
         }
         this._children = []
@@ -241,32 +234,32 @@ class Widget extends Rect {
     }
     renderRect() {
         let r = new Rect(this);
-        r[0] = r[0] * game.tileSize + game.shakeX + game.gameOffsetX;
-        r[1] = r[1] * game.tileSize + game.shakeY + game.gameOffsetY;
-        r[2] = r[2] * game.tileSize;
-        r[3] = r[3] * game.tileSize;
+        r[0] = r[0] * this.app.tileSize + this.app.shakeX + this.app.offsetX;
+        r[1] = r[1] * this.app.tileSize + this.app.shakeY + this.app.offsetY;
+        r[2] = r[2] * this.app.tileSize;
+        r[3] = r[3] * this.app.tileSize;
         return r;        
     }
     localRect() {
         let r = new Rect(this);
-        r[0] = (r[0] - game.shakeX - game.gameOffsetX)/game.tileSize;
-        r[1] = (r[1] - game.shakeY - game.gameOffsetY)/game.tileSize;
-        r[2] = r[2]/game.tileSize;
-        r[3] = r[3]/game.tileSize;
+        r[0] = (r[0] - this.app.shakeX - this.app.offsetX)/this.app.tileSize;
+        r[1] = (r[1] - this.app.shakeY - this.app.offsetY)/this.app.tileSize;
+        r[2] = r[2]/this.app.tileSize;
+        r[3] = r[3]/this.app.tileSize;
         return r;        
     }
     draw() {
-//        game.sprites.entitiesItems.draw(this.sprite, this.getDisplayX(), this.getDisplayY(), this.getFlipped());
+//        this.app.sprites.entitiesItems.draw(this.sprite, this.getDisplayX(), this.getDisplayY(), this.getFlipped());
         //Usually widget should draw itself, then draw children in order
         //TODO: Get rid of the ugly scale transforms
         let r = this.renderRect();
-        game.ctx.beginPath();
-        game.ctx.rect(r[0], r[1], r[2], r[3]);
-        game.ctx.fillStyle = this.bgColor;
-        game.ctx.fill();
-        game.ctx.lineWidth = game.tileSize / 16;
-        game.ctx.strokeStyle = this.outlineColor;
-        game.ctx.stroke();
+        this.app.ctx.beginPath();
+        this.app.ctx.rect(r[0], r[1], r[2], r[3]);
+        this.app.ctx.fillStyle = this.bgColor;
+        this.app.ctx.fill();
+        this.app.ctx.lineWidth = this.app.tileSize / 16;
+        this.app.ctx.strokeStyle = this.outlineColor;
+        this.app.ctx.stroke();
 
         for(let c of this.children)
             c.draw();
@@ -314,18 +307,18 @@ class Label extends Widget {
         let r = this.renderRect();
         let fontSize;
         if(this.fontSize==null) {
-            fontSize = this.h*game.tileSize/2;
-            game.ctx.font = fontSize + "px monospace";
-            let scale = r.w/game.ctx.measureText(this.text).width;
+            fontSize = this.h*this.app.tileSize/2;
+            this.app.ctx.font = fontSize + "px monospace";
+            let scale = r.w/this.app.ctx.measureText(this.text).width;
             if(scale<1) fontSize *= scale;
         } else {
-            fontSize = this.fontSize*game.tileSize;
+            fontSize = this.fontSize*this.app.tileSize;
         }
-        game.ctx.font = fontSize + "px monospace";
+        this.app.ctx.font = fontSize + "px monospace";
         if(this.wrap) {
-            drawWrappedText(this.text, fontSize, this.align=="center", r, this.color);
+            drawWrappedText(this.app.ctx, this.text, fontSize, this.align=="center", r, this.color);
         } else {
-            drawText(this.text, fontSize, this.align=="center", r, this.color);
+            drawText(this.app.ctx, this.text, fontSize, this.align=="center", r, this.color);
         }   
     }
 }
@@ -546,11 +539,11 @@ class ScrollView extends Widget {
                 this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
             } else {
                 if(this.scrollW) {
-                    this.scrollX += (this.oldTouch[0]-touch.clientX)/game.tileSize;
+                    this.scrollX += (this.oldTouch[0]-touch.clientX)/this.app.tileSize;
                     this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
                 }
                 if(this.scrollH) {
-                    this.scrollY += (this.oldTouch[1]-touch.clientY)/game.tileSize; 
+                    this.scrollY += (this.oldTouch[1]-touch.clientY)/this.app.tileSize; 
                     this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
                 }
                 this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];    
@@ -571,11 +564,11 @@ class ScrollView extends Widget {
     //             return;
     //         }
     //         if(this.scrollW) {
-    //             this.scrollX += (this.oldTouch[0]-touch.clientX)/game.tileSize;
+    //             this.scrollX += (this.oldTouch[0]-touch.clientX)/this.app.tileSize;
     //             this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
     //         }
     //         if(this.scrollH) {
-    //             this.scrollY += (this.oldTouch[1]-touch.clientY)/game.tileSize; 
+    //             this.scrollY += (this.oldTouch[1]-touch.clientY)/this.app.tileSize; 
     //             this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
     //         }
     //         this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
@@ -589,11 +582,11 @@ class ScrollView extends Widget {
                 return;
             }
             if(this.scrollW) {
-                this.scrollX += (this.oldMouse[0]-mouse.clientX)/game.tileSize;
+                this.scrollX += (this.oldMouse[0]-mouse.clientX)/this.app.tileSize;
                 this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
             }
             if(this.scrollH) {
-                this.scrollY += (this.oldMouse[1]-mouse.clientY)/game.tileSize; 
+                this.scrollY += (this.oldMouse[1]-mouse.clientY)/this.app.tileSize; 
                 this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
             }
             this.oldMouse = [mouse.clientX, mouse.clientY];
@@ -601,23 +594,23 @@ class ScrollView extends Widget {
     }
     on_wheel(event, wheel) {
         if(this.scrollW) {
-            this.scrollX += (wheel.deltaX)/game.tileSize;
+            this.scrollX += (wheel.deltaX)/this.app.tileSize;
             this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
         }
         if(this.scrollH) {
-            this.scrollY += (wheel.deltaY)/game.tileSize; 
+            this.scrollY += (wheel.deltaY)/this.app.tileSize; 
             this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
         }
 
     }
     draw() {
         let r = this.renderRect();
-        game.ctx.save();
-        game.ctx.beginPath();
-        game.ctx.rect(r[0],r[1],r[2],r[3]);
-        game.ctx.clip();
+        this.app.ctx.save();
+        this.app.ctx.beginPath();
+        this.app.ctx.rect(r[0],r[1],r[2],r[3]);
+        this.app.ctx.clip();
         this.children[0].draw()
-        game.ctx.restore();
+        this.app.ctx.restore();
     }
 }
 

@@ -15,8 +15,8 @@ class SpriteSheet {
             spriteLoc[1]*this.spriteSize,
             this.spriteSize,
             this.spriteSize,
-            flipped*(x*game.tileSize + game.shakeX + game.gameOffsetX),
-            y*game.tileSize  + game.shakeY + game.gameOffsetY,
+            flipped*(x*game.tileSize + game.shakeX + game.offsetX),
+            y*game.tileSize  + game.shakeY + game.offsetY,
             flipped*game.tileSize,
             game.tileSize
         );
@@ -35,8 +35,8 @@ class SpriteSheet {
             spriteLoc[1]*this.spriteSize,
             this.spriteSize,
             this.spriteSize,
-            flipped*(x*game.tileSize + game.shakeX + game.gameOffsetX),
-            y*game.tileSize  + game.shakeY + game.gameOffsetY,
+            flipped*(x*game.tileSize + game.shakeX + game.offsetX),
+            y*game.tileSize  + game.shakeY + game.offsetY,
             flipped*game.tileSize*scale,
             game.tileSize*scale
         );
@@ -52,8 +52,8 @@ class SpriteSheet {
         } else {
             anchor = [anchor[0]*game.tileSize, anchor[1]*game.tileSize];
         }
-        game.ctx.translate(x*game.tileSize + game.shakeX + game.gameOffsetX + anchor[0], 
-                        y*game.tileSize + game.shakeY + game.gameOffsetY + anchor[1]);
+        game.ctx.translate(x*game.tileSize + game.shakeX + game.offsetX + anchor[0], 
+                        y*game.tileSize + game.shakeY + game.offsetY + anchor[1]);
         game.ctx.rotate(angle * Math.PI / 180);
         if(flipx) {
             game.ctx.scale(-1,1);
@@ -82,8 +82,8 @@ class SpriteSheet {
         } else {
             anchor = [anchor[0]*game.tileSize, anchor[1]*game.tileSize];
         }
-        game.ctx.translate(x*game.tileSize + game.shakeX + game.gameOffsetX + anchor[0], 
-                        y*game.tileSize + game.shakeY + game.gameOffsetY + anchor[1]);
+        game.ctx.translate(x*game.tileSize + game.shakeX + game.offsetX + anchor[0], 
+                        y*game.tileSize + game.shakeY + game.offsetY + anchor[1]);
         game.ctx.rotate(angle * Math.PI / 180);
         if(flipx) {
             game.ctx.scale(-1,1);

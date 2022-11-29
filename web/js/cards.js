@@ -174,18 +174,19 @@ class MapCard extends Widget {
             var color = colorString(this.building_codes[this.map.get([i,j])][1]);
             var x = rr.x + (i * rr.w) / this.w;
             var y = rr.y + (j * rr.h) / this.h;
-			game.ctx.beginPath();
-            game.ctx.rect(x, y, size[0], size[1]);
+			this.app.ctx.beginPath();
+            this.app.ctx.rect(x, y, size[0], size[1]);
             var tile = this.map.get([i, j]);
             if(!this.buildingTypes.includes(tile)) {
-                game.ctx.fillStyle = color;
-                game.ctx.fill();    
+                this.app.ctx.fillStyle = color;
+                this.app.ctx.fill();    
             } 
             else {
                 var s = [size [0] + 1, size [1] + 1];
-                game.ctx.fillStyle = color;
-                game.ctx.fill();    
-				game.ctx.strokeStyle = color0;
+                this.app.ctx.fillStyle = color;
+                this.app.ctx.fill();    
+				this.app.ctx.strokeStyle = color0;
+				this.app.ctx.lineWidth = 1;
 				var cx = x + s [0] / 2;
                 var cy = y + s [1] / 2;
                 var adj = [...this.map.iter_types_in_range ([i, j], this.buildingTypes, 1)]
@@ -194,10 +195,10 @@ class MapCard extends Widget {
 					tr+=this.buildingTypes.includes(this.map.get([i,j+1]));
 					br+=this.buildingTypes.includes(this.map.get([i,j-1]));
 //                if (adj.includes([i+1,j])) {
-					game.ctx.beginPath();
-                    game.ctx.moveTo(cx,cy);
-                    game.ctx.lineTo(x+s[0], cy);
-                    game.ctx.stroke();
+					this.app.ctx.beginPath();
+                    this.app.ctx.moveTo(cx,cy);
+                    this.app.ctx.lineTo(x+s[0], cy);
+                    this.app.ctx.stroke();
 //                    tr += adj.includes([i,j+1]);
 //                    br += adj.includes([i,j-1]);
                 }
@@ -209,10 +210,10 @@ class MapCard extends Widget {
 				if(this.buildingTypes.includes(this.map.get([i-1,j]))) {
 					tl+=this.buildingTypes.includes(this.map.get([i,j+1]));
 					bl+=this.buildingTypes.includes(this.map.get([i,j-1]));
-					game.ctx.beginPath();
-                    game.ctx.moveTo(cx,cy);
-                    game.ctx.lineTo(x, cy);
-                    game.ctx.stroke();
+					this.app.ctx.beginPath();
+                    this.app.ctx.moveTo(cx,cy);
+                    this.app.ctx.lineTo(x, cy);
+                    this.app.ctx.stroke();
                     // tl += adj.includes([i,j+1]);
                     // bl += adj.includes([i,j-1]);
                 }
@@ -224,10 +225,10 @@ class MapCard extends Widget {
 				if(this.buildingTypes.includes(this.map.get([i,j+1]))) {
 					tr+=this.buildingTypes.includes(this.map.get([i+1,j]));
 					tl+=this.buildingTypes.includes(this.map.get([i-1,j]));
-					game.ctx.beginPath();
-                    game.ctx.moveTo(cx,cy);
-                    game.ctx.lineTo(cx, y+s[1]);
-                    game.ctx.stroke();
+					this.app.ctx.beginPath();
+                    this.app.ctx.moveTo(cx,cy);
+                    this.app.ctx.lineTo(cx, y+s[1]);
+                    this.app.ctx.stroke();
                     // tr+=addj,includes([i+1,j]);
                     // tl+=addj,includes([i-1,j]);
                 }
@@ -239,10 +240,10 @@ class MapCard extends Widget {
 				if(this.buildingTypes.includes(this.map.get([i,j-1]))) {
 					br+=this.buildingTypes.includes(this.map.get([i+1,j]));
 					bl+=this.buildingTypes.includes(this.map.get([i-1,j]));
-					game.ctx.beginPath();
-                    game.ctx.moveTo(cx,cy);
-                    game.ctx.lineTo(cx, y);
-                    game.ctx.stroke();
+					this.app.ctx.beginPath();
+                    this.app.ctx.moveTo(cx,cy);
+                    this.app.ctx.lineTo(cx, y);
+                    this.app.ctx.stroke();
 //                    br+=adj.includes([i+1,j]);
 //                    bl+=adj.includes([i-1,j]);
                 }
@@ -251,54 +252,54 @@ class MapCard extends Widget {
                     br++;
                 }
                 if (bl == 2) {
-					game.ctx.beginPath();
-                    game.ctx.moveTo(cx,cy);
-                    game.ctx.lineTo(x, y);
-                    game.ctx.stroke();
+					this.app.ctx.beginPath();
+                    this.app.ctx.moveTo(cx,cy);
+                    this.app.ctx.lineTo(x, y);
+                    this.app.ctx.stroke();
                 }
                 if (br == 2) {
-					game.ctx.beginPath();
-                    game.ctx.moveTo(cx,cy);
-                    game.ctx.lineTo(x+s[0], y);
-                    game.ctx.stroke();
+					this.app.ctx.beginPath();
+                    this.app.ctx.moveTo(cx,cy);
+                    this.app.ctx.lineTo(x+s[0], y);
+                    this.app.ctx.stroke();
                 }
                 if (tr == 2) {
-					game.ctx.beginPath();
-                    game.ctx.moveTo(cx,cy);
-                    game.ctx.lineTo(x+s[0], y+s[1]);
-                    game.ctx.stroke();
+					this.app.ctx.beginPath();
+                    this.app.ctx.moveTo(cx,cy);
+                    this.app.ctx.lineTo(x+s[0], y+s[1]);
+                    this.app.ctx.stroke();
                 }
                 if (tl == 2) {
-					game.ctx.beginPath();
-                    game.ctx.moveTo(cx,cy);
-                    game.ctx.lineTo(x, y+s[1]);
-                    game.ctx.stroke();
+					this.app.ctx.beginPath();
+                    this.app.ctx.moveTo(cx,cy);
+                    this.app.ctx.lineTo(x, y+s[1]);
+                    this.app.ctx.stroke();
                 }
             }
         }
-        game.ctx.fillStyle = colorString([0.8,0.8,0.2]);
+        this.app.ctx.fillStyle = colorString([0.8,0.8,0.2]);
         for (var [i, j] of this.lights) {
             var x = rr.x + ((i + 0.4) * rr.w) / this.w;
             var y = rr.y + ((j + 0.4) * rr.h) / this.h;
-			game.ctx.beginPath();
-            game.ctx.rect(x, y, size[0]/5, size[1]/5);
-            game.ctx.fill();    
+			this.app.ctx.beginPath();
+            this.app.ctx.rect(x, y, size[0]/5, size[1]/5);
+            this.app.ctx.fill();    
         }
-        game.ctx.fillStyle = colorString([0.9,0.0,0.0]);
+        this.app.ctx.fillStyle = colorString([0.9,0.0,0.0]);
         for (var [i, j] of this.spawns) {
             var x = rr.x + ((i + 0.4) * rr.w) / this.w;
             var y = rr.y + ((j + 0.4) * rr.h) / this.h;
-			game.ctx.beginPath();
-            game.ctx.rect(x, y, size[0]/5, size[1]/5);
-            game.ctx.fill();    
+			this.app.ctx.beginPath();
+            this.app.ctx.rect(x, y, size[0]/5, size[1]/5);
+            this.app.ctx.fill();    
         }
-        game.ctx.fillStyle = colorString([0.6,0.0,0.0]);
+        this.app.ctx.fillStyle = colorString([0.6,0.0,0.0]);
         for (var [i, j] of this.waypoints) {
             var x = rr.x + ((i + 0.4) * rr.w) / this.w;
             var y = rr.y + ((j + 0.4) * rr.h) / this.h;
-			game.ctx.beginPath();
-            game.ctx.rect(x, y, size[0]/5, size[1]/5);
-            game.ctx.fill();    
+			this.app.ctx.beginPath();
+            this.app.ctx.rect(x, y, size[0]/5, size[1]/5);
+            this.app.ctx.fill();    
         }
     }
 }
