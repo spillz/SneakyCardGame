@@ -17,7 +17,6 @@ class App {
         this.baseWidget = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
         this.baseWidget.parent = this;
         this.baseWidget.app = this;
-
     }
     start() {
         let that = this;
@@ -55,7 +54,7 @@ class App {
     }        
     setupCanvas(){
         this.canvas = document.querySelector(this.canvasName);
-    
+
         this.canvas.width = window.innerWidth; //this.tileSize*(this.dimW);
         this.canvas.height = window.innerHeight; //this.tileSize*(this.dimH);
         this.canvas.style.width = this.canvas.width + 'px';
@@ -66,33 +65,30 @@ class App {
 
         this.offsetX = Math.floor((window.innerWidth - this.tileSize*this.dimW)/2);
         this.offsetY =  Math.floor((window.innerHeight - this.tileSize*this.dimH)/2);
-   
     }
-
     getTileScale() {
-        let sh = window.innerHeight;
-        let sw = window.innerWidth;
+        let sh = this.h;
+        let sw = this.w;
         let scale;
         scale = Math.min(sh/(this.prefDimH)/this.pixelSize,sw/(this.prefDimW)/this.pixelSize);
         if(!this.fillScreen) { //pixel perfect scaling
             scale = Math.floor(scale);
         }    
-        return scale;
+        return scale*this.pixelSize;
     }
-    
     fitMaptoTileSize(scale) {
         let sh = window.innerHeight;
         let sw = window.innerWidth;
         this.dimH = Math.floor(sh/scale);
         this.dimW = Math.floor(sw/scale);    
     }
-    
     updateWindowSize() {
-        this.tileSize = this.getTileScale()*this.pixelSize;
+        this.w = window.innerHeight;
+        this.h = window.innerWidth;
+        this.tileSize = this.getTileScale();
         this.fitMaptoTileSize(this.tileSize);
         this.setupCanvas();
     }
-
 }
 
 
@@ -115,12 +111,18 @@ class Widget extends Rect {
         }
         return new Proxy(this, {
             set(target, name, value) {
-                if(['x','y','w','h','children','_children','_needsLayout','_events'].includes[name]) return Reflect.set(...arguments);
+                if(['x','y','w','h','children','_children','_needsLayout','_events','rect'].includes[name]) return Reflect.set(...arguments);
                 target[name] = value;
                 target.emit(name, value);
                 return true;
             }
           });
+    }
+    set rect(rect) {
+        this[0] = rect[0];
+        this[1] = rect[1];
+        this[2] = rect[2];
+        this[3] = rect[3];
     }
     updateProperties(properties) {
         for(let p in properties) {
