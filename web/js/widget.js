@@ -1,6 +1,9 @@
 
 class App {
+    static appInstance = null;
     constructor() {
+        if(App.appInstance!=null) return appInstance; //singleton
+        App.appInstance = this;
         this.pixelSize = 1;
         this.fillScreen = false;
         this.dimW = this.prefDimW = 32;
@@ -13,16 +16,22 @@ class App {
         this.shakeX = 0;                 
         this.shakeY = 0;      
 
+
         // widget container
         this.baseWidget = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
         this.baseWidget.parent = this;
         this.baseWidget.app = this;
+    }
+    static get() { //singleton
+        if (!App.appInstance) App.appInstance = new App();
+        return App.appInstance;
     }
     start() {
         let that = this;
         window.onresize = (() => that.updateWindowSize());
         this.setupCanvas();
         this.inputHandler = new InputHandler(this);
+        this.updateWindowSize();
         this.update();
     }
     emit(event, data) {
@@ -100,7 +109,6 @@ class Widget extends Rect {
         super(rect);
         this.vel = new Vec2([0, 0]);
         this.parent = null;
-        this.app = null;
         this.processTouches = false;
         this._children = []; //widget has arbitrarily many children
         this._needsLayout = true;
@@ -157,16 +165,12 @@ class Widget extends Rect {
         this._children.push(child);
         this.emit('child_added', child);
         child.parent = this;
-        child.app = this.app;
-        for(let c of child.iter(true,false)) c.app = this.app;
         this._needsLayout = true;
     }
     removeChild(child) {
         this._children = this.children.filter(c => c!=child);
         this.emit('child_removed', child);
         child.parent = null;
-        child.app = null;
-        for(let c of child.iter(true,false)) c.app = null;
         this._needsLayout = true;
     }
     get children() {
@@ -236,32 +240,33 @@ class Widget extends Rect {
     }
     renderRect() {
         let r = new Rect(this);
-        r[0] = r[0] * this.app.tileSize + this.app.shakeX + this.app.offsetX;
-        r[1] = r[1] * this.app.tileSize + this.app.shakeY + this.app.offsetY;
-        r[2] = r[2] * this.app.tileSize;
-        r[3] = r[3] * this.app.tileSize;
+        r[0] = r[0] * App.get().tileSize + App.get().shakeX + App.get().offsetX;
+        r[1] = r[1] * App.get().tileSize + App.get().shakeY + App.get().offsetY;
+        r[2] = r[2] * App.get().tileSize;
+        r[3] = r[3] * App.get().tileSize;
         return r;        
     }
     localRect() {
         let r = new Rect(this);
-        r[0] = (r[0] - this.app.shakeX - this.app.offsetX)/this.app.tileSize;
-        r[1] = (r[1] - this.app.shakeY - this.app.offsetY)/this.app.tileSize;
-        r[2] = r[2]/this.app.tileSize;
-        r[3] = r[3]/this.app.tileSize;
+        r[0] = (r[0] - App.get().shakeX - App.get().offsetX)/App.get().tileSize;
+        r[1] = (r[1] - App.get().shakeY - App.get().offsetY)/App.get().tileSize;
+        r[2] = r[2]/App.get().tileSize;
+        r[3] = r[3]/App.get().tileSize;
         return r;        
     }
     draw() {
-//        this.app.sprites.entitiesItems.draw(this.sprite, this.getDisplayX(), this.getDisplayY(), this.getFlipped());
+//        App.get().sprites.entitiesItems.draw(this.sprite, this.getDisplayX(), this.getDisplayY(), this.getFlipped());
         //Usually widget should draw itself, then draw children in order
         //TODO: Get rid of the ugly scale transforms
         let r = this.renderRect();
-        this.app.ctx.beginPath();
-        this.app.ctx.rect(r[0], r[1], r[2], r[3]);
-        this.app.ctx.fillStyle = this.bgColor;
-        this.app.ctx.fill();
-        this.app.ctx.lineWidth = this.app.tileSize / 16;
-        this.app.ctx.strokeStyle = this.outlineColor;
-        this.app.ctx.stroke();
+        let app = App.get();
+        app.ctx.beginPath();
+        app.ctx.rect(r[0], r[1], r[2], r[3]);
+        app.ctx.fillStyle = this.bgColor;
+        app.ctx.fill();
+        app.ctx.lineWidth = app.tileSize / 16;
+        app.ctx.strokeStyle = this.outlineColor;
+        app.ctx.stroke();
 
         for(let c of this.children)
             c.draw();
@@ -291,7 +296,6 @@ class Widget extends Rect {
 class Label extends Widget {
     fontSize = null;
     text = '';
-    fontSize = null;
     wrap = false;
     align = 'center';
     color = "white";
@@ -308,19 +312,20 @@ class Label extends Widget {
         super.draw();
         let r = this.renderRect();
         let fontSize;
+        let app = App.get();
         if(this.fontSize==null) {
-            fontSize = this.h*this.app.tileSize/2;
-            this.app.ctx.font = fontSize + "px monospace";
-            let scale = r.w/this.app.ctx.measureText(this.text).width;
+            fontSize = this.h*app.tileSize/2;
+            app.ctx.font = fontSize + "px monospace";
+            let scale = r.w/app.ctx.measureText(this.text).width;
             if(scale<1) fontSize *= scale;
         } else {
-            fontSize = this.fontSize*this.app.tileSize;
+            fontSize = this.fontSize*app.tileSize;
         }
-        this.app.ctx.font = fontSize + "px monospace";
+        app.ctx.font = fontSize + "px monospace";
         if(this.wrap) {
-            drawWrappedText(this.app.ctx, this.text, fontSize, this.align=="center", r, this.color);
+            drawWrappedText(app.ctx, this.text, fontSize, this.align=="center", r, this.color);
         } else {
-            drawText(this.app.ctx, this.text, fontSize, this.align=="center", r, this.color);
+            drawText(app.ctx, this.text, fontSize, this.align=="center", r, this.color);
         }   
     }
 }
@@ -536,16 +541,17 @@ class ScrollView extends Widget {
     }
     on_touch_move(event, touch) {
         let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        let app = App.get();
         if(this.renderRect().collide(r)) {
             if(this.oldTouch==null || touch.identifier!=this.oldTouch[2]) {
                 this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
             } else {
                 if(this.scrollW) {
-                    this.scrollX += (this.oldTouch[0]-touch.clientX)/this.app.tileSize;
+                    this.scrollX += (this.oldTouch[0]-touch.clientX)/app.tileSize;
                     this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
                 }
                 if(this.scrollH) {
-                    this.scrollY += (this.oldTouch[1]-touch.clientY)/this.app.tileSize; 
+                    this.scrollY += (this.oldTouch[1]-touch.clientY)/app.tileSize; 
                     this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
                 }
                 this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];    
@@ -566,17 +572,18 @@ class ScrollView extends Widget {
     //             return;
     //         }
     //         if(this.scrollW) {
-    //             this.scrollX += (this.oldTouch[0]-touch.clientX)/this.app.tileSize;
+    //             this.scrollX += (this.oldTouch[0]-touch.clientX)/app.tileSize;
     //             this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
     //         }
     //         if(this.scrollH) {
-    //             this.scrollY += (this.oldTouch[1]-touch.clientY)/this.app.tileSize; 
+    //             this.scrollY += (this.oldTouch[1]-touch.clientY)/app.tileSize; 
     //             this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
     //         }
     //         this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
     //     }
     // }
     on_mouse_move(event, mouse) {
+        let app = App.get();
         let r = this.renderRect();
         if(r.collide(new Rect([mouse.clientX, mouse.clientY,0,0]))) {
             if(this.oldMouse==null || mouse.buttons!=1) {
@@ -584,35 +591,37 @@ class ScrollView extends Widget {
                 return;
             }
             if(this.scrollW) {
-                this.scrollX += (this.oldMouse[0]-mouse.clientX)/this.app.tileSize;
+                this.scrollX += (this.oldMouse[0]-mouse.clientX)/app.tileSize;
                 this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
             }
             if(this.scrollH) {
-                this.scrollY += (this.oldMouse[1]-mouse.clientY)/this.app.tileSize; 
+                this.scrollY += (this.oldMouse[1]-mouse.clientY)/app.tileSize; 
                 this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
             }
             this.oldMouse = [mouse.clientX, mouse.clientY];
         }
     }
     on_wheel(event, wheel) {
+        let app = App.get();
         if(this.scrollW) {
-            this.scrollX += (wheel.deltaX)/this.app.tileSize;
+            this.scrollX += (wheel.deltaX)/app.tileSize;
             this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
         }
         if(this.scrollH) {
-            this.scrollY += (wheel.deltaY)/this.app.tileSize; 
+            this.scrollY += (wheel.deltaY)/app.tileSize; 
             this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
         }
 
     }
     draw() {
         let r = this.renderRect();
-        this.app.ctx.save();
-        this.app.ctx.beginPath();
-        this.app.ctx.rect(r[0],r[1],r[2],r[3]);
-        this.app.ctx.clip();
+        let app = App.get();
+        app.ctx.save();
+        app.ctx.beginPath();
+        app.ctx.rect(r[0],r[1],r[2],r[3]);
+        app.ctx.clip();
         this.children[0].draw()
-        this.app.ctx.restore();
+        app.ctx.restore();
     }
 }
 

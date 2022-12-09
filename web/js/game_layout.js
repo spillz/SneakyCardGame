@@ -91,15 +91,248 @@ class Deck extends Widget { //represents a deck/tableau of splayed cards
             }    
         }
     }
-
 }
+
+class CardSelector extends Widget {
+    orientation = 'down'; //splay down, up, right, or left
+	selected = [];
+	numToPick = 1;
+    shownCard = null; 
+    shownCardShift = 0; // #proportion of card width or heigh to shift when card is selected
+    constructor(rect, properties) { //TODO: add card spacing params
+        super(rect);
+        this.updateProperties(properties);
+    }
+
+    layoutChildren() {
+        //ASSUMPTION: The cards are already sized equally and will fit within the deck
+        if(this.children.length==0) return;
+        let c = this.children[0];
+        if(this.orientation=='down') {
+            let step = (this.h-c.h)/(this.children.length-1);
+            let y = this.y;
+            let x = this.x;
+            for(let c of this.children) {
+                c.y = Math.min(y, this.y+this.h-c.h);
+                c.x = x;
+				c.layoutChildren()
+                y+=step;
+            }    
+        }
+        if(this.orientation=='right') {
+            let step = (this.w-c.w)/(this.children.length-1);
+            let y = this.y;
+            let x = this.x;
+            for(let c of this.children) {
+                c.x = Math.min(x, this.x+this.w-c.w);
+                c.y = y;
+				c.layoutChildren()
+                x+=step;
+            }    
+        }
+    }
+	on_touch_down(event, touch) {
+		for(let card of this.children) {
+			if (card.collide_point (...touch.pos)) {
+				touch.grab (card);
+				return true;
+			}
+		}
+	}
+	on_touch_up(event, touch) {
+		let card = touch.grab_current;
+		if (this.children.includes(card)) {
+			touch.ungrab (card);
+			if (!(card.collide_point (...touch.pos))) {
+				return true;
+			}
+			if (this.numToPick > 1) {
+				let sel = this.children.filter(c.selected);
+				if (len (sel) >= this.numToPick) {
+					return true;
+				}
+				card.selected = !(card.selected);
+			}
+			else if (this.numToPick == 1) {
+				for (let c of this.children) {
+					if (c == card) {
+						c.selected = !(c.selected);
+					}
+					else {
+						c.selected = false;
+					}
+				}
+			}
+			return true;
+		}
+	}
+}
+
+class CardSplay extends Label {
+	orientation = 'horizontal';
+	canDraw = false;
+	shownCard = null;
+	shownCardShift = 0;
+	selected = [];
+	multiSelect = false;
+	cardSpreadScale = 0.5;
+	text = 'CARDSPLAY';
+	constructor(rect, properties) {
+		super(rect);
+		this.updateProperties(properties);
+	}
+	layoutChildren() {
+		let app = App.get();
+		let anim = false;
+		var cardw = app.card_size [0];
+		var cardh = app.card_size [1];
+		var mul = (this.shownCard === null || this.shownCard == this.children [-(1)] || this.children.length <= 1 ? 1 : 2);
+		if (this.orientation == 'horizontal') {
+			var exp_len = cardw;
+			var offset = 0;
+			if (this.children.length > 1) {
+				var delta = Math.floor (Math.max(Math.min(cardw * this.cardSpreadScale, (this.w - cardw * mul) / ((this.children.length + 1) - mul)), 2));
+			}
+			else {
+				var delta = 0;
+			}
+			if (delta == 2) {
+				var max_splay = Math.floor ((this.w - cardw) / 2);
+			}
+			else {
+				var max_splay = this.children.length;
+			}
+		}
+		else {
+			var exp_len = -(cardh);
+			var offset = this.h - cardh;
+			if (this.children.length > 1) {
+				var delta = -(Math.floor (Math.max(Math.min(cardh * this.cardSpreadScale, (this.h - cardh * mul) / (this.children.length - mul)), 2)));
+			}
+			else {
+				var delta = 0;
+			}
+			if (delta == -(2)) {
+				var max_splay = Math.floor ((this.h - cardh) / 2);
+			}
+			else {
+				var max_splay = this.children.length;
+			}
+		}
+		var i = 0;
+		for (var c of this.children) {
+			if (this.orientation == 'horizontal') {
+				var x = this.x + offset;
+				var y = (c != this.shownCard ? this.y : this.y + this.shownCardShift * cardh);
+			}
+			else {
+				var y = this.y + offset;
+				var x = (c != this.shownCard ? this.x : this.x + this.shownCardShift * cardw);
+			}
+			if (anim) {
+				if (this.children.length < 10) {
+					var animc = Animation ({pos: c.pos, duration: i * 0.025}).add(Animation ({pos: tuple ([x, y]), duration: 0.2}));
+				}
+				else {
+					var animc = Animation ({pos: tuple ([x, y]), duration: 0.2});
+				}
+				animc.start (c);
+			}
+			else {
+				c.x = x;
+				c.y = y;
+			}
+			if (c == this.shownCard) {
+				offset += exp_len;
+			}
+			else if (i < max_splay) {
+				offset += delta;
+			}
+			c.layoutChildren();
+			i++;
+		}
+	}
+	on_shownCard(exp, card) {
+		if (!(this.multiSelect)) {
+			for (var c of this.children) {
+				c.selected = false;
+			}
+		}
+		if (this.shownCard !== null) {
+			this.shownCard.selected = true;
+		}
+		if (this.shownCard === null && this.multiSelect) {
+			for (var c of this.children) {
+				c.selected = false;
+			}
+		}
+		this.layoutChildren();
+	}
+	do_closeup(closeup_card, touch, time) {
+		if (!(closeup_card.face_up)) {
+			var closeup_card = null;
+		}
+		CardSplayCloseup (__kwargtrans__ ({closeup_card: closeup_card, cards: this.children})).open ();
+		this._clockev = null;
+	}
+	on_touch_down(touch) {
+		for (var c of this.children.__getslice__ (0, null, -(1))) {
+			if (c.collide_point (...this.to_local (...touch.pos))) {
+				touch.grab (self);
+				this._clockev = Clock.schedule_once (partial (this.do_closeup, c, touch), 0.5);
+				return true;
+			}
+		}
+	}
+	on_touch_up(touch) {
+		if (touch.grab_current != self) {
+			return ;
+		}
+		touch.ungrab (self);
+		if (this._clockev != null) {
+			this._clockev.cancel ();
+			this._clockev = null;
+			return true;
+		}
+	}
+	move_to(cards, deck, pos=null) {
+		this.children = this.children.filter(c => cards.includes(c));
+		deck.children = [...deck.children.slice(0,pos), ...cards, ...deck.children.slice(pos)];
+	}
+	__draw_frame() {
+		var args = tuple ([].slice.apply (arguments).slice (1));
+		this.canvas.after.py_clear ();
+		var __withid0__ = this.canvas.after;
+		try {
+			__withid0__.__enter__ ();
+			Color (__kwargtrans__ ({rgba: tuple ([1, 1, 1, 1])}));
+			Line (__kwargtrans__ ({width: 1, rectangle: tuple ([this.x, this.y, this.width, this.h])}));
+			if (this.can_draw) {
+				Color (__kwargtrans__ ({rgba: tuple ([240, 69, 0, 1])}));
+				Line (__kwargtrans__ ({width: 1 + Math.floor (this.width / 30), points: tuple ([this.x + Math.floor (this.width / 10), this.y, this.x, this.y, this.x, this.y + Math.floor (this.width / 10)])}));
+				Line (__kwargtrans__ ({width: 1 + Math.floor (this.width / 30), points: tuple ([this.right - Math.floor (this.width / 10), this.y, this.right, this.y, this.right, this.y + Math.floor (this.width / 10)])}));
+				Line (__kwargtrans__ ({width: 1 + Math.floor (this.width / 30), points: tuple ([this.x + Math.floor (this.width / 10), this.top, this.x, this.top, this.x, this.top - Math.floor (this.width / 10)])}));
+				Line (__kwargtrans__ ({width: 1 + Math.floor (this.width / 30), points: tuple ([this.right - Math.floor (this.width / 10), this.top, this.right, this.top, this.right, this.top - Math.floor (this.width / 10)])}));
+			}
+			__withid0__.__exit__ ();
+		}
+		catch (__except0__) {
+			if (! (__withid0__.__exit__ (__except0__.name, __except0__, __except0__.stack))) {
+				throw __except0__;
+			}
+		}
+	}
+}
+
+
 
 class Card extends Widget {
     name = 'card name';
     text = 'card text';
     image = null;
     faceUp = true;
-    constructor(rect, properties) {
+	selected = false;
+    constructor(rect=null, properties=null) {
         super(rect);
         this.updateProperties(properties);
         // let that = this
@@ -116,11 +349,18 @@ class Card extends Widget {
             r2.y += r1.h;
             r2.h -= r1.h;
             //TODO: Get rid of the ugly scale transforms
-            drawWrappedText(this.app.ctx, this.name, this.h/12*this.app.tileSize, true, r1.mult(this.app.tileSize).shift([this.app.offsetX,this.app.offsetY]), "yellow");
-            drawWrappedText(this.app.ctx, this.text, this.h/18*this.app.tileSize, true, r2.mult(this.app.tileSize).shift([this.app.offsetX,this.app.offsetY]), "white");    
+			let app=App.get();
+            drawWrappedText(app.ctx, this.name, this.h/12*app.tileSize, true, r1.mult(app.tileSize).shift([app.offsetX,app.offsetY]), "yellow");
+            drawWrappedText(app.ctx, this.text, this.h/18*app.tileSize, true, r2.mult(app.tileSize).shift([app.offsetX,app.offsetY]), "white");    
         } else {
-            super.draw();
-            //TODO: draw card back
+//            super.draw();
+			let r = this.renderRect();
+			let app = App.get();
+			app.ctx.beginPath();
+			app.ctx.rect(r[0], r[1], r[2], r[3]);
+			app.ctx.fillStyle = 'gray';
+			app.ctx.fill();
+				//TODO: draw card back
         }
     }
 
@@ -164,98 +404,14 @@ class ButLabel extends Label {
 	}
 }
 
-class CardSelector extends BoxLayout {
-	cards = ListProperty ();
-	num_to_pick = NumericProperty ();
-	but_ok_pressed = BooleanProperty ();
-	card_size = ListProperty ();
-	on_cards() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		for (var c of this.card_splay.children.__getslice__ (0, null, 1)) {
-			if (isinstance (c, cards.Card)) {
-				c.unbind (__kwargtrans__ ({on_touch_up: this.on_touch_up_card}));
-				c.unbind (__kwargtrans__ ({on_touch_down: this.on_touch_down_card}));
-				this.card_splay.remove_widget (c);
-			}
-		}
-		for (var c of this.cards) {
-			this.card_splay.add_widget (c);
-			c.bind (__kwargtrans__ ({on_touch_up: this.on_touch_up_card}));
-			c.bind (__kwargtrans__ ({on_touch_down: this.on_touch_down_card}));
-			c.size = this.card_size;
-			c.face_up = true;
-		}
-	}
-	on_touch_down_card(card, touch) {
-		if (card.collide_point (...touch.pos)) {
-			touch.grab (card);
-			return true;
-		}
-	}
-	on_touch_up_card(card, touch) {
-		if (touch.grab_current == card) {
-			touch.ungrab (card);
-			if (!(card.collide_point (...touch.pos))) {
-				return true;
-			}
-			if (this.num_to_pick > 1) {
-				var sel = (function () {
-					var __accu0__ = [];
-					for (var c of this.cards) {
-						if (c.selected) {
-							__accu0__.append (c);
-						}
-					}
-					return __accu0__;
-				}) ();
-				if (len (sel) >= this.num_to_pick) {
-					return true;
-				}
-				card.selected = !(card.selected);
-			}
-			else if (this.num_to_pick == 1) {
-				for (var c of this.cards) {
-					if (c == card) {
-						c.selected = !(c.selected);
-					}
-					else {
-						c.selected = false;
-					}
-				}
-			}
-			return true;
-		}
-	}
-	on_parent() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		if (this.parent !== null) {
-			this.card_size = this.parent.card_size;
-			this.parent.bind (__kwargtrans__ ({card_size: this.setter ('card_size')}));
-		}
-	}
-	on_touch_down(touch) {
-		__super__ (CardSelector, 'on_touch_down') (self, touch);
-		return true;
-	}
-	on_touch_up(touch) {
-		__super__ (CardSelector, 'on_touch_up') (self, touch);
-		return true;
-	}
-}
 class CardSplayCloseup extends ModalView {
-	cards = ListProperty ();
-	__init__(closeup_card, cards) {
-		if (typeof closeup_card == 'undefined' || (closeup_card != null && closeup_card.hasOwnProperty ("__kwargtrans__"))) {;
-			var closeup_card = null;
-		};
-		if (typeof cards == 'undefined' || (cards != null && cards.hasOwnProperty ("__kwargtrans__"))) {;
-			var cards = [];
-		};
+	cards = [];
+	constructor(closeup_card=null, cards=[], args) {
 		var args = tuple ([].slice.apply (arguments).slice (3));
-		__super__ (CardSplayCloseup, '__init__') (self, ...args, __kwargtrans__ (kwargs));
+		super(new Rect(), args);
 		this.closeup_card = null;
 		if (closeup_card === null) {
-			var closeup_card = cards [0];
+			closeup_card = cards[0];
 		}
 		this.size_hint = tuple ([0.8, 0.8]);
 		this.content = RelativeLayout ();
@@ -293,7 +449,7 @@ class CardSplayCloseup extends ModalView {
 		if (this.closeup_card !== null) {
 			this.content.remove_widget (this.closeup_card);
 		}
-		if (len (this.cards) > 0) {
+		if (this.children.length > 0) {
 			this.closeup_card = this.cards [0];
 		}
 		this.closeup_card = py_typeof (closeup_card) ();
@@ -303,16 +459,16 @@ class CardSplayCloseup extends ModalView {
 	}
 	on_size() {
 		var args = tuple ([].slice.apply (arguments).slice (1));
-		var pref_width = int (this.height * this.aspect);
+		var pref_width = int (this.h * this.aspect);
 		var pref_height = int (this.width / this.aspect);
 		var ratio = 1;
 		if (pref_width <= this.width) {
-			if (len (this.cards) > 0 && pref_width > 0.66 * this.width) {
+			if (this.children.length > 0 && pref_width > 0.66 * this.width) {
 				var ratio = (0.66 * this.width) / pref_width;
 				var pref_width = int (0.66 * this.width);
 			}
-			this.closeup_card.size = tuple ([pref_width, int (this.height * ratio)]);
-			if (len (this.cards) == 0) {
+			this.closeup_card.size = tuple ([pref_width, int (this.h * ratio)]);
+			if (this.children.length == 0) {
 				this.closeup_card.x = Math.floor ((this.width - pref_width) / 2);
 				this.scroll_view.width = 1;
 				this.scroll_view.height = 1;
@@ -321,18 +477,18 @@ class CardSplayCloseup extends ModalView {
 			else {
 				this.closeup_card.pos = tuple ([0, 0]);
 				this.scroll_view.width = this.width - pref_width;
-				this.scroll_view.height = this.height;
+				this.scroll_view.height = this.h;
 				this.scroll_view.pos = tuple ([this.closeup_card.width, 0]);
 			}
 		}
 		else {
-			if (len (this.cards) > 0 && pref_height > 0.5 * this.height) {
-				var ratio = (0.5 * this.height) / pref_height;
-				var pref_height = int (0.5 * this.height);
+			if (this.children.length > 0 && pref_height > 0.5 * this.h) {
+				var ratio = (0.5 * this.h) / pref_height;
+				var pref_height = int (0.5 * this.h);
 			}
 			this.closeup_card.size = tuple ([this.width * ratio, pref_height]);
-			if (len (this.cards) == 0) {
-				this.closeup_card.y = Math.floor ((this.height - pref_height) / 2);
+			if (this.children.length == 0) {
+				this.closeup_card.y = Math.floor ((this.h - pref_height) / 2);
 				this.scroll_view.width = 1;
 				this.scroll_view.height = 1;
 				this.scroll_view.pos = tuple ([-(10), -(10)]);
@@ -340,11 +496,11 @@ class CardSplayCloseup extends ModalView {
 			else {
 				this.closeup_card.pos = tuple ([0, 0]);
 				this.scroll_view.width = this.width;
-				this.scroll_view.height = this.height - pref_height;
+				this.scroll_view.height = this.h - pref_height;
 				this.scroll_view.pos = tuple ([0, this.closeup_card.height]);
 			}
 		}
-		if (len (this.cards) > 0) {
+		if (this.children.length > 0) {
 			this.grid_layout.cols = int (Math.floor (this.scroll_view.width / this.cards [0].width));
 		}
 		for (var c of this.cards) {
@@ -374,229 +530,20 @@ class CardSplayCloseup extends ModalView {
 			return true;
 		}
 	}
-}
-class CardSplay extends Widget {
-	cards = ListProperty ();
-	orientation = StringProperty ('horizontal');
-	can_draw = BooleanProperty (false);
-	shown_card = ObjectProperty (null, __kwargtrans__ ({allownone: true}));
-	shown_card_shift = 0;
-	selected = BooleanProperty (false);
-	multi_select = BooleanProperty (false);
-	__init__() {
-		if (__in__ ('card_spread_scale', kwargs)) {
-			this.card_spread_scale = kwargs ['card_spread_scale'];
-			delete kwargs ['card_spread_scale'];
-		}
-		else {
-			this.card_spread_scale = 0.5;
-		}
-		__super__ (CardSplay, '__init__') (self, __kwargtrans__ (kwargs));
-		this.touch_card = null;
-		this._clockev = null;
-		this._splay_clockev = null;
-	}
-	on_cards() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		for (var c of this.children.__getslice__ (0, null, 1)) {
-			if (isinstance (c, cards.Card)) {
-				this.remove_widget (c);
-				c.selected = false;
-			}
-		}
-		for (var c of this.cards) {
-			this.add_widget (c);
-			c.size = this.parent.card_size;
-			c.selected = false;
-		}
-		this.shown_card = null;
-		this.splay_cards ();
-	}
-	on_size() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		this.splay_cards (__kwargtrans__ ({anim: false}));
-	}
-	splay_cards(anim) {
-		if (typeof anim == 'undefined' || (anim != null && anim.hasOwnProperty ("__kwargtrans__"))) {;
-			var anim = true;
-		};
-		if (this._splay_clockev !== null) {
-			this._splay_clockev.cancel ();
-		}
-		this._splay_clockev = Clock.schedule_once (partial (this.do_splay_cards, __kwargtrans__ ({anim: anim})), 0.05);
-	}
-	do_splay_cards(time, anim) {
-		if (typeof anim == 'undefined' || (anim != null && anim.hasOwnProperty ("__kwargtrans__"))) {;
-			var anim = true;
-		};
-		this._splay_clockev = null;
-		if (len (this.cards) == 0) {
-			return ;
-		}
-		var cardw = this.parent.card_size [0];
-		var cardh = this.parent.card_size [1];
-		var mul = (this.shown_card === null || this.shown_card == this.cards [-(1)] || len (this.cards) <= 1 ? 1 : 2);
-		if (this.orientation == 'horizontal') {
-			var exp_len = cardw;
-			var offset = 0;
-			if (len (this.cards) > 1) {
-				var delta = int (Math.max(Math.min(cardw * this.card_spread_scale, (this.width - cardw * mul) / ((len (this.cards) + 1) - mul)), 2));
-			}
-			else {
-				var delta = 0;
-			}
-			if (delta == 2) {
-				var max_splay = Math.floor ((this.width - cardw) / 2);
-			}
-			else {
-				var max_splay = len (this.cards);
-			}
-		}
-		else {
-			var exp_len = -(cardh);
-			var offset = this.height - cardh;
-			if (len (this.cards) > 1) {
-				var delta = -(int (Math.max(Math.min(cardh * this.card_spread_scale, (this.height - cardh * mul) / (len (this.cards) - mul)), 2)));
-			}
-			else {
-				var delta = 0;
-			}
-			if (delta == -(2)) {
-				var max_splay = Math.floor ((this.height - cardh) / 2);
-			}
-			else {
-				var max_splay = len (this.cards);
-			}
-		}
-		var i = 0;
-		for (var c of this.cards) {
-			if (this.orientation == 'horizontal') {
-				var x = this.x + offset;
-				var y = (c != this.shown_card ? this.y : this.y + this.shown_card_shift * cardh);
-			}
-			else {
-				var y = this.y + offset;
-				var x = (c != this.shown_card ? this.x : this.x + this.shown_card_shift * cardw);
-			}
-			if (anim) {
-				if (len (this.cards) < 10) {
-					var animc = Animation (__kwargtrans__ ({pos: c.pos, duration: i * 0.025})) + Animation (__kwargtrans__ ({pos: tuple ([x, y]), duration: 0.2}));
-				}
-				else {
-					var animc = Animation (__kwargtrans__ ({pos: tuple ([x, y]), duration: 0.2}));
-				}
-				animc.start (c);
-			}
-			else {
-				c.x = x;
-				c.y = y;
-			}
-			if (c == this.shown_card) {
-				offset += exp_len;
-			}
-			else if (i < max_splay) {
-				offset += delta;
-			}
-			i++;
-		}
-	}
-	on_shown_card(exp, card) {
-		if (!(this.multi_select)) {
-			for (var c of this.cards) {
-				c.selected = false;
-			}
-		}
-		if (this.shown_card !== null) {
-			this.shown_card.selected = true;
-		}
-		if (this.shown_card === null && this.multi_select) {
-			for (var c of this.cards) {
-				c.selected = false;
-			}
-		}
-		this.splay_cards ();
-	}
-	do_closeup(closeup_card, touch, time) {
-		if (!(closeup_card.face_up)) {
-			var closeup_card = null;
-		}
-		CardSplayCloseup (__kwargtrans__ ({closeup_card: closeup_card, cards: this.cards})).open ();
-		this._clockev = null;
-	}
-	on_touch_down(touch) {
-		for (var c of this.cards.__getslice__ (0, null, -(1))) {
-			if (c.collide_point (...this.to_local (...touch.pos))) {
-				touch.grab (self);
-				this._clockev = Clock.schedule_once (partial (this.do_closeup, c, touch), 0.5);
-				return true;
-			}
-		}
-	}
-	on_touch_up(touch) {
-		if (touch.grab_current != self) {
-			return ;
-		}
-		touch.ungrab (self);
-		if (this._clockev != null) {
-			this._clockev.cancel ();
-			this._clockev = null;
-			return true;
-		}
-	}
-	move_to(cards, deck, pos) {
-		if (typeof pos == 'undefined' || (pos != null && pos.hasOwnProperty ("__kwargtrans__"))) {;
-			var pos = null;
-		};
-		this.cards = (function () {
-			var __accu0__ = [];
-			for (var c of this.cards) {
-				if (!__in__ (c, cards)) {
-					__accu0__.append (c);
-				}
-			}
-			return __accu0__;
-		}) ();
-		if (pos !== null) {
-			deck.cards = (deck.cards.__getslice__ (0, pos, 1) + cards) + deck.cards.__getslice__ (pos, null, 1);
-		}
-		else {
-			deck.cards = deck.cards.__getslice__ (0, null, 1) + cards;
-		}
-	}
-	__draw_frame() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		this.canvas.after.py_clear ();
-		var __withid0__ = this.canvas.after;
-		try {
-			__withid0__.__enter__ ();
-			Color (__kwargtrans__ ({rgba: tuple ([1, 1, 1, 1])}));
-			Line (__kwargtrans__ ({width: 1, rectangle: tuple ([this.x, this.y, this.width, this.height])}));
-			if (this.can_draw) {
-				Color (__kwargtrans__ ({rgba: tuple ([240, 69, 0, 1])}));
-				Line (__kwargtrans__ ({width: 1 + Math.floor (this.width / 30), points: tuple ([this.x + Math.floor (this.width / 10), this.y, this.x, this.y, this.x, this.y + Math.floor (this.width / 10)])}));
-				Line (__kwargtrans__ ({width: 1 + Math.floor (this.width / 30), points: tuple ([this.right - Math.floor (this.width / 10), this.y, this.right, this.y, this.right, this.y + Math.floor (this.width / 10)])}));
-				Line (__kwargtrans__ ({width: 1 + Math.floor (this.width / 30), points: tuple ([this.x + Math.floor (this.width / 10), this.top, this.x, this.top, this.x, this.top - Math.floor (this.width / 10)])}));
-				Line (__kwargtrans__ ({width: 1 + Math.floor (this.width / 30), points: tuple ([this.right - Math.floor (this.width / 10), this.top, this.right, this.top, this.right, this.top - Math.floor (this.width / 10)])}));
-			}
-			__withid0__.__exit__ ();
-		}
-		catch (__except0__) {
-			if (! (__withid0__.__exit__ (__except0__.name, __except0__, __except0__.stack))) {
-				throw __except0__;
-			}
-		}
+	draw() {
+		super.draw();
 	}
 }
+
+
 class PlayerDiscard extends CardSplay {
 	on_cards() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		for (var c of this.children.__getslice__ (0, null, 1)) {
+		for (var c of this.children.slice(0, null, 1)) {
 			if (isinstance (c, cards.Card)) {
 				c.face_up = false;
 			}
 		}
-		__super__ (PlayerDiscard, 'on_cards') (self, ...args);
-		for (var c of this.cards) {
+		for (var c of this.children) {
 			c.face_up = true;
 		}
 	}
@@ -604,8 +551,7 @@ class PlayerDiscard extends CardSplay {
 class PlayerDeck extends CardSplay {
 	on_cards() {
 		var args = tuple ([].slice.apply (arguments).slice (1));
-		__super__ (PlayerDeck, 'on_cards') (self, ...args);
-		for (var c of this.cards) {
+		for (var c of this.children) {
 			c.face_up = false;
 		}
 	}
@@ -623,91 +569,60 @@ class PlayerDeck extends CardSplay {
 		this.can_draw = false;
 		this.parent.board.scroll_to_player ();
 	}
-	draw(n) {
-		var shuffle = n - len (this.cards);
-		var cards = this.cards.__getslice__ (-(1), -(n) - 1, -(1));
+	drawCard(n) {
+		var shuffle = n - this.children.length;
+		var cards = this.children.slice (-n-1, -1);
 		this.move_to (cards, this.parent.hand);
 		if (shuffle > 0) {
-			var discards = this.parent.playerdiscard.cards.__getslice__ (0, null, 1);
+			var discards = this.parent.playerdiscard.cards.slice (0, playerdiscard.cards.length);
 			random.shuffle (discards);
 			this.parent.playerdiscard.move_to (discards, self);
-			var cards = this.cards.__getslice__ (-(1), -(shuffle) - 1, -(1));
+			var cards = this.children.slice (-shuffle-1, -1);
 			this.move_to (cards, this.parent.hand);
 		}
 	}
 }
 class PlayerTraits extends CardSplay {
-	active_card = ObjectProperty (null, __kwargtrans__ ({allownone: true}));
+	active_card = null;
 	on_touch_up(touch) {
-		__super__ (PlayerTraits, 'on_touch_up') (self, touch);
 		if (!(this.collide_point (...touch.pos))) {
 			return false;
 		}
 		if (!(this.can_draw)) {
 			return false;
 		}
-		if (len (this.cards) == 0) {
+		if (this.children.length == 0) {
 			return false;
 		}
-		this.cards = [this.cards [-(1)]] + this.cards.__getslice__ (0, -(1), 1);
+		this.children = [this.children[-1]].concat(this.children.slice (0, -1)); //rotate through cards
 		return true;
 	}
-	on_cards() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		for (var c of this.cards) {
-			c.face_up = true;
-			c.selected = false;
-		}
-		__super__ (PlayerTraits, 'on_cards') (self, ...args);
-		if (len (this.cards) > 0) {
-			this.active_card = this.cards [-(1)];
-		}
-		else {
-			this.active_card = null;
-		}
-	}
 }
+
 class ActiveCardSplay extends CardSplay {
-	active_card = ObjectProperty (null, __kwargtrans__ ({allownone: true}));
+	active_card = null;
 	on_cards() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		__super__ (ActiveCardSplay, 'on_cards') (self, ...args);
-		if (len (this.cards) > 0) {
-			this.active_card = this.cards [-(1)];
+		if (this.children.length > 0) {
+			this.active_card = this.children [-(1)];
 		}
 		else {
 			this.active_card = null;
 		}
 	}
 	on_touch_up(touch) {
-		if (__super__ (ActiveCardSplay, 'on_touch_up') (self, touch) === null) {
-			return ;
-		}
-		if (len (this.cards) > 0) {
+		if (this.children.length > 0) {
 			this.parent.hand.cancel_action ();
 		}
 		return true;
 	}
-	discard_used(unused, noise, exhaust_on_use, tap_on_use) {
-		if (typeof unused == 'undefined' || (unused != null && unused.hasOwnProperty ("__kwargtrans__"))) {;
-			var unused = 0;
-		};
-		if (typeof noise == 'undefined' || (noise != null && noise.hasOwnProperty ("__kwargtrans__"))) {;
-			var noise = 0;
-		};
-		if (typeof exhaust_on_use == 'undefined' || (exhaust_on_use != null && exhaust_on_use.hasOwnProperty ("__kwargtrans__"))) {;
-			var exhaust_on_use = null;
-		};
-		if (typeof tap_on_use == 'undefined' || (tap_on_use != null && tap_on_use.hasOwnProperty ("__kwargtrans__"))) {;
-			var tap_on_use = null;
-		};
+	discard_used(unused=0, noise=0, exhaust_on_use=null, tap_on_use=null) {
 		if (unused > 0) {
-			var cards0 = this.cards.__getslice__ (0, unused, 1);
+			let cards0 = this.children.slice(0);
 			this.move_to (cards0, this.parent.hand);
 		}
-		if (len (this.cards) > 0) {
+		if (this.children.length > 0) {
 			if (exhaust_on_use !== null) {
-				if (isinstance (exhaust_on_use, cards.TraitCard)) {
+				if (exhaust_on_use instanceof cards.TraitCard) {
 					this.parent.playertraits.move_to ([exhaust_on_use], this.parent.exhausted);
 				}
 				else {
@@ -715,18 +630,18 @@ class ActiveCardSplay extends CardSplay {
 				}
 			}
 			if (tap_on_use !== null) {
-				if (isinstance (tap_on_use, cards.TraitCard)) {
+				if (tap_on_use instanceof cards.TraitCard) {
 					tap_on_use.tapped = true;
 				}
 			}
 		}
-		var cards0 = this.cards.__getslice__ (0, null, 1);
+		var cards0 = this.children.slice (0);
 		this.move_to (cards0, this.parent.playerdiscard);
 		this.parent.hand.clear_selection ();
 	}
 }
 class ActionSelectorOption extends Label {
-	_touching = BooleanProperty (false);
+	_touching = false;
 	on_touch_down(touch) {
 		if (this.collide_point (...touch.pos)) {
 			touch.grab (self);
@@ -744,23 +659,24 @@ class ActionSelectorOption extends Label {
 	}
 }
 class ActionSelector extends BoxLayout {
-	__init__(hand, actions) {
+	constructor(hand, actions) {
+		super(new Rect(0,0,5,1));
 		this.hand = hand;
-		__super__ (ActionSelector, '__init__') (self, __kwargtrans__ (__mergekwargtrans__ ({orientation: 'vertical'}, kwargs)));
 		for (var a of actions) {
-			this.add_widget (ActionSelectorOption (__kwargtrans__ ({text: a})));
+			this.addChild (new ActionSelectorOption (new Rect(), {text: a}));
 		}
 	}
 }
+
 class Hand extends CardSplay {
-	selected_action = StringProperty ('');
-	actions = DictProperty ();
-	action_selector = ObjectProperty (null, __kwargtrans__ ({allownone: true}));
-	hand_size = NumericProperty (5);
+	selected_action = '';
+	actions = {};
+	action_selector = null;
+	hand_size = 5;
 	on_selected_action() {
 		var args = tuple ([].slice.apply (arguments).slice (1));
 		if (this.selected_action != '') {
-			this.move_to ([this.shown_card], this.parent.activecardsplay);
+			this.move_to ([this.shownCard], this.parent.activecardsplay);
 			var action = this.selected_action;
 			var action_fn = this.actions [action];
 			action_fn ('card_action_selected');
@@ -794,48 +710,36 @@ class Hand extends CardSplay {
 		}
 	}
 	on_touch_up(touch) {
-		if (__super__ (Hand, 'on_touch_up') (self, touch) === null) {
-			return ;
-		}
-		if (len (this.cards) == 0) {
+		if (this.children.length == 0) {
 			return true;
 		}
 		if (this.can_draw == false) {
 			return true;
 		}
-		for (var c of this.cards.__getslice__ (0, null, -(1))) {
+		for (var c of this.children.reverse()) {
 			if (c.collide_point (...this.to_local (...touch.pos))) {
-				if (this.shown_card == c) {
+				if (this.shownCard == c) {
 					this.clear_selection ();
-					this.shown_card = null;
+					this.shownCard = null;
 				}
 				else if (this.selected_action != '') {
 					var action_fn = this.actions [this.selected_action];
-					if (action_fn ('can_stack', __kwargtrans__ ({stacked_card: c}))) {
+					if (action_fn.activate('can_stack', {stacked_card: c})) {
 						this.move_to ([c], this.parent.activecardsplay, 0);
-						action_fn ('card_stacked', __kwargtrans__ ({stacked_card: c}));
+						action_fn.activate('card_stacked', {stacked_card: c});
 						return true;
 					}
 				}
 				else {
 					this.clear_selection ();
-					this.shown_card = c;
+					this.shownCard = c;
 					this.selected_action = '';
 					this.parent.board.map_choices = [];
 					var actions = c.get_actions (this.parent);
-					for (var tc of this.parent.playertraits.cards) {
-						var action_types = (function () {
-							var __accu0__ = [];
-							for (var a of actions.py_values ()) {
-								__accu0__.append (py_typeof (a));
-							}
-							return __accu0__;
-						}) ();
-						var trait_actions = tc.get_actions_for_card (c, this.parent);
+					for(let tc of parent.playertraits.children.slice(-1)) {
+						let trait_actions = tc.get_actions_for_card (c, this.parent);
 						for (var ta of trait_actions) {
-							if (!__in__ (py_typeof (trait_actions [ta]), action_types)) {
-								actions.py_update ([[ta, trait_actions [ta]]]);
-							}
+							actions[ta] = trait_actions[ta];
 						}
 					}
 					this.show_card_actions (c, actions);
@@ -850,17 +754,7 @@ class Hand extends CardSplay {
 	clear_selection() {
 		this.parent.playerprompt.text = 'Select a card to play or touch the event deck to end your turn';
 		this.parent.board.map_choices = [];
-		for (var c of (function () {
-			var __accu0__ = [];
-			for (var c of this.cards) {
-				if (c.selected) {
-					__accu0__.append (c);
-				}
-			}
-			return __accu0__;
-		}) ()) {
-			c.selected = false;
-		}
+		this.children.filter(c=>c.selected).apply(c=>c.selected=false);
 		this.clear_card_actions ();
 		this.selected_action = '';
 	}
@@ -868,12 +762,11 @@ class Hand extends CardSplay {
 		this.parent.playertraits.can_draw = true;
 	}
 	on_cards() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		for (var c of this.cards) {
+		for (var c of this.children) {
 			c.face_up = true;
 		}
-		__super__ (Hand, 'on_cards') (self, ...args);
-		if (len (this.cards) == 0) {
+		this.super();
+		if (this.children.length == 0) {
 			this.parent.playerprompt.text = 'Touch the event deck to end your turn';
 		}
 		else {
@@ -885,32 +778,25 @@ class SkillDeck extends CardSplay {
 	on_touch_up(touch) {
 		__super__ (SkillDeck, 'on_touch_up') (self, touch);
 	}
-	select_draw(num_to_pick, num_offered) {
-		if (typeof num_to_pick == 'undefined' || (num_to_pick != null && num_to_pick.hasOwnProperty ("__kwargtrans__"))) {;
-			var num_to_pick = 2;
-		};
-		if (typeof num_offered == 'undefined' || (num_offered != null && num_offered.hasOwnProperty ("__kwargtrans__"))) {;
-			var num_offered = 4;
-		};
-		var cards = this.cards.__getslice__ (-(num_offered), null, 1);
+	select_draw(num_to_pick=2, num_offered=4) {
+		var cards = this.children.slice (-num_offered);
 		if (len (cards) == 0) {
-			print ('Warning: No skill cards available to pick');
 			return ;
 		}
 		for (var c of cards) {
-			this.cards.remove (c);
+			this.children.removeChild(c);
 		}
-		this.parent.cardselector = CardSelector (__kwargtrans__ ({num_to_pick: num_to_pick}));
-		this.parent.add_widget (this.parent.cardselector);
-		this.parent.cardselector.bind (__kwargtrans__ ({but_ok_pressed: this.card_picked}));
-		this.parent.cardselector.cards = cards;
+		this.parent.cardselector = new CardSelector(new Rect(), {num_to_pick: num_to_pick});
+		App.get().addChild(this.parent.cardselector);
+		this.parent.cardselector.bind ('but_ok_pressed', this.card_picked);
+		this.parent.cardselector.children = cards;
 	}
 	card_picked(cs, pressed) {
 		for (var c of cs.cards) {
 			cs.cards.remove (c);
 			if (!(c.selected)) {
 				c.face_up = false;
-				this.cards.insert (0, c);
+				this.children.insert (0, c);
 			}
 			else {
 				this.parent.hand.cards.append (c);
@@ -933,13 +819,13 @@ class LootDeck extends CardSplay {
 		if (typeof num_offered == 'undefined' || (num_offered != null && num_offered.hasOwnProperty ("__kwargtrans__"))) {;
 			var num_offered = 1;
 		};
-		var cards = this.cards.__getslice__ (-(num_offered), null, 1);
+		var cards = this.children.slice (-num_offered);
 		for (var c of cards) {
-			this.cards.remove (c);
+			this.children.remove (c);
 		}
-		this.parent.cardselector = CardSelector (__kwargtrans__ ({num_to_pick: num_to_pick}));
+		this.parent.cardselector = CardSelector (new Rect(), {num_to_pick: num_to_pick});
 		this.parent.add_widget (this.parent.cardselector);
-		this.parent.cardselector.bind (__kwargtrans__ ({but_ok_pressed: this.card_picked}));
+		this.parent.cardselector.bind ('but_ok_pressed', this.card_picked);
 		this.parent.cardselector.cards = cards;
 	}
 	card_picked(cs, pressed) {
@@ -947,7 +833,7 @@ class LootDeck extends CardSplay {
 			cs.cards.remove (c);
 			if (!(c.selected)) {
 				c.face_up = false;
-				this.cards.insert (0, c);
+				this.children.insert (0, c);
 			}
 			else {
 				this.parent.hand.cards.append (c);
@@ -961,34 +847,26 @@ class LootDeck extends CardSplay {
 		this.parent.stats.t_loot++;
 	}
 }
+
 class MarketDeck extends CardSplay {
 	on_touch_up(touch) {
 		return __super__ (MarketDeck, 'on_touch_up') (self, touch);
 	}
-	select_draw(num_to_pick, num_offered, coin) {
-		if (typeof num_to_pick == 'undefined' || (num_to_pick != null && num_to_pick.hasOwnProperty ("__kwargtrans__"))) {;
-			var num_to_pick = 1;
-		};
-		if (typeof num_offered == 'undefined' || (num_offered != null && num_offered.hasOwnProperty ("__kwargtrans__"))) {;
-			var num_offered = 1;
-		};
-		if (typeof coin == 'undefined' || (coin != null && coin.hasOwnProperty ("__kwargtrans__"))) {;
-			var coin = 1;
-		};
-		var cards = this.cards.__getslice__ (-(num_offered), null, 1);
-		this.cards = this.cards.__getslice__ (0, -(num_offered), 1);
-		this.parent.cardselector = CardSelector (__kwargtrans__ ({num_to_pick: num_to_pick}));
+	select_draw(num_to_pick=1, num_offered=1, coin=1) {
+		var cards = this.children.slice (-num_offered);
+		this.children = this.children.slice (0, -num_offered);
+		this.parent.cardselector = CardSelector (new Rect(), {num_to_pick: num_to_pick});
 		this.parent.add_widget (this.parent.cardselector);
-		this.parent.cardselector.bind (__kwargtrans__ ({but_ok_pressed: this.card_picked}));
+		this.parent.cardselector.bind ('but_ok_pressed', this.card_picked);
 		this.parent.cardselector.cards = cards;
 	}
 	card_picked(cs, pressed) {
-		var cards = cs.cards.__getslice__ (0, null, 1);
+		var cards = cs.cards.slice(0);
 		cs.cards = [];
 		for (var c of cards) {
 			if (!(c.selected)) {
 				c.face_up = false;
-				this.cards.append (c);
+				this.children.append (c);
 			}
 			else {
 				this.parent.hand.cards.append (c);
@@ -1000,39 +878,25 @@ class MarketDeck extends CardSplay {
 		this.parent.cardselector = null;
 	}
 }
+
 class Exhausted extends CardSplay {
-	on_touch_up(touch) {
-		return __super__ (Exhausted, 'on_touch_up') (self, touch);
-	}
-	on_cards() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		for (var c of this.children.__getslice__ (0, null, 1)) {
-			if (isinstance (c, cards.Card)) {
-				c.face_up = false;
-			}
-		}
-		__super__ (Exhausted, 'on_cards') (self, ...args);
-		for (var c of this.cards) {
-			c.face_up = true;
-		}
+	on_child_added(event, child) {
+		c.faceUp=true;
 	}
 }
 class EventDeck extends CardSplay {
-	can_draw = BooleanProperty (false);
+	can_draw = false;
 	on_touch_up(touch) {
-		if (__super__ (EventDeck, 'on_touch_up') (self, touch) === null) {
-			return ;
-		}
 		if (!(this.collide_point (...touch.pos))) {
 			return true;
 		}
 		return this.draw ();
 	}
-	draw() {
+	drawCard() {
 		if (!(this.can_draw)) {
 			return true;
 		}
-		if (len (this.cards) == 0) {
+		if (this.children.length == 0) {
 			return true;
 		}
 		if (this.parent.clear_and_check_end_game ()) {
@@ -1041,7 +905,7 @@ class EventDeck extends CardSplay {
 		for (var t of this.parent.board.iter_tokens ('G')) {
 			t.frozen = false;
 		}
-		var card = this.cards [-(1)];
+		var card = this.children [-(1)];
 		card.face_up = true;
 		for (var c of this.parent.playertraits.cards) {
 			c.tapped = false;
@@ -1055,42 +919,25 @@ class EventDeck extends CardSplay {
 	}
 }
 class EventDiscard extends CardSplay {
-	on_touch_up(touch) {
-		if (__super__ (EventDiscard, 'on_touch_up') (self, touch) == true) {
-			return true;
-		}
-	}
-	on_cards() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		for (var c of this.children.__getslice__ (0, null, 1)) {
-			if (isinstance (c, cards.Card)) {
-				c.face_up = false;
-			}
-		}
-		__super__ (EventDiscard, 'on_cards') (self, ...args);
-		for (var c of this.cards) {
-			c.face_up = true;
-		}
+	on_child_added(event, card) {
+		card.faceUp=true;
 	}
 }
 
 class Stats extends BoxLayout {
-	kills = NumericProperty ();
-	knockouts = NumericProperty ();
-	contacts = NumericProperty ();
-	loot = NumericProperty ();
-	rounds = NumericProperty ();
-	missions = NumericProperty ();
-	showing = BooleanProperty ();
-	t_kills = NumericProperty ();
-	t_knockouts = NumericProperty ();
-	t_contacts = NumericProperty ();
-	t_loot = NumericProperty ();
-	t_rounds = NumericProperty ();
-	reset(totals) {
-		if (typeof totals == 'undefined' || (totals != null && totals.hasOwnProperty ("__kwargtrans__"))) {;
-			var totals = true;
-		};
+	kills = 0;
+	knockouts = 0;
+	contacts = 0;
+	loot = 0;
+	rounds = 0;
+	missions = 0;
+	showing = false;
+	t_kills = 0;
+	t_knockouts = 0;
+	t_contacts = 0;
+	t_loot = 0;
+	t_rounds = 0;
+	reset(totals=true) {
 		this.kills = 0;
 		this.knockouts = 0;
 		this.contacts = 0;
@@ -1115,7 +962,7 @@ class Stats extends BoxLayout {
 		this.center_x = Math.floor (-(this.parent.width) / 4);
 		this.center_y = Math.floor (-(this.parent.height) / 4);
 		this.width = Math.floor (this.parent.width / 4);
-		this.height = Math.floor (this.parent.height / 4);
+		this.h = Math.floor (this.parent.height / 4);
 		var center_x = parent.center_x;
 		var center_y = parent.center_y;
 		var width = Math.floor ((3 * parent.width) / 4);
@@ -1149,7 +996,7 @@ class Stats extends BoxLayout {
 			}
 			if (this.quit.collide_point (...touch.pos)) {
 				touch.ungrab (this.quit);
-				gameapp.stop ();
+				App.get().stop ();
 				return true;
 			}
 			return true;

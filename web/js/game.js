@@ -3,42 +3,68 @@
 class Game extends App {
     map_card_grid_size = [5,7];
     map_size = [6, 3];
-    card_aspect_ratio = this.map_card_grid_size[0]/this.map_card_grid_size[1];
-    hz_cards = f(W/5); //how many cards we need to fit horizontally in a vertical orientation screen
-    vt_cards = f(H/4.2); //how many cards we need to fit vertically in a horizontal orientation screen
-    card_size = H>W ? (this.hz_cards,this.hz_cards/this.card_aspect_ratio) : (this.vt_cards*this.card_aspect_ratio/this.map_card_grid_size[0]*this.map_card_grid_size[0],this.vt_cards);
-    scroll_size = H>W ? (W, H-16*f(ch/5)) : (W-12*f(cw/5), H-6*f(ch/5));
+    card_aspect_ratio = 5/7;
+    hz_cards = 1; //how many cards we need to fit horizontally in a vertical orientation screen
+    vt_cards = 1; //how many cards we need to fit vertically in a horizontal orientation screen
+    card_size = [6,4];
+    scroll_size = [10,10];
     zoom = 1.0;
-    map_scale = Math.max(this.scroll_size[1]/(3*ch), this.scroll_size[0]/(6*cw))
-    map_card_size = [cw*this.map_scale*f(this.zoom/this.map_card_grid_size[0])*this.map_card_grid_size[0], ch*this.map_scale*f(this.zoom/this.map_card_grid_size[1])*this.map_card_grid_size[1]];
+    map_scale = 1
+    map_card_size = [5,7];
+    constructor() {
+        super();
+    }
     setupWidgets() {
         let r = new Rect();
-        this.activecardsplay = ActiveCardSplay(r, {text: 'ACTIVE\nCARD'})
-        this.playertraits = PlayerTraits(r, {text: 'PLAYER\nTRAITS'})
-        this.playerdeck = PlayerDeck(r, {text: 'PLAYER\nDECK'})
-        this.playerdiscard = PlayerDiscard(r, {text: 'PLAYER\nDISCARD'})
-        this.loot1 = LootDeck(r, {text: 'LOOT1'})
-        this.loot2 = LootDeck(r, {text: 'LOOT2'})
-        this.loot3 = LootDeck(r, {text: 'LOOT3'})
-        this.skilldeck = SkillDeck(r, {text: 'SKILLS'})
-        this.exhausted = Exhausted(r, {text: 'EXHAUSTED\nCARDS PILE'})
-        this.marketdeck = MarketDeck(r, {text: 'MARKET\nDECK'})
-        this.eventdeck = EventDeck(r, {text: 'EVENT\nDECK'})
-        this.eventdiscard = EventDiscard(r, {text: 'EVENT\nDISCARD'})
-        this.hand = Hand(r, {text: 'PLAYER\nHAND'})
-        this.sv = ScrollView(r);
-        this.board = Board([0,0,this.map_card_size[0]*this.map_size[0], this.map_card_size[1]*this.map_size[1]]);
-        this.playerprompt = Label(r, {text: 'Select a card from your hand to play, or tap the event card to end your turn'})
+        this.activecardsplay = new ActiveCardSplay(r, {text: 'ACTIVE\nCARD'})
+        this.playertraits = new PlayerTraits(r, {text: 'PLAYER\nTRAITS'})
+        this.playerdeck = new PlayerDeck(r, {text: 'PLAYER\nDECK'})
+        this.playerdiscard = new PlayerDiscard(r, {text: 'PLAYER\nDISCARD'})
+        this.loot1 = new LootDeck(r, {text: 'LOOT1'})
+        this.loot2 = new LootDeck(r, {text: 'LOOT2'})
+        this.loot3 = new LootDeck(r, {text: 'LOOT3'})
+        this.skilldeck = new SkillDeck(r, {text: 'SKILLS'})
+        this.exhausted = new Exhausted(r, {text: 'EXHAUSTED\nCARDS PILE'})
+        this.marketdeck = new MarketDeck(r, {text: 'MARKET\nDECK'})
+        this.eventdeck = new EventDeck(r, {text: 'EVENT\nDECK'})
+        this.eventdiscard = new EventDiscard(r, {text: 'EVENT\nDISCARD'})
+        this.hand = new Hand(r, {text: 'PLAYER\nHAND'})
+        this.sv = new ScrollView(r);
+        this.board = new Board([0,0,this.map_card_size[0]*this.map_size[0], this.map_card_size[1]*this.map_size[1]]);
+        this.playerprompt = new Label(r, {text: 'Select a card from your hand to play, or tap the event card to end your turn'})
+
+        this.sv.addChild(this.board);
+        for(let w of [this.activecardsplay, this.playertraits, this.playerdeck, 
+                    this.loot1, this.loot2, this.loot3, this.skilldeck, this.exhausted,
+                    this.marketdeck, this.eventdeck, this.eventdiscard, this.hand,
+                    this.sv, this.playerprompt]) {
+            this.baseWidget.addChild(w);
+        }
+
+        this.instructions = null;
+        this.cardselector = null;
+        this.action_selector = null;
+        this.stats = new Stats();
+
+        this.playercards = make_player_cards(this);
+        this.traitcards = make_trait_cards(this);
+        this.lootcards = make_loot_cards(this);
+        this.marketcards = make_market_cards(this);
+        this.skillcards = make_skill_cards(this);
+
+        this.mission = new ContactMission({mission_level:this.stats.missions+1});
+        this.board.map.children = this.mission.setup_map(this);
+        this.eventdeck.children = this.mission.setup_events(this);
+        this.eventdeck.can_draw = true;
 
     }
     updateWindowSize() {
-        let f = f;
-        this.prefDimW = 5*this.map_card_grid_size[0];
-        this.prefDimH = 4.2*this.map_card_grid_size[1];
+        let f = Math.floor;
+        this.prefDimW = 5*this.map_card_grid_size[0]; //Preferred width in tile units (not pixels)
+        this.prefDimH = 4.2*this.map_card_grid_size[1]; //Preferred height in tile units (not pixels)
 
-        super.updateWindowSize();
+        super.updateWindowSize(); //Sets dimW, dimW and tileSize to best bit the dimensions
 
-        //TODO: This needs to adapt tilesize such that map_card_size = map_card_grid_size
         let W = this.dimW;
         let H = this.dimH;
         this.hz_cards = f(W/5); //how many cards we need to fit horizontally in a vertical orientation screen
@@ -47,8 +73,8 @@ class Game extends App {
         let cgy = this.map_card_grid_size[1];
         this.card_aspect_ratio = cgx/cgy;
 
-        this.card_size = H>W ? (this.hz_cards,this.hz_cards/this.card_aspect_ratio) : 
-                          (this.vt_cards*this.card_aspect_ratio/cgx*cgx,this.vt_cards);
+        this.card_size = H>W ? [this.hz_cards,this.hz_cards/this.card_aspect_ratio] : 
+                          [this.vt_cards*this.card_aspect_ratio/cgx*cgx,this.vt_cards];
         let cw,ch;
         [cw,ch] = this.card_size;
                                       
@@ -75,7 +101,7 @@ class Game extends App {
             this.marketdeck.rect = [W - f(cw*6/5), 0, f(cw*6/5), ch];
             this.eventdeck.rect = [W - cw*6/5, H - 2*ch, f(cw*6/5), ch];
             this.eventdiscard.rect = [W - f(cw*6/5), H - ch, f(cw*6/5), ch];
-            this.hand.rect = [f(W-cw*6)/2, 0, min(W,cw*6),ch];
+            this.hand.rect = [f(W-cw*6)/2, 0, Math.min(W,cw*6),ch];
             this.sv.rect = [f(cw*6/5), ch, ...this.scroll_size];
 //            this.board = Board([0,0,this.map_card_size[0]*this.map_size[0], this.map_card_size[1]*this.map_size[1]]);
             this.playerprompt.rect = [W/40, H - f(ch/5), W, f(ch/5)]; 
@@ -92,7 +118,7 @@ class Game extends App {
             this.marketdeck.rect = [W-cw, ch, f(cw*6/5), ch];
             this.eventdeck.rect = [W - cw*6/5, H - ch, f(cw*6/5), ch];
             this.eventdiscard.rect = [W - 2*f(cw*6/5), H - ch, f(cw*6/5), ch];
-            this.hand.rect = [0, 0, min(W,cw*6),ch];
+            this.hand.rect = [0, 0, Math.min(W,cw*6),ch];
             this.sv.rect = [0, 2*ch, ...this.scroll_size];
 //            this.board = Board([0,0,this.map_card_size[0]*this.map_size[0], this.map_card_size[1]*this.map_size[1]]);
             this.playerprompt.rect = [W/40, H - f(6*ch/5), W, f(ch/5)];

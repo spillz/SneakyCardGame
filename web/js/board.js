@@ -2,7 +2,7 @@ class MapChoice extends BoxLayout {
 	map_pos = new Vec2();
 	choice_type = 'info';
 	listener = null;
-	constuctor(rect, properties=null) {
+	constructor(rect, properties=null) {
 		super(rect);
 		this.updateProperties(properties);
 	}
@@ -25,7 +25,7 @@ class MapChoice extends BoxLayout {
 }
 
 class TokenMapChoice extends BoxLayout {
-	constuctor(rect, properties=null) {
+	constructor(rect, properties=null) {
 		super(rect);
 		this.updateProperties(properties);
 	}
@@ -43,9 +43,6 @@ class TokenMapChoice extends BoxLayout {
 			return true;
 		}
 	}
-}
-
-class Map extends ScrollView {
 }
 
 class Board extends Widget {
@@ -128,8 +125,8 @@ class Board extends Widget {
 	}
 	token_update() {
 		//TODO: This seems very complicated. can it be simplified?
-		var p = this.active_player_token;
-		for (var t of this.iter_tokens ('G')) {
+		let p = this.active_player_token;
+		for (let t of this.iter_tokens ('G')) {
 			if (t.map_pos != p.map_pos && ['dead', 'unconscious'].includes(t.state) && !(t.frozen)) {
 				if ((1 <= this.dist (t.map_pos, p.map_pos) && this.dist (t.map_pos, p.map_pos) <= 10) 
 				&& !(['U'] + this.building_types).includes(this [p.map_pos])) {
@@ -141,13 +138,13 @@ class Board extends Widget {
 				}
 			}
 		}
-		for (var t of this.iter_tokens ('G')) {
+		for (let t of this.iter_tokens ('G')) {
 			if (t.map_pos == p.map_pos || ['unconscious', 'dead'].includes(t.state) || t.frozen) continue;
 			var closest = [100, null];
-			for (var t0 of this.iter_tokens ('G')) {
+			for (let t0 of this.iter_tokens ('G')) {
 				if (['alert', 'dozing'].includes(t0.state)) continue;
 				if (t0.map_pos == p.map_pos) continue;
-				var d = this.dist (t.map_pos, t0.map_pos);
+				let d = this.dist (t.map_pos, t0.map_pos);
 				if ((1 < d && d <= 10) && !(['U'] + this.building_types).includes(this.get(t0.map_pos))) {
 					if (!(this.has_types_between (t.map_pos, t0.map_pos, this.building_types))) {
 						if (d < closest [0]) {
@@ -177,7 +174,7 @@ class Board extends Widget {
 					continue;
 				}
 				if (t0.map_pos[0] == t1.map_pos[0] && t0.map_pos[1] == t1.map_pos[1]) {
-					var p = t0.map_pos.toString();
+					let p = t0.map_pos.toString();
 					if (clashes.includes(p)) {
 						if(!clashes.find(t0)) clashes[p] = t0;
 						if(!clashes.find(t1)) clashes[p] = t1;
@@ -192,8 +189,8 @@ class Board extends Widget {
 			if (!t.map_pos.toString() in clashes) t.off = [0, 0];
 		}
 		//TODO: FIXME, no zip, __slice__
-		for (var p of clashes) {
-			for (var [t, o] of zip (clashes [p], [[-(0.25), -(0.25)], [0.25, 0.25], [-(0.25), 0.25], [0.25, -(0.25)]].__getslice__ (0, len (clashes [p]), 1))) {
+		for (let c of clashes) {
+			for (var [t, o] of zip (clashes[c], [[-(0.25), -(0.25)], [0.25, 0.25], [-(0.25), 0.25], [0.25, -(0.25)]].__getslice__ (0, len (clashes [p]), 1))) {
 				t.off = o;
 			}
 		}
@@ -401,11 +398,7 @@ class Board extends Widget {
 		}
 	}
 	num_in_rect(pos, size, targets, must_fit=true) {
-		for (var pos of this.iter_rect (pos, size, must_fit)) {
-			if (targets.includes(this.get(pos))) {
-				yield pos;
-			}
-		}
+		return [...this.iter_rect (pos, size, must_fit)].filter(p=>targets.includes(this.get(pos))).length;
 	}
 	make_choice(map_pos, listener, choice_type) {
 		return MapChoice({map_pos: map_pos, listener: listener, choice_type: choice_type});
