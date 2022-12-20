@@ -639,12 +639,16 @@ class Hand extends CardSplay {
 	}
 	on_touch_up(event, touch) {
 		let app = App.get();
-		let r = this.renderRect();
 		if (this.children.length == 0) return true;
 		if (this.can_draw == false) return true;
-		for (var c of this.children.reverse()) {
+		for (var c of this.children.slice().reverse()) {
+			let r = c.renderRect();
 			if (r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
-				if (this.selected_action != '') {
+				if (this.shownCard==c) {
+					this.shownCard=null;
+					this.clear_selection();
+				}
+				else if (this.selected_action != '') {
 					var action_fn = this.actions [this.selected_action];
 					if (action_fn.activate('can_stack', {stacked_card: c})) {
 						this.move_to ([c], app.activecardsplay, 0);
@@ -686,7 +690,7 @@ class Hand extends CardSplay {
 		let app = App.get();
 		app.playerprompt.text = 'Select a card to play or touch the event deck to end your turn';
 		app.board.map_choices = [];
-		this.children.filter(c=>c.selected).apply(c=>c.selected=false);
+		this.children.filter(c=>c.selected).map(c=>c.selected=false);
 		this.clear_card_actions();
 		this.selected_action = '';
 	}
