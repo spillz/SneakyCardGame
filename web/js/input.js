@@ -1,4 +1,5 @@
 class InputHandler {
+    grabbed = null;
     constructor(app) {
         this.app = app;
         this.canvas = app.canvas;
@@ -27,16 +28,18 @@ class InputHandler {
         canvas.addEventListener('mouseout', function(ev){that.process_mouse(ev, 'mouse_cancel');}, true);
         canvas.addEventListener('mouseup', function(ev){that.process_mouse(ev, 'mouse_up');}, true);
 //        document.addEventListener('onmouseover', function(ev){that.process_mouseover(ev);}, true);
-
         canvas.addEventListener('touchstart', function(ev){that.process_touch(ev, 'touch_down');}, false);
         canvas.addEventListener('touchmove', function(ev){that.process_touch(ev, 'touch_move');}, false);
         canvas.addEventListener('touchcancel', function(ev){that.process_touch(ev, 'touch_cancel');}, false);
         canvas.addEventListener('touchend', function(ev){that.process_touch(ev, 'touch_up');}, false);
         document.addEventListener('backbutton', function(ev){that.process_back(ev);}, true);
-
         canvas.addEventListener("wheel", function(ev){that.process_wheel(ev, 'wheel');}, false);
-
-
+    }
+    grab(widget) {
+        this.grabbed = widget;
+    }
+    ungrab() {
+        this.grabbed = null;
     }
     process_back(ev) {
         console.log('Back pressed', ev)
@@ -46,30 +49,33 @@ class InputHandler {
     // touchstart handler
     process_touch(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
-        let canvas = this.canvas;
-        for(let t of ev.changedTouches) { 
-            this.app.emit(name, t);
-        }   
+        if(this.grabbed != null) {
+            for(let t of ev.changedTouches) { 
+                this.grabbed.emit(name, t);
+            }
+        } else {
+            for(let t of ev.changedTouches) { 
+                this.app.emit(name, t, true);
+            }
+        }
         ev.preventDefault();
     }
     process_mouse(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
         //t.identifier, t.clientX, t.clientY
-        for(let w of this.app.iter()) {
-            if(w.processTouches) {
-                if(w.emit(name, ev)) break;
-            }
+        if(this.grabbed != null) {
+            this.grabbed.emit(name, t);
+        } else {
+            this.app.emit(name, ev, true);
         }
         ev.preventDefault();
     }
     process_wheel(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
-        let canvas = this.canvas;
-        //t.identifier, t.clientX, t.clientY
-        for(let w of this.app.iter()) {
-            if(w.processTouches) {
-                if(w.emit(name, ev)) break;
-            }
+        if(this.grabbed != null) {
+            return this.grabbed.emit(name, ev);
+        } else {
+            this.app.emit(name, ev, true);
         }
         ev.preventDefault();
     }

@@ -1,64 +1,6 @@
-
-var scroll_to = function (self, widget, padding, animate) {
-	if (typeof padding == 'undefined' || (padding != null && padding.hasOwnProperty ("__kwargtrans__"))) {;
-		var padding = 10;
-	};
-	if (typeof animate == 'undefined' || (animate != null && animate.hasOwnProperty ("__kwargtrans__"))) {;
-		var animate = true;
-	};
-	if (!(this.parent)) {
-		return ;
-	}
-	if (hasattr (this._viewport, 'do_layout')) {
-		if (this._viewport._trigger_layout.is_triggered) {
-			Clock.schedule_once ((function __lambda__ () {
-				var dt = tuple ([].slice.apply (arguments).slice (0));
-				return this.scroll_to (widget, padding, animate);
-			}));
-			return ;
-		}
-	}
-	if (isinstance (padding, tuple ([int, float]))) {
-		var padding = tuple ([padding, padding]);
-	}
-	var pos = this.parent.to_widget (...widget.to_window (...widget.pos));
-	var cor = this.parent.to_widget (...widget.to_window (widget.right, widget.top));
-	var __left0__ = 0;
-	var dx = __left0__;
-	var dy = __left0__;
-	if (pos [1] < this.y + dp (padding [1])) {
-		var dy = (this.y - pos [1]) + dp (padding [1]);
-	}
-	else if (cor [1] > this.top - dp (padding [1])) {
-		var dy = (this.top - cor [1]) - dp (padding [1]);
-	}
-	if (pos [0] < this.x + dp (padding [0])) {
-		var dx = (this.x - pos [0]) + dp (padding [0]);
-	}
-	else if (cor [0] > this.right - dp (padding [0])) {
-		var dx = (this.right - cor [0]) - dp (padding [0]);
-	}
-	var __left0__ = this.convert_distance_to_scroll (dx, dy);
-	var dsx = __left0__ [0];
-	var dsy = __left0__ [1];
-	var sxp = Math.min(1, Math.max(0, this.scroll_x - dsx));
-	var syp = Math.min(1, Math.max(0, this.scroll_y - dsy));
-	if (animate) {
-		if (animate === true) {
-			var animate = {'d': 0.2, 't': 'out_quad'}
-		}
-		Animation.stop_all (this, 'scroll_x', 'scroll_y');
-		Animation (__kwargtrans__ (__mergekwargtrans__ ({scroll_x: sxp, scroll_y: syp}, animate))).start (self);
-	}
-	else {
-		this.scroll_x = sxp;
-		this.scroll_y = syp;
-	}
-};
-
-
 class Deck extends Widget { //represents a deck/tableau of splayed cards
     orientation = 'down'; //splay down, up, right, or left
+	processTouches = true;
     constructor(rect, properties) { //TODO: add card spacing params
         super(rect);
         this.updateProperties(properties);
@@ -132,6 +74,7 @@ class CardSelector extends Widget {
         }
     }
 	on_touch_down(event, touch) {
+		return;
 		for(let card of this.children) {
 			if (card.collide_point (...touch.pos)) {
 				touch.grab (card);
@@ -140,6 +83,7 @@ class CardSelector extends Widget {
 		}
 	}
 	on_touch_up(event, touch) {
+		return;
 		let card = touch.grab_current;
 		if (this.children.includes(card)) {
 			touch.ungrab (card);
@@ -177,6 +121,8 @@ class CardSplay extends Label {
 	multiSelect = false;
 	cardSpreadScale = 0.5;
 	text = 'CARDSPLAY';
+	bgColor = 'black';
+	fontSize=0.5;
 	constructor(rect, properties) {
 		super(rect);
 		this.updateProperties(properties);
@@ -186,18 +132,19 @@ class CardSplay extends Label {
 		let anim = false;
 		var cardw = app.card_size [0];
 		var cardh = app.card_size [1];
-		var mul = (this.shownCard === null || this.shownCard == this.children [-(1)] || this.children.length <= 1 ? 1 : 2);
+		let f = x=>x;
+		var mul = (this.shownCard === null || this.shownCard == this.children.slice(-1) || this.children.length <= 1 ? 1 : 2);
 		if (this.orientation == 'horizontal') {
 			var exp_len = cardw;
 			var offset = 0;
 			if (this.children.length > 1) {
-				var delta = Math.floor (Math.max(Math.min(cardw * this.cardSpreadScale, (this.w - cardw * mul) / ((this.children.length + 1) - mul)), 2));
+				var delta = f(Math.max(Math.min(cardw * this.cardSpreadScale, (this.w - cardw * mul) / ((this.children.length + 1) - mul)), 2/app.tileSize));
 			}
 			else {
 				var delta = 0;
 			}
-			if (delta == 2) {
-				var max_splay = Math.floor ((this.w - cardw) / 2);
+			if (delta == 2/app.tileSize) {
+				var max_splay = f((this.w - cardw) / (2/app.tileSize));
 			}
 			else {
 				var max_splay = this.children.length;
@@ -207,13 +154,13 @@ class CardSplay extends Label {
 			var exp_len = -(cardh);
 			var offset = this.h - cardh;
 			if (this.children.length > 1) {
-				var delta = -(Math.floor (Math.max(Math.min(cardh * this.cardSpreadScale, (this.h - cardh * mul) / (this.children.length - mul)), 2)));
+				var delta = -(f(Math.max(Math.min(cardh * this.cardSpreadScale, (this.h - cardh * mul) / (this.children.length - mul)), 2/app.tileSize)));
 			}
 			else {
 				var delta = 0;
 			}
-			if (delta == -(2)) {
-				var max_splay = Math.floor ((this.h - cardh) / 2);
+			if (delta == -2/app.tileSize) {
+				var max_splay = f((this.h - cardh) / (2/app.tileSize));
 			}
 			else {
 				var max_splay = this.children.length;
@@ -239,8 +186,7 @@ class CardSplay extends Label {
 				animc.start (c);
 			}
 			else {
-				c.x = x;
-				c.y = y;
+				c.rect = new Rect([x, y, app.card_size[0], app.card_size[1]]);
 			}
 			if (c == this.shownCard) {
 				offset += exp_len;
@@ -269,13 +215,13 @@ class CardSplay extends Label {
 		this.layoutChildren();
 	}
 	do_closeup(closeup_card, touch, time) {
-		if (!(closeup_card.face_up)) {
+		if (!(closeup_card.faceUp)) {
 			var closeup_card = null;
 		}
 		CardSplayCloseup (__kwargtrans__ ({closeup_card: closeup_card, cards: this.children})).open ();
 		this._clockev = null;
 	}
-	on_touch_down(touch) {
+	on_touch_down1(touch) {
 		for (var c of this.children.__getslice__ (0, null, -(1))) {
 			if (c.collide_point (...this.to_local (...touch.pos))) {
 				touch.grab (self);
@@ -284,7 +230,7 @@ class CardSplay extends Label {
 			}
 		}
 	}
-	on_touch_up(touch) {
+	on_touch_up1(touch) {
 		if (touch.grab_current != self) {
 			return ;
 		}
@@ -296,7 +242,8 @@ class CardSplay extends Label {
 		}
 	}
 	move_to(cards, deck, pos=null) {
-		this.children = this.children.filter(c => cards.includes(c));
+		let chf = this.children.filter(c => !(cards.includes(c)));
+		this.children = this.children.filter(c => !(cards.includes(c)));
 		deck.children = [...deck.children.slice(0,pos), ...cards, ...deck.children.slice(pos)];
 	}
 	__draw_frame() {
@@ -330,8 +277,10 @@ class Card extends Widget {
     name = 'card name';
     text = 'card text';
     image = null;
-    faceUp = true;
+    faceUp = false;
 	selected = false;
+	bgColor = 'black';
+	outlineColor = 'gray';
     constructor(rect=null, properties=null) {
         super(rect);
         this.updateProperties(properties);
@@ -342,10 +291,12 @@ class Card extends Widget {
     draw() {
         if(this.faceUp) {
             //TODO: draw a card background, borders etc
+			this.bgColor='black';
+			this.outlineColor = 'gray';
             super.draw();
             let r1 = new Rect(this);
             let r2 = new Rect(this);
-            r1.h = this.h/5; 
+            r1.h = this.h/5;
             r2.y += r1.h;
             r2.h -= r1.h;
             //TODO: Get rid of the ugly scale transforms
@@ -354,25 +305,26 @@ class Card extends Widget {
             drawWrappedText(app.ctx, this.text, this.h/18*app.tileSize, true, r2.mult(app.tileSize).shift([app.offsetX,app.offsetY]), "white");    
         } else {
 //            super.draw();
-			let r = this.renderRect();
-			let app = App.get();
-			app.ctx.beginPath();
-			app.ctx.rect(r[0], r[1], r[2], r[3]);
-			app.ctx.fillStyle = 'gray';
-			app.ctx.fill();
+			this.outlineColor = 'black';
+			this.bgColor='gray';
+			super.draw();
+			// let r = this.renderRect();
+			// let app = App.get();
+			// app.ctx.beginPath();
+			// app.ctx.rect(r[0], r[1], r[2], r[3]);
+			// app.ctx.fillStyle = this.bgColor;
+			// app.ctx.fillStyle = this.outlineColor;
+			// app.ctx.fill();
+			// app.ctx.fill();
 				//TODO: draw card back
         }
     }
 
-    on_touch_down(name, touch) {
-        if(this.renderRect().collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
-			this.faceUp = !this.faceUp;
-			return true;
-		}
-    }
-
-    // onTouchDown(name, obj, touch) {
-    //     if(this.renderRect().collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) this.faceUp = !this.faceUp;
+    // on_touch_down(name, touch) {
+    //     if(this.renderRect().collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+	// 		this.faceUp = !this.faceUp;
+	// 		return true;
+	// 	}
     // }
 
 }
@@ -425,7 +377,7 @@ class CardSplayCloseup extends ModalView {
 		this.cards = (function () {
 			var __accu0__ = [];
 			for (var c of cards) {
-				__accu0__.append (py_typeof (c) ());
+				__accu0__.push(py_typeof (c) ());
 			}
 			return __accu0__;
 		}) ();
@@ -433,7 +385,7 @@ class CardSplayCloseup extends ModalView {
 		for (var [c, c0] of zip (this.cards, cards)) {
 			c.height = c0.height;
 			c.width = c0.width;
-			c.face_up = true;
+			c.faceUp = true;
 			if (c == closeup_card) {
 				c.selected = true;
 			}
@@ -453,7 +405,7 @@ class CardSplayCloseup extends ModalView {
 			this.closeup_card = this.cards [0];
 		}
 		this.closeup_card = py_typeof (closeup_card) ();
-		this.closeup_card.face_up = true;
+		this.closeup_card.faceUp = true;
 		this.content.add_widget (this.closeup_card);
 		this.on_size ();
 	}
@@ -537,54 +489,51 @@ class CardSplayCloseup extends ModalView {
 
 
 class PlayerDiscard extends CardSplay {
-	on_cards() {
-		for (var c of this.children.slice(0, null, 1)) {
-			if (isinstance (c, cards.Card)) {
-				c.face_up = false;
-			}
-		}
-		for (var c of this.children) {
-			c.face_up = true;
-		}
+	on_child_added(msg, c) {
+		c.faceUp = true;
 	}
 }
 class PlayerDeck extends CardSplay {
-	on_cards() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		for (var c of this.children) {
-			c.face_up = false;
-		}
+	on_child_added(msg, c) {
+		c.faceUp = false;
 	}
 	draw_hand() {
-		if (len (this.parent.hand.cards) == 0) {
-			var cards_to_draw = this.parent.hand.hand_size;
+		let app=App.get();
+		if (app.hand.children.length == 0) {
+			var cards_to_draw = app.hand.hand_size;
 		}
 		else {
-			var cards_to_draw = (1 + this.parent.hand.hand_size) - len (this.parent.hand.cards);
+			var cards_to_draw = (1 + app.hand.hand_size) - len (app.hand.cards);
 		}
-		this.draw (cards_to_draw);
-		this.parent.hand.can_draw = true;
-		this.parent.playertraits.can_draw = true;
-		this.parent.eventdeck.can_draw = true;
+		this.draw_cards(cards_to_draw);
+		app.hand.can_draw = true;
+		app.playertraits.can_draw = true;
+		app.eventdeck.can_draw = true;
 		this.can_draw = false;
-		this.parent.board.scroll_to_player ();
+		app.board.scroll_to_player ();
 	}
-	drawCard(n) {
+	draw_cards(n) {
 		var shuffle = n - this.children.length;
 		var cards = this.children.slice (-n-1, -1);
-		this.move_to (cards, this.parent.hand);
+		let app = App.get();
+		this.move_to (cards, app.hand);
 		if (shuffle > 0) {
-			var discards = this.parent.playerdiscard.cards.slice (0, playerdiscard.cards.length);
+			var discards = app.playerdiscard.cards.slice (0, playerdiscard.cards.length);
 			random.shuffle (discards);
-			this.parent.playerdiscard.move_to (discards, self);
+			app.playerdiscard.move_to (discards, self);
 			var cards = this.children.slice (-shuffle-1, -1);
-			this.move_to (cards, this.parent.hand);
+			this.move_to (cards, app.hand);
 		}
 	}
 }
+
 class PlayerTraits extends CardSplay {
 	active_card = null;
+	on_child_added(msg, c) {
+		c.faceUp = true;
+	}
 	on_touch_up(touch) {
+		return;
 		if (!(this.collide_point (...touch.pos))) {
 			return false;
 		}
@@ -610,23 +559,26 @@ class ActiveCardSplay extends CardSplay {
 		}
 	}
 	on_touch_up(touch) {
+		return;
+		let app = App.get();
 		if (this.children.length > 0) {
-			this.parent.hand.cancel_action ();
+			app.hand.cancel_action ();
 		}
 		return true;
 	}
 	discard_used(unused=0, noise=0, exhaust_on_use=null, tap_on_use=null) {
+		let app = App.get();
 		if (unused > 0) {
 			let cards0 = this.children.slice(0);
-			this.move_to (cards0, this.parent.hand);
+			this.move_to (cards0, app.hand);
 		}
 		if (this.children.length > 0) {
 			if (exhaust_on_use !== null) {
 				if (exhaust_on_use instanceof cards.TraitCard) {
-					this.parent.playertraits.move_to ([exhaust_on_use], this.parent.exhausted);
+					app.playertraits.move_to ([exhaust_on_use], app.exhausted);
 				}
 				else {
-					this.move_to ([exhaust_on_use], this.parent.exhausted);
+					this.move_to ([exhaust_on_use], app.exhausted);
 				}
 			}
 			if (tap_on_use !== null) {
@@ -635,35 +587,43 @@ class ActiveCardSplay extends CardSplay {
 				}
 			}
 		}
-		var cards0 = this.children.slice (0);
-		this.move_to (cards0, this.parent.playerdiscard);
-		this.parent.hand.clear_selection ();
+		var cards0 = this.children.slice(0);
+		this.move_to(cards0, app.playerdiscard);
+		app.hand.clear_selection();
 	}
 }
 class ActionSelectorOption extends Label {
 	_touching = false;
-	on_touch_down(touch) {
-		if (this.collide_point (...touch.pos)) {
-			touch.grab (self);
+	on_touch_down(event, touch) {
+		let r = this.renderRect();
+		if (r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+			App.get().inputHandler.grab(this);
 			this._touching = true;
 			return true;
 		}
 	}
-	on_touch_up(touch) {
-		if (touch.grab_current == self) {
-			touch.ungrab (self);
-			this.parent.hand.selected_action = this.text;
+	on_touch_up(event, touch) {
+		let app=App.get();
+		let r = this.renderRect();
+		if (app.inputHandler.grabbed == this && r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+			app.inputHandler.ungrab();
+			app.hand.selected_action = this.text;
 			this._touching = false;
 			return true;
 		}
 	}
+	draw() {
+		this.bgColor = this._touching ? colorString([0.75,0.75,0.75]):colorString([0.5,0.5,0.5]);
+		super.draw();
+	}
 }
 class ActionSelector extends BoxLayout {
-	constructor(hand, actions) {
-		super(new Rect(0,0,5,1));
-		this.hand = hand;
-		for (var a of actions) {
-			this.addChild (new ActionSelectorOption (new Rect(), {text: a}));
+	constructor(card, actions) {
+		let app = App.get();
+		let h = Object.keys(actions).length
+		super(new Rect([app.hand.x,app.hand.y-h,app.card_size[0],h])); //TODO: This rect should be set in the layout call of the parent
+		for (var a in actions) {
+			this.addChild(new ActionSelectorOption(new Rect(), {text: a}));
 		}
 	}
 }
@@ -673,77 +633,38 @@ class Hand extends CardSplay {
 	actions = {};
 	action_selector = null;
 	hand_size = 5;
-	on_selected_action() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		if (this.selected_action != '') {
-			this.move_to ([this.shownCard], this.parent.activecardsplay);
-			var action = this.selected_action;
-			var action_fn = this.actions [action];
-			action_fn ('card_action_selected');
-			this.clear_card_actions ();
-		}
+	cardSpreadScale = 1.0;
+	on_child_added(event, child) {
+		child.faceUp = true;
 	}
-	clear_card_actions() {
-		if (this.action_selector !== null) {
-			this.parent.remove_widget (this.action_selector);
-			this.action_selector = null;
-		}
-	}
-	show_card_actions(card, actions) {
-		this.clear_card_actions ();
-		var pos = card.pos;
-		var sz = card.size;
-		var pos = tuple ([pos [0], pos [1] + sz [1]]);
-		var sz = tuple ([2 * sz [0], Math.floor ((len (actions) * sz [1]) / 5)]);
-		this.selected_action = '';
-		this.actions = actions;
-		this.action_selector = ActionSelector (self, actions, __kwargtrans__ ({pos: pos, size: sz, size_hint: tuple ([null, null])}));
-		this.parent.add_widget (this.action_selector);
-	}
-	cancel_action() {
-		if (this.selected_action != '') {
-			var action = this.selected_action;
-			var action_fn = this.actions [action];
-			action_fn ('card_action_end');
-			this.selected_action = '';
-			this.clear_selection ();
-		}
-	}
-	on_touch_up(touch) {
-		if (this.children.length == 0) {
-			return true;
-		}
-		if (this.can_draw == false) {
-			return true;
-		}
+	on_touch_up(event, touch) {
+		let app = App.get();
+		let r = this.renderRect();
+		if (this.children.length == 0) return true;
+		if (this.can_draw == false) return true;
 		for (var c of this.children.reverse()) {
-			if (c.collide_point (...this.to_local (...touch.pos))) {
-				if (this.shownCard == c) {
-					this.clear_selection ();
-					this.shownCard = null;
-				}
-				else if (this.selected_action != '') {
+			if (r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+				if (this.selected_action != '') {
 					var action_fn = this.actions [this.selected_action];
 					if (action_fn.activate('can_stack', {stacked_card: c})) {
-						this.move_to ([c], this.parent.activecardsplay, 0);
+						this.move_to ([c], app.activecardsplay, 0);
 						action_fn.activate('card_stacked', {stacked_card: c});
 						return true;
 					}
 				}
 				else {
-					this.clear_selection ();
 					this.shownCard = c;
 					this.selected_action = '';
-					this.parent.board.map_choices = [];
-					var actions = c.get_actions (this.parent);
-					for(let tc of parent.playertraits.children.slice(-1)) {
-						let trait_actions = tc.get_actions_for_card (c, this.parent);
-						for (var ta of trait_actions) {
+					app.board.map_choices = [];
+					let actions = c.get_actions(app);
+					for(let tc of app.playertraits.children.slice(-1)) {
+						let trait_actions = tc.get_actions_for_card(c, app);
+						for (let ta in trait_actions) {
 							actions[ta] = trait_actions[ta];
 						}
 					}
-					this.show_card_actions (c, actions);
-					this.parent.playerprompt.text = 'Select an action for this card';
+					this.show_card_actions(c, actions);
+					app.playerprompt.text = 'Select an action for this card';
 					return true;
 				}
 				break;
@@ -751,34 +672,65 @@ class Hand extends CardSplay {
 		}
 		return true;
 	}
+	on_selected_action(event, data) {
+		if (this.selected_action != '') {
+			let app=App.get();
+			this.move_to([this.shownCard], app.activecardsplay);
+			var action = this.selected_action;
+			var action_fn = this.actions[action];
+			action_fn.activate('card_action_selected');
+			this.clear_card_actions();
+		}
+	}
 	clear_selection() {
-		this.parent.playerprompt.text = 'Select a card to play or touch the event deck to end your turn';
-		this.parent.board.map_choices = [];
+		let app = App.get();
+		app.playerprompt.text = 'Select a card to play or touch the event deck to end your turn';
+		app.board.map_choices = [];
 		this.children.filter(c=>c.selected).apply(c=>c.selected=false);
-		this.clear_card_actions ();
+		this.clear_card_actions();
 		this.selected_action = '';
 	}
-	allow_stance_select() {
-		this.parent.playertraits.can_draw = true;
+	clear_card_actions() {
+		if (this.action_selector !== null) {
+			let app=App.get();
+			app.baseWidget.removeChild(this.action_selector);
+			this.action_selector = null;
+		}
 	}
-	on_cards() {
-		for (var c of this.children) {
-			c.face_up = true;
+	show_card_actions(card, actions) {
+		let app = App.get();
+		this.clear_card_actions ();
+		this.selected_action = '';
+		this.actions = actions;
+		this.action_selector = new ActionSelector(card, actions);
+		app.baseWidget.addChild(this.action_selector);
+	}
+	cancel_action() {
+		if (this.selected_action != '') {
+			var action = this.selected_action;
+			var action_fn = this.actions[action];
+			action_fn.activate('card_action_end');
+			this.selected_action = '';
+			this.clear_selection();
 		}
-		this.super();
-		if (this.children.length == 0) {
-			this.parent.playerprompt.text = 'Touch the event deck to end your turn';
-		}
-		else {
-			this.parent.playerprompt.text = 'Select a card from your hand to play';
-		}
+	}
+	allow_stance_select() {
+		let app = App.get();
+		app.playertraits.can_draw = true;
+	}
+	on_children(event, data) {
+		let app = App.get();
+		if (this.children.length == 0) app.playerprompt.text = 'Touch the event deck to end your turn';
+		else app.playerprompt.text = 'Select a card from your hand to play';
 	}
 }
+
 class SkillDeck extends CardSplay {
 	on_touch_up(touch) {
-		__super__ (SkillDeck, 'on_touch_up') (self, touch);
+		return;
 	}
 	select_draw(num_to_pick=2, num_offered=4) {
+		let app = App.get();
 		var cards = this.children.slice (-num_offered);
 		if (len (cards) == 0) {
 			return ;
@@ -786,96 +738,97 @@ class SkillDeck extends CardSplay {
 		for (var c of cards) {
 			this.children.removeChild(c);
 		}
-		this.parent.cardselector = new CardSelector(new Rect(), {num_to_pick: num_to_pick});
-		App.get().addChild(this.parent.cardselector);
-		this.parent.cardselector.bind ('but_ok_pressed', this.card_picked);
-		this.parent.cardselector.children = cards;
+		app.cardselector = new CardSelector(new Rect(), {num_to_pick: num_to_pick});
+		App.get().addChild(app.cardselector);
+		app.cardselector.bind ('but_ok_pressed', this.card_picked);
+		app.cardselector.children = cards;
 	}
 	card_picked(cs, pressed) {
+		let app = App.get();
 		for (var c of cs.cards) {
 			cs.cards.remove (c);
 			if (!(c.selected)) {
-				c.face_up = false;
+				c.faceUp = false;
 				this.children.insert (0, c);
 			}
 			else {
-				this.parent.hand.cards.append (c);
-				c.face_up = true;
+				app.hand.cards.push(c);
+				c.faceUp = true;
 				c.selected = false;
 			}
 		}
-		this.parent.remove_widget (cs);
-		this.parent.cardselector = null;
+		app.remove_widget (cs);
+		app.cardselector = null;
 	}
 }
 class LootDeck extends CardSplay {
 	on_touch_up(touch) {
+		return;
 		__super__ (LootDeck, 'on_touch_up') (self, touch);
 	}
-	select_draw(num_to_pick, num_offered) {
-		if (typeof num_to_pick == 'undefined' || (num_to_pick != null && num_to_pick.hasOwnProperty ("__kwargtrans__"))) {;
-			var num_to_pick = 1;
-		};
-		if (typeof num_offered == 'undefined' || (num_offered != null && num_offered.hasOwnProperty ("__kwargtrans__"))) {;
-			var num_offered = 1;
-		};
+	select_draw(num_to_pick=1, num_offered=1) {
+		let app = App.get();
 		var cards = this.children.slice (-num_offered);
 		for (var c of cards) {
 			this.children.remove (c);
 		}
-		this.parent.cardselector = CardSelector (new Rect(), {num_to_pick: num_to_pick});
-		this.parent.add_widget (this.parent.cardselector);
-		this.parent.cardselector.bind ('but_ok_pressed', this.card_picked);
-		this.parent.cardselector.cards = cards;
+		app.cardselector = CardSelector (new Rect(), {num_to_pick: num_to_pick});
+		app.baseWidget.addChild(app.cardselector);
+		app.cardselector.bind('but_ok_pressed', this.card_picked);
+		app.cardselector.cards = cards;
 	}
 	card_picked(cs, pressed) {
+		let app = App.get();
 		for (var c of cs.cards) {
 			cs.cards.remove (c);
 			if (!(c.selected)) {
-				c.face_up = false;
+				c.faceUp = false;
 				this.children.insert (0, c);
 			}
 			else {
-				this.parent.hand.cards.append (c);
-				c.face_up = true;
+				app.hand.cards.push(c);
+				c.faceUp = true;
 				c.selected = false;
 			}
 		}
-		this.parent.remove_widget (cs);
-		this.parent.cardselector = null;
-		this.parent.stats.loot++;
-		this.parent.stats.t_loot++;
+		app.remove_widget (cs);
+		app.cardselector = null;
+		app.stats.loot++;
+		app.stats.t_loot++;
 	}
 }
 
 class MarketDeck extends CardSplay {
 	on_touch_up(touch) {
+		return;
 		return __super__ (MarketDeck, 'on_touch_up') (self, touch);
 	}
 	select_draw(num_to_pick=1, num_offered=1, coin=1) {
-		var cards = this.children.slice (-num_offered);
+		let app = App.get();
+		let cards = this.children.slice (-num_offered);
 		this.children = this.children.slice (0, -num_offered);
-		this.parent.cardselector = CardSelector (new Rect(), {num_to_pick: num_to_pick});
-		this.parent.add_widget (this.parent.cardselector);
-		this.parent.cardselector.bind ('but_ok_pressed', this.card_picked);
-		this.parent.cardselector.cards = cards;
+		app.cardselector = CardSelector (new Rect(), {num_to_pick: num_to_pick});
+		app.add_widget (app.cardselector);
+		app.cardselector.bind ('but_ok_pressed', this.card_picked);
+		app.cardselector.cards = cards;
 	}
 	card_picked(cs, pressed) {
-		var cards = cs.cards.slice(0);
+		let app = App.get();
+		let cards = cs.cards.slice(0);
 		cs.cards = [];
 		for (var c of cards) {
 			if (!(c.selected)) {
-				c.face_up = false;
-				this.children.append (c);
+				c.faceUp = false;
+				this.children.push(c);
 			}
 			else {
-				this.parent.hand.cards.append (c);
-				c.face_up = true;
+				app.hand.cards.push(c);
+				c.faceUp = true;
 				c.selected = false;
 			}
 		}
-		this.parent.remove_widget (cs);
-		this.parent.cardselector = null;
+		app.remove_widget (cs);
+		app.cardselector = null;
 	}
 }
 
@@ -884,40 +837,46 @@ class Exhausted extends CardSplay {
 		c.faceUp=true;
 	}
 }
+
 class EventDeck extends CardSplay {
 	can_draw = false;
-	on_touch_up(touch) {
-		if (!(this.collide_point (...touch.pos))) {
+	on_child_added(event, card) {
+		card.faceUp=false;
+	}
+	on_touch_up(event, touch) {
+        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+		if(this.renderRect().collide(r)) { // && c.emit(event,touch)
+			this.drawCard();
 			return true;
 		}
-		return this.draw ();
 	}
 	drawCard() {
+		let app = App.get();
 		if (!(this.can_draw)) {
-			return true;
+			return;
 		}
 		if (this.children.length == 0) {
-			return true;
+			return;
 		}
-		if (this.parent.clear_and_check_end_game ()) {
-			return true;
-		}
-		for (var t of this.parent.board.iter_tokens ('G')) {
+		// if (app.clear_and_check_end_game ()) {
+		// 	return;
+		// }
+		for (var t of app.board.iter_tokens ('G')) {
 			t.frozen = false;
 		}
-		var card = this.children [-(1)];
-		card.face_up = true;
-		for (var c of this.parent.playertraits.cards) {
+		var card = this.children.slice(-1)[0];
+		card.faceUp = true;
+		for (var c of app.playertraits.children) {
 			c.tapped = false;
 		}
-		this.move_to ([card], this.parent.eventdiscard);
-		card.activate (this.parent.board);
-		this.parent.playerdeck.draw_hand ();
-		this.parent.stats.rounds++;
-		this.parent.stats.t_rounds++;
-		return true;
+		this.move_to ([card], app.eventdiscard);
+		card.activate (app.board);
+		app.playerdeck.draw_hand ();
+		app.stats.rounds++;
+		app.stats.t_rounds++;
 	}
 }
+
 class EventDiscard extends CardSplay {
 	on_child_added(event, card) {
 		card.faceUp=true;
@@ -953,16 +912,16 @@ class Stats extends BoxLayout {
 			this.t_showing = false;
 		}
 	}
-	on_parent1() {
+	on_parent1(event, parent) {
 		var args = tuple ([].slice.apply (arguments).slice (1));
-		var parent = this.parent;
+		let app = App.get();
 		if (parent === null) {
 			return ;
 		}
-		this.center_x = Math.floor (-(this.parent.width) / 4);
-		this.center_y = Math.floor (-(this.parent.height) / 4);
-		this.width = Math.floor (this.parent.width / 4);
-		this.h = Math.floor (this.parent.height / 4);
+		this.center_x = Math.floor (-(app.width) / 4);
+		this.center_y = Math.floor (-(app.height) / 4);
+		this.width = Math.floor (app.width / 4);
+		this.h = Math.floor (app.height / 4);
 		var center_x = parent.center_x;
 		var center_y = parent.center_y;
 		var width = Math.floor ((3 * parent.width) / 4);
@@ -980,18 +939,19 @@ class Stats extends BoxLayout {
 		return true;
 	}
 	on_touch_up(touch) {
+		let app = App.get();
 		if (touch.grab_current == self) {
 			touch.ungrab (this.restart);
 			if (this.restart.collide_point (...touch.pos)) {
-				this.parent.restart_game ();
+				app.restart_game ();
 				this.reset ();
-				this.parent.menu_showing = false;
+				app.menu_showing = false;
 				return true;
 			}
 			if (this.py_next.collide_point (...touch.pos)) {
-				this.parent.next_level ();
+				app.next_level ();
 				this.reset (false);
-				this.parent.menu_showing = false;
+				app.menu_showing = false;
 				return true;
 			}
 			if (this.quit.collide_point (...touch.pos)) {

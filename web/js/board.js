@@ -22,9 +22,45 @@ class MapChoice extends BoxLayout {
 			return true;
 		}
 	}
+	draw() {
+		let app=App.get();
+		let ctx = app.ctx;
+		let r = this.renderRect();
+
+        //     rgb: (240,69,0) if self.choice_type=='touch' else (192,0,0) if self.choice_type=='visible' else (170,170,170)
+		ctx.fillStyle = self.choice_type=='touch' ? colorString([240/255,69/255,0]) : colorString([192/255,0,0]);
+
+		let x = r.x+r.w/5;
+		let y = r.y+r.h/5;
+		let w = 3*r.w/5;
+		let h = 3*r.h/5;
+		ctx.strokeStyle = colorString([0.8,0.8,0]);
+		ctx.lineWidth = 1+r.w/20;
+
+		ctx.beginPath();
+		ctx.moveTo(r.x + r.w / 10, r.y);
+		ctx.lineTo(r.x, r.y);
+		ctx.lineTo(r.x, r.y + r.h/10);
+
+		ctx.beginPath();
+		ctx.moveTo(r.right - r.w / 10, r.y);
+		ctx.lineTo(r.right, r.y);
+		ctx.lineTo(r.right, r.y + r.h/10);
+
+		ctx.beginPath();
+		ctx.moveTo(r.x + r.w / 10, r.bottom);
+		ctx.lineTo(r.x, r.bottom);
+		ctx.lineTo(r.x, r.bottom - r.h/10);
+
+		ctx.beginPath();
+		ctx.moveTo(r.right - r.w / 10, r.bottom);
+		ctx.lineTo(r.right, r.bottom);
+		ctx.lineTo(r.right, r.bottom - r.h/10);
+
+	}
 }
 
-class TokenMapChoice extends BoxLayout {
+class TokenMapChoice extends MapChoice {
 	constructor(rect, properties=null) {
 		super(rect);
 		this.updateProperties(properties);
@@ -45,7 +81,7 @@ class TokenMapChoice extends BoxLayout {
 	}
 }
 
-class Board extends Widget {
+class Board extends GridLayout {
 	tokens = [];
 	map_choices = [];
 	space_size = [];
@@ -57,11 +93,11 @@ class Board extends Widget {
 	onCh() {
 		let c = this.children[0];
 		if(this.numX>0) {
-			this.dimW = this.numW*c.w;
+			this.dimW = this.numX*c.w;
 			this.dimH = Math.ceil(this.children.length/this.dimW)*c.h;
 		}
 		if(this.numY>0) {
-			this.dimH = this.numH*c.h;
+			this.dimH = this.numY*c.h;
 			this.dimW = Math.ceil(this.children.length/this.dimW)*c.w;
 		}
 	}
@@ -71,51 +107,19 @@ class Board extends Widget {
 	on_removeChild(event, data) {
 		this.onCh();
 	}
-	on_tokens() {
-		//TODO: fixme -- very messy
-		this.active_player_token = null;
-		for (var t of this.children.__getslice__ (0, null, 1)) {
-			if (isinstance (t, Token)) {
-				t.unbind (__kwargtrans__ ({map_pos: this.on_token_move}));
-				if (isinstance (t, GuardToken)) {
-					t.unbind (__kwargtrans__ ({state: this.on_token_state}));
-				}
-				this.remove_widget (t);
-			}
-		}
-		for (var t of this.tokens) {
-			if (isinstance (t, Token)) {
-				t.bind (__kwargtrans__ ({map_pos: this.on_token_move}));
-				if (isinstance (t, GuardToken)) {
-					t.bind (__kwargtrans__ ({state: this.on_token_state}));
-				}
-				this.add_widget (t);
-				t.size = this.space_size;
-			}
-			if (isinstance (t, PlayerToken)) {
-				this.active_player_token = t;
-			}
-		}
+	on_tokens(event, data) {
+		let app = App.get();
+		this.active_player_token = this.tokens.find(t => t instanceof PlayerToken);
+		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof Token)), ...this.tokens];
 	}
-	on_map_choices() {
-    	//TODO: fixme -- very messy
-	    for (var t of this.children.__getslice__ (0, null, 1)) {
-			if (isinstance (t, MapChoice) || isinstance (t, TokenMapChoice)) {
-				this.remove_widget (t);
-			}
-		}
-		for (var t of this.map_choices) {
-			if (isinstance (t, MapChoice) || isinstance (t, TokenMapChoice)) {
-				this.add_widget (t);
-				t.size = this.space_size;
-			}
-		}
-		this.scroll_to_player ();
+	on_map_choices(event, data) {
+		let app = App.get();
+		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof MapChoice)), ...this.tokens];
 	}
 	scroll_to_player() {
-		//TOOD: fixme
-		this.parent.scrollX = this.active_player_token.center_x-this.parent.w/2;
-		this.parent.scrollY = this.active_player_token.center_y-this.parent.h/2;
+		let app = App.get();
+		app.sv.setScrollX(this.active_player_token.center_x-this.parent.w/2);
+		app.sv.setScrollY(this.active_player_token.center_y-this.parent.h/2);
 	}
 	on_token_move(token, mp) {
 		this.token_update ();
@@ -188,10 +192,10 @@ class Board extends Widget {
 		for (var t of this.tokens) {
 			if (!t.map_pos.toString() in clashes) t.off = [0, 0];
 		}
-		//TODO: FIXME, no zip, __slice__
+		let offsets = [[-0.25, -0.25], [0.25, 0.25], [-0.25, 0.25], [0.25, -0.25]];
 		for (let c of clashes) {
-			for (var [t, o] of zip (clashes[c], [[-(0.25), -(0.25)], [0.25, 0.25], [-(0.25), 0.25], [0.25, -(0.25)]].__getslice__ (0, len (clashes [p]), 1))) {
-				t.off = o;
+			for(let i=0;i<clashes[c].length;i++) {
+				clashes[c][i].off = offsets[i];
 			}
 		}
 		this.scroll_to_player ();
@@ -202,21 +206,22 @@ class Board extends Widget {
 		return card.map[card_pos];
 	}
 	get_card_and_pos(pos) {
+		let app = App.get();
 		let x,y;
 		[x,y] = pos;
-		var card_x = Math.floor (x / this.map_card_grid_size [0]);
-		var card_y = Math.floor (y / this.map_card_grid_size [1]);
-		var card_ind = card_x + card_y * this.map.cols;
-		var card = this.map.cards [card_ind];
-		var card_pos = [x - card_x * this.map_card_grid_size [0], y - card_y * this.map_card_grid_size [1]];
+		var card_x = Math.floor (x / app.map_card_grid_size [0]);
+		var card_y = Math.floor (y / app.map_card_grid_size [1]);
+		var card_ind = card_x + card_y * this.dimW;
+		var card = this.children[card_ind];
+		var card_pos = [x - card_x * app.map_card_grid_size [0], y - card_y * app.map_card_grid_size [1]];
 		return [card, card_pos];
 	}
 	get_pos_from_card(card, pos=[0,0]) {
 		let x,y;
 		[x,y] = pos;
-		var card_ind = this.map.children.indexOf(card);
-		var card_y = Math.floor (card_ind / this.map.numW);
-		var card_x = card_ind - card_y * this.map.numW;
+		var card_ind = this.children.indexOf(card);
+		var card_y = Math.floor (card_ind / this.numX);
+		var card_x = card_ind - card_y * this.numX;
 		[x,y] = [x + card_x * card.w, y + card_y * card.h];
 		return [x, y];
 	}
@@ -407,40 +412,40 @@ class Board extends Widget {
 		return TokenMapChoice({token: token, listener: listener, choice_type: choice_type});
 	}
 	*iter_spawns() {
-		for (var c of this.map.cards) {
+		for (var c of this.children) {
 			for (var s of c.spawns) {
 				yield this.get_pos_from_card (c, s);
 			}
 		}
-		}
+	}
 	*iter_waypoints() {
-		for (var c of this.map.cards) {
-			for (var w of c.spawns + c.waypoints) {
+		for (var c of this.children) {
+			for (var w of [...c.spawns, ...c.waypoints]) {
 				yield this.get_pos_from_card (c, w);
 			}
 		}
-		}
+	}
 	*iter_targets() {
-		for (var c of this.map.cards) {
+		for (var c of this.children) {
 			for (var t of c.targets) {
 				yield this.get_pos_from_card (c, t);
 			}
 		}
-		}
+	}
 	*iter_markets() {
-		for (var c of this.map.cards) {
+		for (var c of this.children) {
 			for (var m of c.markets) {
 				yield this.get_pos_from_card (c, m);
 			}
 		}
-		}
+	}
 	*iter_lights() {
-		for (var c of this.map.cards) {
+		for (var c of this.children) {
 			for (var l of c.lights) {
 				yield this.get_pos_from_card (c, l);
 			}
 		}
-		}
+	}
 	hide_light(pos, permanent=false) {
 		let c,p;
 		[c,p] = this.get_card_and_pos (pos);
@@ -458,7 +463,7 @@ class Board extends Widget {
 	nearest_guard(map_pos, max_range=null, states=['dozing','alert']) {
 		var gts = [...this.tokens].filter(t=> t instanceof GuardToken && states.includes(t.state));
 		var dists = gts.map(t => this.dist(map_pos, t.map_pos));
-		var min_dist = Math.min(dists);
+		var min_dist = Math.min(...dists);
 		if (max_range !== null && min_dist > max_range) return null;
 		return gts [dists.indexOf(min_dist)];
 	}
@@ -479,18 +484,12 @@ class Board extends Widget {
 			var g_to_wp_dist = this.dist (wp, guard_pos);
 			if ((p_to_wp_dist < g_to_p_dist || !(include_player)) && p_to_wp_dist <= smallest_dist) {
 				var smallest_dist = p_to_wp_dist;
-				candidates.append (wp);
+				candidates.push(wp);
 			}
 		}
-		if (include_player && len (candidates) == 0) {
-			return player_pos;
-		}
-		else if (len (candidates) == 0) {
-			return guard_pos;
-		}
-		else {
-			return candidates[candidates.length-1];
-		}
+		if (include_player && len (candidates) == 0) return player_pos;
+		else if (candidates.length == 0) return guard_pos;
+		else return candidates[candidates.length-1];
 	}
 	walkable_dist(map_pos1, map_pos2) {
 		// pass;
@@ -517,7 +516,7 @@ class Board extends Widget {
 					continue;
 				}
 				if (cur_dist <= dist) {
-					spots[pos.toString()] = cur_dist;
+						spots[pos.toString()] = cur_dist;
 					this.walkable_spots (pos, dist, spots);
 				}
 			}

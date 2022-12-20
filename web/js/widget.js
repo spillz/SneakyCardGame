@@ -21,6 +21,14 @@ class App {
         this.baseWidget = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
         this.baseWidget.parent = this;
         this.baseWidget.app = this;
+        // modal widgets
+        this.modalWidgets = [];
+    }
+    addModal(modal) {
+        this.modalWidgets.push(modal);
+    }
+    removeModal(modal) {
+        this.modalWidgets = this.modalWidgets.filter(m => m!=modal);
     }
     static get() { //singleton
         if (!App.appInstance) App.appInstance = new App();
@@ -34,11 +42,22 @@ class App {
         this.updateWindowSize();
         this.update();
     }
-    emit(event, data) {
-        this.baseWidget.emit(event, data);
+    emit(event, data, topModalOnly=false) { //TODO: Need to suppress some events for a modal view (e.g., touches)
+        if(topModalOnly && this.modalWidgets.length>0) {
+            return this.modalWidgets[this.modalWidgets.length-1];
+        } else {
+            if(this.baseWidget.emit(event, data)) return true;
+            for(let mw of this.modalWidgets) {
+                if(mw.emit(event, data)) return true;
+            }
+            return false;
+        }
     }
     *iter(recursive=true, inView=true) {
-            yield *this.baseWidget.iter(...arguments);
+        yield *this.baseWidget.iter(...arguments);
+        for(let mw of this.modalWidgets) {
+            yield *mw.iter(...arguments);
+        }
     }
     update() {
         let millis = 15;
@@ -47,6 +66,7 @@ class App {
             millis = Math.min(n_timer_tick - this.timer_tick, 30); //maximum of 30 ms refresh
         }
         this.baseWidget.update(millis);
+        for(let mw of this.modalWidgets) mw.update(millis);
         this.draw(millis);
 
         let that = this;
@@ -59,7 +79,7 @@ class App {
         this.shakeAmount = 0;
         screenshake(this);
 
-        this.baseWidget.draw();
+        this.baseWidget._draw(millis);
     }        
     setupCanvas(){
         this.canvas = document.querySelector(this.canvasName);
@@ -131,6 +151,7 @@ class Widget extends Rect {
         this[1] = rect[1];
         this[2] = rect[2];
         this[3] = rect[3];
+        this._needsLayout = true;
     }
     updateProperties(properties) {
         for(let p in properties) {
@@ -178,13 +199,11 @@ class Widget extends Rect {
     }
     set children(children) {
         for(let c of this._children) {
-            this.emit('child_removed', child);
-            child.parent = null;
-            child.app = null;
-            for(let c of child.iter(true,false)) c.app = null;
+            this.emit('child_removed', c);
+            c.parent = null;
             this._needsLayout = true;
         }
-        this._children = []
+        this._children = [];
         for(let c of children) {
             this.addChild(c);
         }
@@ -239,20 +258,27 @@ class Widget extends Rect {
         //If so, rename to layoutSelfAndChildren or just layout?
     }
     renderRect() {
+        let app = App.get();
         let r = new Rect(this);
-        r[0] = r[0] * App.get().tileSize + App.get().shakeX + App.get().offsetX;
-        r[1] = r[1] * App.get().tileSize + App.get().shakeY + App.get().offsetY;
-        r[2] = r[2] * App.get().tileSize;
-        r[3] = r[3] * App.get().tileSize;
+        r[0] = r[0] * app.tileSize + app.shakeX + app.offsetX;
+        r[1] = r[1] * app.tileSize + app.shakeY + app.offsetY;
+        r[2] = r[2] * app.tileSize;
+        r[3] = r[3] * app.tileSize;
         return r;        
     }
     localRect() {
+        let app = App.get();
         let r = new Rect(this);
-        r[0] = (r[0] - App.get().shakeX - App.get().offsetX)/App.get().tileSize;
-        r[1] = (r[1] - App.get().shakeY - App.get().offsetY)/App.get().tileSize;
-        r[2] = r[2]/App.get().tileSize;
-        r[3] = r[3]/App.get().tileSize;
+        r[0] = (r[0] - app.shakeX - app.offsetX)/app.tileSize;
+        r[1] = (r[1] - app.shakeY - app.offsetY)/app.tileSize;
+        r[2] = r[2]/app.tileSize;
+        r[3] = r[3]/app.tileSize;
         return r;        
+    }
+    _draw(millis) {
+        if(this.draw()=='abort') return;
+        for(let c of this.children)
+            c._draw(millis);
     }
     draw() {
 //        App.get().sprites.entitiesItems.draw(this.sprite, this.getDisplayX(), this.getDisplayY(), this.getFlipped());
@@ -264,12 +290,9 @@ class Widget extends Rect {
         app.ctx.rect(r[0], r[1], r[2], r[3]);
         app.ctx.fillStyle = this.bgColor;
         app.ctx.fill();
-        app.ctx.lineWidth = app.tileSize / 16;
+        app.ctx.lineWidth = 1; //app.tileSize / 16;
         app.ctx.strokeStyle = this.outlineColor;
         app.ctx.stroke();
-
-        for(let c of this.children)
-            c.draw();
     }
     update(millis) {
         this.pos = this.pos.add(this.vel.scale(millis));
@@ -363,7 +386,7 @@ class BoxLayout extends Widget {
     }
     layoutChildren() {
         if(this.orientation=='vertical') {
-            num = this.children.length;
+            let num = this.children.length;
             let h = this.h - this.spacingY*num - 2*this.paddingY;
             let w = this.w - 2*this.paddingX;
             let ch = h/num;
@@ -496,11 +519,13 @@ class ScrollView extends Widget {
         this.oldMouse = null;
     }
     layoutChildren() {
-        if(!this.scrollW) this.children[0].w = this.w;
-        if(!this.scrollH) this.children[0].h = this.h;
-        this.children[0].x = this.x-this.scrollX;
-        this.children[0].y = this.y-this.scrollY;
-        this.children[0].layoutChildren();
+        this.setScrollX(this.scrollX);
+        this.setScrollY(this.scrollY);
+        if(!this.scrollW) this.children.apply(c=>c.w=this.w);
+        if(!this.scrollH) this.children.apply(c=>c.h=this.h);
+        // this.children[0].x = this.x-this.scrollX;
+        // this.children[0].y = this.y-this.scrollY;
+        // this.children[0].layoutChildren();
     }
     *iter(recursive=true, inView=true) {
         yield this;
@@ -517,9 +542,11 @@ class ScrollView extends Widget {
     }
     on_scrollW(event, value) {
         this._needsLayout = true;
+        this.scrollX = 0;
     }
     on_scrollH(event, value) {
         this._needsLayout = true;
+        this.scrollY = 0;
     }
     on_scrollX(event, value) {
         this._needsLayout = true;
@@ -527,16 +554,40 @@ class ScrollView extends Widget {
     on_scrollY(event, value) {
         this._needsLayout = true;
     }
+    setScrollX(value) {
+        this.scrollX = this.children[0].w<=this.w? (this.children[0].w-this.w)/2 : Math.min(Math.max(0, value),this.children[0].w-this.w);
+    }
+    setScrollY(value) {
+        this.scrollY = this.children[0].h<=this.h? (this.children[0].h-this.h)/2 : Math.min(Math.max(0, value),this.children[0].h-this.h);
+    }
+    offset_emit(c, event, touch) {
+        let app = App.get();
+        let savedOffset = [app.offsetX, app.offsetY];
+        app.offsetX += (this.x-this.scrollX)*app.tileSize;
+        app.offsetY += (this.y-this.scrollY)*app.tileSize;
+        let result = c.emit(event, touch);
+        app.offsetX = savedOffset[0];
+        app.offsetY = savedOffset[1];
+        return result;
+    }
     on_touch_down(event, touch) {
         this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
         let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
-        for(let c of this.children) if(this.renderRect().collide(r) && c.emit(event, touch)) return true;
+        if(this.renderRect().collide(r)) {
+            for(let c of this.children) if(this.offset_emit(c, event, touch)) {
+                return true;
+            }
+        }
         return false;
     }
     on_touch_up(event, touch) {
         this.oldTouch = null;
         let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
-        for(let c of this.children) if(this.renderRect().collide(r) && c.emit(event, touch)) return true;
+        if(this.renderRect().collide(r)) {
+                for(let c of this.children) if(this.offset_emit(c, event, touch)) {
+                return true;
+            }
+        }
         return false;
     }
     on_touch_move(event, touch) {
@@ -547,16 +598,14 @@ class ScrollView extends Widget {
                 this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
             } else {
                 if(this.scrollW) {
-                    this.scrollX += (this.oldTouch[0]-touch.clientX)/app.tileSize;
-                    this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
+                    this.setScrollX(this.scrollX + (this.oldTouch[0]-touch.clientX)/app.tileSize);
                 }
                 if(this.scrollH) {
-                    this.scrollY += (this.oldTouch[1]-touch.clientY)/app.tileSize; 
-                    this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
+                    this.setScrollY(this.scrollY + (this.oldTouch[1]-touch.clientY)/app.tileSize);
                 }
                 this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];    
             }
-            for(let c of this.children) if(c.emit(event, touch)) return true;
+            for(let c of this.children) if(this.offset_emit(c, event, touch)) return true;
         }
         return false;
     }
@@ -613,18 +662,28 @@ class ScrollView extends Widget {
         }
 
     }
-    draw() {
+    _draw() {
+        this.draw();
         let r = this.renderRect();
         let app = App.get();
         app.ctx.save();
         app.ctx.beginPath();
         app.ctx.rect(r[0],r[1],r[2],r[3]);
         app.ctx.clip();
-        this.children[0].draw()
+        app.ctx.translate((this.x-this.scrollX)*app.tileSize, (this.y-this.scrollY)*app.tileSize);
+        this.children[0]._draw()
         app.ctx.restore();
     }
 }
 
 class ModalView extends Widget {
-
+    closeOnTouchOutside = true;
+    popup() {
+        let app = App.get();
+        app.addModal(this);
+    }
+    close() {
+        let app = App.get();
+        app.removeModal(this);
+    }
 }

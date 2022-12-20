@@ -1,135 +1,125 @@
-class Token extends BoxLayout {
-	map_pos = ListProperty ();
-	off = ListProperty ();
-	__init__() {
-		var map_pos = extract_kwarg (kwargs, 'map_pos', tuple ([0, 0]));
-		__super__ (Token, '__init__') (self, __kwargtrans__ (kwargs));
-		this._old_map_pos = map_pos;
-		this.map_pos = map_pos;
-		this._a = null;
-		this.pos = tuple ([(this.map_pos [0] + this.off [0]) * this.size [0], (this.map_pos [1] + this.off [1]) * this.size [1]]);
-		this.bind (__kwargtrans__ ({map_pos: this.func_on_map_pos}));
-		this.bind (__kwargtrans__ ({off: this.func_on_off}));
+class Token extends Widget {
+	map_pos = null;
+	off = null;
+	constructor(map_pos) {
+		super(new Rect([0,0,1,1]), {});
+		this.off = new Vec2([0,0]);
+		this.map_pos = new Vec2(map_pos);
+		this.bind('off', (event, obj, data) => this.update_rect(event, obj, data));
+		this.bind('map_pos', (event, obj, data) => this.update_rect(event, obj, data));
+		this.rect = new Rect([this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1]);
 	}
-	func_on_map_pos(obj, mp) {
-		var pos = tuple ([(this.map_pos [0] + this.off [0]) * this.size [0], (this.map_pos [1] + this.off [1]) * this.size [1]]);
-		var dur = 0.1 * cards.dist (this._old_map_pos, this.map_pos);
-		this._old_map_pos = this.map_pos;
-		this._a = Animation (__kwargtrans__ ({pos: pos, duration: dur}));
-		this._a.bind (__kwargtrans__ ({on_complete: this.anim_done}));
-		this._a.start (self);
-	}
-	func_on_off(obj, off) {
-		this.func_on_map_pos (obj, off);
-	}
-	anim_done(obj, val) {
-		this._a = null;
-		this.pos = tuple ([(this.map_pos [0] + this.off [0]) * this.size [0], (this.map_pos [1] + this.off [1]) * this.size [1]]);
-	}
-	on_size(obj, sz) {
-		if (this._a !== null) {
-			this._a.cancel ();
-		}
-		this.pos = tuple ([(this.map_pos [0] + this.off [0]) * this.size [0], (this.map_pos [1] + this.off [1]) * this.size [1]]);
-		this.draw_token ();
-	}
-	on_parent() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		this.draw_token ();
-	}
-	on_pos() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		this.draw_token ();
-	}
-	on_off() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		this.draw_token ();
-	}
-	draw_token() {
-		return ;
+	update_rect(msg, obj, data) {
+		this.rect = new Rect([this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1]);
 	}
 }
 
 class PlayerToken extends Token {
+	draw() {
+		let app = App.get();
+		let r = this.renderRect();
+
+		//Draw head
+		app.ctx.fillStyle = colorString([0.65,0.65,0.75]);
+		app.ctx.beginPath();
+		app.ctx.ellipse(r.x+r.w/2, r.y+r.h/2, 2*r.w/5, 2*r.h/5, 0, 0, 2*Math.PI);
+		app.ctx.closePath();
+		app.ctx.fill();
+
+		// Color:
+        //     rgb: 0.5,0.5,0.5
+        // Ellipse:
+        //     pos: self.x+(self.width)//10,self.y+(self.height)//10
+        //     size: root.width*4//5, root.height*4//5
+        // Color:
+        //     rgb: 0,0,0
+        // Ellipse:
+        //     pos: self.x+(self.width)//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
+        //     size: root.width*3//10, root.height*3//10
+        //     angle_start: 90
+        //     angle_end: 270
+        // Ellipse:
+        //     pos: self.x+(self.width)*2//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
+        //     size: root.width*3//10, root.height*3//10
+        //     angle_start: 90
+        //     angle_end: 270
+        // Line:
+        //     width: 1+root.height//30
+        //     points: self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3
+
+	}
+
 }
 
 class TargetToken extends Token {
 	lock_level = 1;
 	loot_level = 1;
-	has_loot = BooleanProperty (true);
-	picked = BooleanProperty (false);
-	draw_token() {
-		this.canvas.after.py_clear ();
-		var __withid0__ = this.canvas.after;
-		try {
-			__withid0__.__enter__ ();
-			Color (0.1, 0.3, 0.8, 1);
-			var x = this.x + Math.floor (this.width / 5);
-			var y = this.y + Math.floor (this.height / 5);
-			var __left0__ = tuple ([(Math.floor ((Math.floor ((3 * this.size [0]) / 5)) / 2)) * 2, (Math.floor ((Math.floor ((3 * this.size [1]) / 5)) / 2)) * 2]);
-			var w = __left0__ [0];
-			var h = __left0__ [1];
-			var vertices = [x + Math.floor (w / 2), y, 0, 0, x, y + Math.floor ((2 * h) / 3), 0, 0, x + Math.floor (w / 4), y + h, 0, 0, x + Math.floor ((3 * w) / 4), y + h, 0, 0, x + w, y + Math.floor ((2 * h) / 3), 0, 0];
-			var indices = [0, 4, 3, 2, 1];
-			Mesh (__kwargtrans__ ({vertices: vertices, indices: indices, mode: 'triangle_fan'}));
-			__withid0__.__exit__ ();
-		}
-		catch (__except0__) {
-			if (! (__withid0__.__exit__ (__except0__.name, __except0__, __except0__.stack))) {
-				throw __except0__;
-			}
-		}
+	has_loot = true;
+	picked = false;
+	draw() {
+		let app = App.get();
+		let ctx = app.ctx;
+		let color = colorString([0.1,0.3,0.8]);
+		let r = this.renderRect();
+		var x = r.x + Math.floor (r.w / 5);
+		var y = r.y + Math.floor (r.h / 5);
+		var w = 3*r.w/5;
+		var h = 3*r.h/5;
+		ctx.beginPath();
+		ctx.moveTo(x + w/2, y);
+		ctx.lineTo(x, y + 2*h/3);
+		ctx.lineTo(x + w/4, y + h);
+		ctx.lineTo(x + 3*w/4, y + h);
+		ctx.lineTo(x + w, y + 2*h/3);
+		ctx.closePath();
+		ctx.fillStyle = color;
+		ctx.fill();	
 	}
 }
 
 class MarketToken extends Token {
 	lock_level = 1;
 	loot_level = 1;
-	draw_token() {
-		this.canvas.after.py_clear ();
-		var __withid0__ = this.canvas.after;
-		try {
-			__withid0__.__enter__ ();
-			Color (0.6, 0.4, 0, 1);
-			var x = this.x + Math.floor (this.width / 5);
-			var y = this.y + Math.floor (this.height / 5);
-			var __left0__ = tuple ([(Math.floor ((Math.floor ((3 * this.size [0]) / 5)) / 2)) * 2, (Math.floor ((Math.floor ((3 * this.size [1]) / 5)) / 2)) * 2]);
-			var w = __left0__ [0];
-			var h = __left0__ [1];
-			Ellipse (__kwargtrans__ ({pos: tuple ([x, y]), size: tuple ([w, h])}));
-			__withid0__.__exit__ ();
-		}
-		catch (__except0__) {
-			if (! (__withid0__.__exit__ (__except0__.name, __except0__, __except0__.stack))) {
-				throw __except0__;
-			}
-		}
+	draw() {
+		let app = App.get();
+		let ctx = app.ctx;
+		let color = colorString([0.6, 0.4, 0]);
+		let r = this.renderRect();
+		var x = r.x + r.w/5; //Math.floor (r.w / 5);
+		var y = r.y + r.h/5; //Math.floor (r.h / 5);
+		var w = 3*r.w/5; // Math.floor ((Math.floor (3 * r.w / 5)) / 2) * 2;
+		var h = 3*r.h/5; //Math.floor ((Math.floor (3 * r.h / 5)) / 2) * 2;
+
+		ctx.beginPath();
+		ctx.ellipse(r.center_x, r.center_y, w/2, h/2, 0, 0, 2*Math.PI);
+		ctx.closePath();
+		ctx.fillStyle = color;
+		ctx.fill();	
 	}
-	on_touch_down(touch) {
-		if (this.collide_point (...touch.pos)) {
-			touch.grab (self);
-			return true;
-		}
-	}
-	on_touch_up(touch) {
-		if (touch.grab_current == self) {
-			touch.ungrab (self);
-			if (this.collide_point (...touch.pos)) {
-				this.parent.parent.parent.marketdeck.select_draw (0, 4, 0);
-			}
-			return true;
-		}
-	}
+	// on_touch_down(touch) {
+	// 	if (this.collide_point (...touch.pos)) {
+	// 		touch.grab (self);
+	// 		return true;
+	// 	}
+	// }
+	// on_touch_up(touch) {
+	// 	if (touch.grab_current == self) {
+	// 		touch.ungrab (self);
+	// 		if (this.collide_point (...touch.pos)) {
+	// 			this.parent.parent.parent.marketdeck.select_draw (0, 4, 0);
+	// 		}
+	// 		return true;
+	// 	}
+	// }
 }
 
 class GuardToken extends Token {
 	state = 'dozing';
 	frozen = false;
-	on_state() {
-		var args = tuple ([].slice.apply (arguments).slice (1));
-		this.draw_token ();
+	on_state(event, data) {
+		let app = App.get();
 		if (this.state != 'dozing') {
-			var stats = this.parent.parent.parent.stats;
+			var stats = app.stats;
 			if (this.state == 'dead') {
 				stats.kills++;
 				stats.t_kills++;
@@ -138,107 +128,133 @@ class GuardToken extends Token {
 				stats.knockouts++;
 				stats.t_knockouts++;
 			}
-			if (this.state == 'alert' && this.parent.active_player_token.map_pos == this.map_pos) {
+			if (this.state == 'alert' && app.board.active_player_token.map_pos == this.map_pos) {
 				stats.contacts++;
 				stats.t_contacts++;
 			}
 		}
 	}
 
-	draw_token() {
-		this.canvas.after.py_clear ();
-		var __withid0__ = this.canvas.after;
-		try {
-			__withid0__.__enter__ ();
-			if (__in__ (this.state, ['dozing', 'alert'])) {
-				Color (__kwargtrans__ ({rgb: tuple ([0.75, 0, 0])}));
-			}
-			else {
-				Color (__kwargtrans__ ({rgb: tuple ([0.5, 0.1, 0.1])}));
-			}
-			Ellipse (__kwargtrans__ ({pos: tuple ([this.x + Math.floor (this.width / 10), this.y + Math.floor (this.height / 10)]), size: tuple ([Math.floor ((this.width * 4) / 5), Math.floor ((this.height * 4) / 5)])}));
-			if (this.state == 'alert') {
-				Color (__kwargtrans__ ({rgb: tuple ([0.4, 0, 0])}));
-			}
-			else {
-				Color (__kwargtrans__ ({rgb: tuple ([0, 0, 0])}));
-			}
-			if (__in__ (this.state, ['dozing', 'alert'])) {
-				Ellipse (__kwargtrans__ ({pos: tuple ([(this.x + Math.floor (this.width / 3)) - Math.floor ((this.width * 3) / 40), (this.y + Math.floor ((this.height * 2) / 5)) - Math.floor ((this.height * 3) / 40)]), size: tuple ([Math.floor ((this.width * 3) / 10), Math.floor ((this.height * 3) / 10)]), angle_start: (this.state == 'dozing' ? 270 : 290), angle_end: (this.state == 'dozing' ? 450 : 470)}));
-				Ellipse (__kwargtrans__ ({pos: tuple ([(this.x + Math.floor ((this.width * 2) / 3)) - Math.floor ((this.width * 3) / 40), (this.y + Math.floor ((this.height * 2) / 5)) - Math.floor ((this.height * 3) / 40)]), size: tuple ([Math.floor ((this.width * 3) / 10), Math.floor ((this.height * 3) / 10)]), angle_start: (this.state == 'dozing' ? 270 : 250), angle_end: (this.state == 'dozing' ? 450 : 430)}));
-			}
-			else if (this.state == 'dead') {
-				var eyeleft = (this.x + Math.floor (this.width / 3)) - Math.floor ((this.width * 3) / 40);
-				var eyeright = (this.x + Math.floor (this.width / 3)) + Math.floor ((this.width * 3) / 40);
-				var eyetop = (this.y + Math.floor (this.height / 2)) - Math.floor ((this.height * 3) / 40);
-				var eyebottom = (this.y + Math.floor (this.height / 2)) + Math.floor ((this.height * 3) / 40);
-				Line (__kwargtrans__ ({points: tuple ([eyeleft, eyebottom, eyeright, eyetop])}));
-				Line (__kwargtrans__ ({points: tuple ([eyeleft, eyetop, eyeright, eyebottom])}));
-				var eyeleft = (this.x + Math.floor ((this.width * 2) / 3)) - Math.floor ((this.width * 3) / 40);
-				var eyeright = (this.x + Math.floor ((this.width * 2) / 3)) + Math.floor ((this.width * 3) / 40);
-				var eyetop = (this.y + Math.floor (this.height / 2)) - Math.floor ((this.height * 3) / 40);
-				var eyebottom = (this.y + Math.floor (this.height / 2)) + Math.floor ((this.height * 3) / 40);
-				Line (__kwargtrans__ ({points: tuple ([eyeleft, eyebottom, eyeright, eyetop])}));
-				Line (__kwargtrans__ ({points: tuple ([eyeleft, eyetop, eyeright, eyebottom])}));
-			}
-			else {
-				var eyeleft = (this.x + Math.floor (this.width / 3)) - Math.floor ((this.width * 3) / 40);
-				var eyeright = (this.x + Math.floor (this.width / 3)) + Math.floor ((this.width * 3) / 40);
-				var eyemiddle = this.y + Math.floor (this.height / 2);
-				Line (__kwargtrans__ ({points: tuple ([eyeleft, eyemiddle, eyeright, eyemiddle])}));
-				var eyeleft = (this.x + Math.floor ((this.width * 2) / 3)) - Math.floor ((this.width * 3) / 40);
-				var eyeright = (this.x + Math.floor ((this.width * 2) / 3)) + Math.floor ((this.width * 3) / 40);
-				var eyemiddle = this.y + Math.floor (this.height / 2);
-				Line (__kwargtrans__ ({points: tuple ([eyeleft, eyemiddle, eyeright, eyemiddle])}));
-			}
-			Color (__kwargtrans__ ({rgb: tuple ([0, 0, 0])}));
-			if (this.state == 'dead') {
-				Ellipse (__kwargtrans__ ({pos: tuple ([this.x + Math.floor ((this.width * 2) / 5), this.y + Math.floor (this.height / 4)]), size: tuple ([Math.floor (this.width / 5), Math.floor (this.height / 5)])}));
-			}
-			else {
-				Line (__kwargtrans__ ({width: 1 + Math.floor (this.height / 30), points: tuple ([this.x + Math.floor ((this.width * 2) / 5), this.y + Math.floor (this.height / 3), this.x + Math.floor ((this.width * 3) / 5), this.y + Math.floor (this.height / 3)])}));
-			}
-			__withid0__.__exit__ ();
+	draw() {
+		let app=App.get();
+		let r = this.renderRect();
+
+		//Draw head
+		app.ctx.fillStyle = ['dozing','alert'].includes(this.state)? colorString([0.75,0,0]) : colorString([0.5,0.1,0.1]);
+		app.ctx.beginPath();
+		app.ctx.ellipse(r.center_x, r.center_y, 2*r.w/5, 2*r.h/5, 0, 0, 2*Math.PI);
+		app.ctx.fill();
+
+		//Draw eyes
+		app.ctx.fillStyle = this.state=='alert' ? colorString([0.4,0,0]) : colorString([0,0,0]);
+		app.ctx.strokeStyle = app.ctx.fillStyle;
+		if(['dozing','alert'].includes(this.state)) {
+			app.ctx.beginPath();
+			app.ctx.ellipse(r.center_x - r.w/6, r.center_y, r.w*3/40, r.h*3/40, 
+							0, (this.state == 'dozing' ? 270 : 290), (this.state == 'dozing' ? 450 : 470) );
+			app.ctx.closePath();
+			app.ctx.fill();
+			app.ctx.beginPath();
+			app.ctx.ellipse(r.center_x + r.w/6, r.center_y, r.w*3/40, r.h*3/40, 
+							0, (this.state == 'dozing' ? 270 : 250), (this.state == 'dozing' ? 450 : 430) );
+			app.ctx.closePath();
+			app.ctx.fill();
+		} 
+		else if (this.state == 'dead') {
+				//dead eyes
+				var eyeleft = r.center_x - r.w/6 - r.h*3/40;
+				var eyeright = r.center_x - r.w/6 + r.h*3/40;
+				var eyetop = r.center_y - r.h*3/40;
+				var eyebottom = r.center_y + r.h*3/40;
+				app.ctx.lineWidth = r.w/40;
+				app.ctx.beginPath();
+				app.ctx.moveTo(eyeleft, eyebottom);
+				app.ctx.lineTo(eyeright, eyetop);
+				app.ctx.moveTo(eyeleft, eyetop);
+				app.ctx.lineTo(eyeright, eyebottom);
+				app.ctx.stroke()
+				
+				var eyeleft = r.center_x + r.w/6 - r.h*3/40;
+				var eyeright = r.center_x + r.w/6 + r.h*3/40;
+				var eyetop = r.center_y - r.h*3/40;
+				var eyebottom = r.center_y + r.h*3/40;
+				app.ctx.lineWidth = r.w/40;
+				app.ctx.beginPath();
+				app.ctx.moveTo(eyeleft, eyebottom);
+				app.ctx.lineTo(eyeright, eyetop);
+				app.ctx.moveTo(eyeleft, eyetop);
+				app.ctx.lineTo(eyeright, eyebottom);
+				app.ctx.stroke()
 		}
-		catch (__except0__) {
-			if (! (__withid0__.__exit__ (__except0__.name, __except0__, __except0__.stack))) {
-				throw __except0__;
-			}
+		else {
+				//KO eyes
+				var eyeleft = r.x + r.w / 3 - this.w*3/40;
+				var eyeright = r.x + r.w / 3 + this.w*3/40;
+				var eyemiddle = r.center_y;
+				app.ctx.beginPath();
+				app.ctx.moveTo(eyeleft, eyemiddle);
+				app.ctx.lineTo(eyeright, eyemiddle);
+				app.ctx.stroke()
+
+				var eyeleft = r.x + r.w*2/3 - this.w*3/40;
+				var eyeright = r.x + r.w*2/3 + this.w*3/40;
+				var eyemiddle = r.center_y;
+				app.ctx.beginPath();
+				app.ctx.moveTo(eyeleft, eyemiddle);
+				app.ctx.lineTo(eyeright, eyemiddle);
+				app.ctx.stroke()
+		}
+		//mouth
+		app.ctx.fillStyle = colorString([0,0,0]);
+		app.ctx.strokeStyle = app.ctx.fillStyle;
+		if (this.state == 'dead') {
+			app.ctx.beginPath();
+			app.ctx.ellipse(r.x+r.w*2/5, r.y+r.h/4, 2*r.w/5, 2*r.h/5, 0, 0, 2*Math.PI);
+			app.ctx.fill()
+		}
+		else {
+			app.ctx.beginPath();
+			app.ctx.moveTo(r.x+r.w*2/5, r.y+2*r.h/3);
+			app.ctx.lineTo(r.x+r.w*3/5, r.y+2*r.h/3);
+			app.ctx.stroke();
 		}
 	}
 }
 
 class ObjectiveToken extends TargetToken {
-	has_loot = BooleanProperty (false);
+	has_loot = false;
+	picked = false;
 	on_picked(obj, value) {
 		if (this.picked) {
-			var pa = this.parent.parent.parent;
-			pa.level_complete ();
+			var app = App.get();
+			app.level_complete ();
 		}
 	}
-	draw_token() {
-		this.canvas.after.py_clear ();
-		var __withid0__ = this.canvas.after;
-		try {
-			__withid0__.__enter__ ();
-			Color (0.8, 0.8, 0.0, 1);
-			var x = this.x + Math.floor (this.width / 5);
-			var y = this.y + Math.floor (this.height / 5);
-			var __left0__ = tuple ([(Math.floor ((Math.floor ((3 * this.size [0]) / 5)) / 2)) * 2, (Math.floor ((Math.floor ((3 * this.size [1]) / 5)) / 2)) * 2]);
-			var w = __left0__ [0];
-			var h = __left0__ [1];
-			var vertices1 = [x + Math.floor (w / 2), y, 0, 0, x, y + Math.floor ((3 * h) / 4), 0, 0, x + w, y + Math.floor ((3 * h) / 4), 0, 0];
-			var vertices2 = [x + Math.floor (w / 2), y + h, 0, 0, x, y + Math.floor (h / 4), 0, 0, x + w, y + Math.floor (h / 4), 0, 0];
-			var indices = [0, 1, 2];
-			Mesh (__kwargtrans__ ({vertices: vertices1, indices: indices, mode: 'triangle_fan'}));
-			Mesh (__kwargtrans__ ({vertices: vertices2, indices: indices, mode: 'triangle_fan'}));
-			__withid0__.__exit__ ();
-		}
-		catch (__except0__) {
-			if (! (__withid0__.__exit__ (__except0__.name, __except0__, __except0__.stack))) {
-				throw __except0__;
-			}
-		}
+	draw() {
+		let app=App.get();
+		let ctx = app.ctx;
+		let r = this.renderRect();
+
+		let x = r.x+r.w/5;
+		let y = r.y+r.h/5;
+		let w = 3*r.w/5;
+		let h = 3*r.h/5;
+		ctx.fillStyle = colorString([0.8,0.8,0]);
+
+		ctx.beginPath();
+		ctx.moveTo(x + w / 2, y);
+		ctx.lineTo(x, y + 3*h/4);
+		ctx.lineTo(x + w, y + 3*h/4);
+		ctx.closePath();
+		ctx.fill();
+
+		ctx.beginPath();
+		ctx.moveTo(x + w/2, y + h);
+		ctx.lineTo(x, y + h/4);
+		ctx.lineTo(x + w, y + h/4);
+		ctx.closePath();
+		ctx.fill();
+
 	}
 }
 

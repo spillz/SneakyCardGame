@@ -495,6 +495,8 @@ class EventCard extends Card {
 }
 
 class SpawnEvent extends EventCard {
+    name = 'SPAWN';
+    text = 'Spawn a guard at the nearest waypoint to the player';
     activate(board) {
 		this.board = board;
         var card,pos
@@ -510,44 +512,46 @@ class SpawnEvent extends EventCard {
 		}
 		if (bests !== null) {
 			var np = board.get_pos_from_card (card, bests);
-			var g = board.token_types ['G']();
-			board.tokens.append (g);
+			var g = new board.token_types['G'](np);
+			board.tokens.push(g);
 			g.map_pos = np;
 		}
 	}
 }
 
 class PatrolEvent extends EventCard {
+    name = 'PATROL';
+    text = "All guards on the player's map card move to the next waypoint";
 	activate(board) {
 		this.board = board;
-        var pcard,ppos
+        let pcard,ppos
         [pcard,ppos] = board.get_card_and_pos (this.board.active_player_token.map_pos);
-		for (var g of board.tokens) {
+		for (let g of board.tokens) {
 			if (!(g instanceof board.token_types ['G'])) continue;
             if (['dead', 'unconscious'].includes(g.state)) continue;
-            var card,pos
-            [card,pos] = board.get_card_and_pos (g.map_pos);
+            let gcard,gpos;
+            [gcard,gpos] = board.get_card_and_pos (g.map_pos);
 			if (gcard != pcard) continue;
 			if (gpos == ppos) continue;
 			var pts = [...gcard.spawns, ...gcard.waypoints];
-            var ind = pts.findIndex(gpos);
-			ind = (ind > 0 ? ind - 1 : pts.length - 1);
-			g.map_pos = board.get_pos_from_card (gcard, pts [ind]);
+            var pt = pts.find(p => p[0]==gpos[0] && p[1]==gpos[1]);
+			if(pt==undefined) pt = pts[pts.length-1];
+			g.map_pos = board.get_pos_from_card (gcard, pt);
 		}
 	}
 }
 
 class AlertEvent extends EventCard {
+    name = 'ALERT';
+    text = "All guards on the player's map card become alert";
 	activate(board) {
 		this.board = board;
         var pcard, ppos;
 		[pcard,ppos] = board.get_card_and_pos (this.board.active_player_token.map_pos);
 		for (var g of board.tokens) {
-			if (!(isinstance (g, board.token_types ['G']))) {
-				continue;
-			}
-            var gcard,gpos
-			[gcard, gpos] = board.get_card_and_pos (g.map_pos);
+			if (!(g instanceof board.token_types ['G'])) continue;
+            var gcard,gpos;
+			[gcard, gpos] = board.get_card_and_pos(g.map_pos);
 			if (gcard != pcard) continue;
 			if (g.state == 'dozing') {
 				g.state = 'alert';
@@ -557,28 +561,30 @@ class AlertEvent extends EventCard {
 }
 
 class MoveEvent extends EventCard {
+    name = 'MOVE';
+    text = "The nearest guard moves to a waypoint closer to the player";
 	activate(board) {
 		this.board = board;
-		var guard = this.board.nearest_guard (this.board.active_player_token.map_pos);
+		var guard = this.board.nearest_guard(this.board.active_player_token.map_pos);
 		if (guard === null) {
 			return true;
 		}
-        inc_player = ['U','B'].includes(this.board [this.board.active_player_token.map_pos]);
+        let inc_player = ['U','B'].includes(this.board [this.board.active_player_token.map_pos]);
 		var new_pos = this.board.guard_nearest_move (guard.map_pos, this.board.active_player_token.map_pos, inc_player);
 		guard.map_pos = new_pos;
 	}
 }
 
 class PlayerAction {
+	value_per_card = 1;
+	base_allowance = 1;
+	base_noise = 1;
+	noise_per_stack = 0;
+	tap_on_use = null;
+	exhaust_on_use = null;
+	spent = 0;
 	constructor(card) {
-		this.spent = 0;
 		this.card = card;
-        value_per_card = 1;
-        base_allowance = 1;
-        base_noise = 1;
-        noise_per_stack = 0;
-        tap_on_use = null;
-        exhaust_on_use = null;    
 	}
 	activate(message) {
 		App.get().playerprompt.text = 'Default action handler. You should not see this text.'.format ();
@@ -638,7 +644,7 @@ class MoveAction extends PlayerAction {
 			var __accu0__ = [];
 			for (var p of spots) {
 				if (tuple (p) != tuple (pp)) {
-					__accu0__.append (board.make_choice (p, this, set_choice_type (p, pp, board)));
+					__accu0__.push(board.make_choice (p, this, set_choice_type (p, pp, board)));
 				}
 			}
 			return __accu0__;
@@ -682,7 +688,7 @@ class GlideAction extends PlayerAction {
 					var __accu0__ = [];
 					for (var p of board.iter_types_in_range (board.active_player_token.map_pos, board.buildingTypes, {radius: this.value_allowance ()})) {
 						if (board.has_types_between (p, pp, board.path_types)) {
-							__accu0__.append (p);
+							__accu0__.push(p);
 						}
 					}
 					return __accu0__;
@@ -696,7 +702,7 @@ class GlideAction extends PlayerAction {
 			var __accu0__ = [];
 			for (var p of spots) {
 				if (tuple (p) != tuple (pp)) {
-					__accu0__.append (board.make_choice (p, this, set_choice_type (p, pp, board, this.value_allowance () + 1)));
+					__accu0__.push(board.make_choice (p, this, set_choice_type (p, pp, board, this.value_allowance () + 1)));
 				}
 			}
 			return __accu0__;
@@ -746,7 +752,7 @@ class FightAction extends PlayerAction {
 			var __accu0__ = [];
 			for (var t of board.tokens) {
 				if (isinstance (t, board.token_types ['G']) && __in__ (t.state, ['dozing', 'alert']) && this.rounded_remain () >= 1 && dist (board.active_player_token.map_pos, t.map_pos) == 0) {
-					__accu0__.append (t);
+					__accu0__.push(t);
 				}
 			}
 			return __accu0__;
@@ -754,7 +760,7 @@ class FightAction extends PlayerAction {
 		var map_choices = (function () {
 			var __accu0__ = [];
 			for (var t of guard_choices) {
-				__accu0__.append (board.make_token_choice (t, this, 'touch'));
+				__accu0__.push(board.make_token_choice (t, this, 'touch'));
 			}
 			return __accu0__;
 		}) ();
@@ -786,7 +792,7 @@ class SmokeBombAction extends PlayerAction {
 				var __accu0__ = [];
 				for (var t of board.iter_tokens ('G')) {
 					if (__in__ (t.state, ['dozing', 'alert']) && this.rounded_remain () >= 1 && dist (obj.map_pos, t.map_pos) == 0) {
-						__accu0__.append (t);
+						__accu0__.push(t);
 					}
 				}
 				return __accu0__;
@@ -806,7 +812,7 @@ class SmokeBombAction extends PlayerAction {
 			var __accu0__ = [];
 			for (var t of board.iter_tokens ('G')) {
 				if (__in__ (t.state, ['dozing', 'alert']) && this.rounded_remain () >= 1 && dist (board.active_player_token.map_pos, t.map_pos) == 0) {
-					__accu0__.append (t);
+					__accu0__.push(t);
 				}
 			}
 			return __accu0__;
@@ -944,7 +950,7 @@ class ArrowAction extends PlayerAction {
 				var __accu0__ = [];
 				for (var t of board.tokens) {
 					if (isinstance (t, board.token_types ['G']) && __in__ (t.state, ['dozing', 'alert']) && (0 < dist (board.active_player_token.map_pos, t.map_pos) && dist (board.active_player_token.map_pos, t.map_pos) <= this.value_allowance ()) && board.has_line_of_sight (t.map_pos, board.active_player_token.map_pos, ['B', 'B0'])) {
-						__accu0__.append (t);
+						__accu0__.push(t);
 					}
 				}
 				return __accu0__;
@@ -952,7 +958,7 @@ class ArrowAction extends PlayerAction {
 			var map_choices = (function () {
 				var __accu0__ = [];
 				for (var t of guard_choices) {
-					__accu0__.append (board.make_token_choice (t, this, 'touch'));
+					__accu0__.push(board.make_token_choice (t, this, 'touch'));
 				}
 				return __accu0__;
 			}) ();
@@ -990,7 +996,7 @@ class GasAction extends PlayerAction {
 				var __accu0__ = [];
 				for (var t of board.iter_tokens ('G')) {
 					if (__in__ (t.state, ['dozing', 'alert']) && (0 <= dist (obj.map_pos, t.map_pos) && dist (obj.map_pos, t.map_pos) <= this.radius)) {
-						__accu0__.append (t);
+						__accu0__.push(t);
 					}
 				}
 				return __accu0__;
@@ -1011,7 +1017,7 @@ class GasAction extends PlayerAction {
 				var __accu0__ = [];
 				for (var t of board.iter_types_in_range (pp, board.path_types, {radius: this.value_allowance ()})) {
 					if (board.has_line_of_sight (t, pp, board.buildingTypes)) {
-						__accu0__.append (board.make_choice (t, this, 'touch'));
+						__accu0__.push(board.make_choice (t, this, 'touch'));
 					}
 				}
 				return __accu0__;
@@ -1059,7 +1065,7 @@ class DimmerAction extends PlayerAction {
 				var __accu0__ = [];
 				for (var p of board.iter_lights ()) {
 					if ((0 <= dist (p, pp) && dist (p, pp) <= this.value_allowance ()) && board.has_line_of_sight (p, pp, board.buildingTypes)) {
-						__accu0__.append (board.make_choice (p, this, 'touch'));
+						__accu0__.push(board.make_choice (p, this, 'touch'));
 					}
 				}
 				return __accu0__;
@@ -1098,7 +1104,7 @@ class LockpickAction extends PlayerAction {
 				var __accu0__ = [];
 				for (var t of board.iter_tokens ({token_type: 'T'})) {
 					if (t.map_pos == obj.map_pos) {
-						__accu0__.append (t);
+						__accu0__.push(t);
 					}
 				}
 				return __accu0__;
@@ -1140,7 +1146,7 @@ class LockpickAction extends PlayerAction {
 					var __accu0__ = [];
 					for (var m of board.iter_types_in_range (this.loot_pos, board.path_types, {radius: 1})) {
 						if (dist (this.loot_pos, m) >= 1) {
-							__accu0__.append (m);
+							__accu0__.push(m);
 						}
 					}
 					return __accu0__;
@@ -1149,7 +1155,7 @@ class LockpickAction extends PlayerAction {
 				var map_choices = (function () {
 					var __accu0__ = [];
 					for (var t of target_choices) {
-						__accu0__.append (board.make_choice (t, this, set_choice_type (t, p.map_pos, board, 3)));
+						__accu0__.push(board.make_choice (t, this, set_choice_type (t, p.map_pos, board, 3)));
 					}
 					return __accu0__;
 				}) ();
@@ -1160,7 +1166,7 @@ class LockpickAction extends PlayerAction {
 					var __accu0__ = [];
 					for (var t of board.iter_targets ()) {
 						if (dist (p.map_pos, t) == 1) {
-							__accu0__.append (t);
+							__accu0__.push(t);
 						}
 					}
 					return __accu0__;
@@ -1170,7 +1176,7 @@ class LockpickAction extends PlayerAction {
 					for (var b of board.iter_types_in_range (p.map_pos, 'B', {radius: 1})) {
 						for (var m of board.iter_types_in_range (b, board.path_types, {radius: 1})) {
 							if (dist (p.map_pos, m) >= 1) {
-								__accu0__.append (m);
+								__accu0__.push(m);
 							}
 						}
 					}
@@ -1180,7 +1186,7 @@ class LockpickAction extends PlayerAction {
 				var map_choices = (function () {
 					var __accu0__ = [];
 					for (var t of target_choices) {
-						__accu0__.append (board.make_choice (t, this, set_choice_type (t, p.map_pos, board, 3)));
+						__accu0__.push(board.make_choice (t, this, set_choice_type (t, p.map_pos, board, 3)));
 					}
 					return __accu0__;
 				}) ();
@@ -1231,7 +1237,7 @@ class DecoyAction extends PlayerAction {
 				var __accu0__ = [];
 				for (var t of board.iter_types_in_range (pp, board.path_types, this.value_allowance ())) {
 					if (board.has_line_of_sight (t, pp, board.buildingTypes)) {
-						__accu0__.append (t);
+						__accu0__.push(t);
 					}
 				}
 				return __accu0__;
@@ -1239,7 +1245,7 @@ class DecoyAction extends PlayerAction {
 			var map_choices = (function () {
 				var __accu0__ = [];
 				for (var t of place_choices) {
-					__accu0__.append (board.make_choice (t, this, 'touch'));
+					__accu0__.push(board.make_choice (t, this, 'touch'));
 				}
 				return __accu0__;
 			}) ();
@@ -1320,78 +1326,91 @@ class TraitCard extends Card {
 }
 
 class MoveTrait extends TraitCard {
+	name = 'MOVE';
+	text = 'All cards gain MOVE 1+';
 	get_actions_for_card(card, playarea) {
 		if (this.tapped || this.exhausted) {
 			return {}
 
 		}
 		else {
-			return {'MOVE 1+': MoveAction (card, playarea, {base_allowance: 1, tap_on_use: this})}
+			return {'MOVE 1+': new MoveAction (card, playarea, {base_allowance: 1, tap_on_use: this})}
 
 		}
 	}
 }
 
 class FightTrait extends TraitCard {
+	name = 'FIGHT';
+	text = 'All cards gain FIGHT 1+';
 	get_actions_for_card(card, playarea) {
 		if (this.tapped || this.exhausted) {
 			return {}
 
 		}
 		else {
-			return {'ATTACK 0.5+': FightAction (card, playarea, {base_allowance: 0.5, value_per_card: 0.5, tap_on_use: this})}
+			return {'ATTACK 0.5+': new FightAction (card, playarea, {base_allowance: 0.5, value_per_card: 0.5, tap_on_use: this})}
 
 		}
 	}
 }
 
 class ClimbTrait extends TraitCard {
+    name = 'CLIMBER'
+    text = 'Hand cards gain Climb 1'
+
 	get_actions_for_card(card, playarea) {
 		if (this.tapped || this.exhausted) {
 			return {}
 
 		}
 		else {
-			return {'CLIMB 1': ClimbAction (card, playarea, {tap_on_use: true})}
+			return {'CLIMB 1': new ClimbAction (card, playarea, {tap_on_use: true})}
 
 		}
 	}
 }
 
 class SneakTrait extends TraitCard {
+	name = 'SLINKER';
+    text = 'Hand cards gain Stealth 0.5+ and Knockout 1';
 	get_actions_for_card(card, playarea) {
 		if (this.tapped || this.exhausted) {
 			return {}
 
 		}
 		else {
-			return {'KNOCKOUT': KnockoutAction (card, playarea, {base_allowance: 1, tap_on_use: true})}
+			return {'KNOCKOUT': new KnockoutAction (card, playarea, {base_allowance: 1, tap_on_use: true})}
 
 		}
 	}
 }
 
 class LootTrait extends TraitCard {
+    name = 'LOOTER';
+    text = 'Hand cards gain Lockpick 1+';
 	get_actions_for_card(card, playarea) {
 		if (this.tapped || this.exhausted) {
 			return {}
 
 		}
 		else {
-			return {'LOCKPICK 1+': LockpickAction (card, playarea, {base_allowance: 1, tap_on_use: true})}
+			return {'LOCKPICK 1+': new LockpickAction (card, playarea, {base_allowance: 1, tap_on_use: true})}
 
 		}
 	}
 }
 
 class ArcherTrait extends TraitCard {
+    name = 'ARCHER';
+    text = 'Arrows cards in hand can be fired';
 	get_actions_for_card(card, playarea) {
 		if (this.tapped || this.exhausted) {
 			return {}
 
 		}
 		else {
-			return {'ARROW 3+': ArrowAction (card, playarea, {base_allowance: 3, tap_on_use: true})}
+			return {'ARROW 3+': new ArrowAction (card, playarea, {base_allowance: 3, tap_on_use: true})}
 
 		}
 	}
@@ -1430,12 +1449,16 @@ class SkillCard extends PlayerCard {
 }
 
 class TreasureCard extends LootCard {
+    name = 'TREASURE';
+    text = 'BUY 1+: Spend 1 crown in the market';
 	get_actions() {
 		return {'BUY 1+': new MarketAction (this, {base_allowance: 1, value_per_card: 1, exhaust_on_use: this})}
 	}
 }
 
 class SkeletonKey extends LootCard {
+    name = 'SKELETON KEY';
+    text = 'LOCKPICK 4+';
 	get_actions() {
 		return {'LOCKPICK 4+': new LockpickAction (this, {base_allowance: 4, value_per_card: 1, exhaust_on_use: this})}
 	}
@@ -1445,117 +1468,162 @@ class MarketCard extends PlayerCard {
 }
 
 class GasArrow extends MarketCard {
+    name = 'GAS ARROW';
+    text = 'Arrow Range 3+. KOs all enemies in the space.';
 	get_actions() {
 		return {'SHOOT GAS 3+': new GasAction (this, {base_allowance: 3, value_per_card: 2, radius: 1, exhaust_on_use: this})}
 	}
 }
 
 class RopeArrow extends MarketCard {
+    name = 'ROPE ARROW';
+    text = 'Arrow Range 3+. Climb 1.5 on top of a roof or exhaust to traverse from roof to roof.';
 	get_actions() {
-		return {'CLIMB 1.5': new ClimbAction (this, {base_allowance: 1.5, value_per_card: 1, max_height: 2}), 'TRAVERSE 2': GlideAction (this, {base_allowance: 2, value_per_card: 1, max_height: 2, exhaust_on_use: this})}
+		return {'CLIMB 1.5': new ClimbAction (this, {base_allowance: 1.5, value_per_card: 1, max_height: 2}), 'TRAVERSE 2': new GlideAction (this, {base_allowance: 2, value_per_card: 1, max_height: 2, exhaust_on_use: this})}
 	}
 }
 
 class DimmerArrow extends MarketCard {
+    name = 'DIMMER ARROW';
+    text = 'Arrow Range 3+. Temporarily puts out a light in range until the event phase.';
 	get_actions() {
 		return {'SHOOT DIMMER 3+': new DimmerAction (this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
 	}
 }
 
 class DecoyArrow extends MarketCard {
+    name = 'DECOY ARROW';
+    text = 'Arrow Range 3+. Alert or dozing guards in line of sight move to targeted space';
 	get_actions() {
 		return {'SHOOT DECOY 3+': new DecoyAction (this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
 	}
 }
 
 class SmokeBomb extends MarketCard {
+    name = 'SMOKE BOMB';
+    text = 'Smoke 1. Enemies in your space cannot see or engage with you until the event phase.';
 	get_actions() {
 		return {'SMOKE BOMB': new SmokeBombAction (this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
 	}
 }
 
 class Lure extends MarketCard {
+    name = 'LURE';
+    text = 'Lure 1. Bring a solitary guard in the player\'s line of sight into your space.';
+}
+
+class Hypnotize extends MarketCard {
+    name = 'HYPNOTIZE';
+    text = 'Move a solitary guard engaged with you to a space up to range 3 away.';
 }
 
 class BasicMove extends StartPlayerCard {
+    name = 'BASIC MOVE';
+    text = 'Move 1.5+';
 	get_actions() {
 		return {'MOVE 1.5+': new MoveAction (this, {base_allowance: 1.5, value_per_card: 1.5})}
 	}
 }
 
 class BasicAttack extends StartPlayerCard {
+    name = 'BASIC ATTACK';
+    text = 'Attack 1+';
 	get_actions() {
 		return {'ATTACK 1+': new FightAction (this, {base_allowance: 2})}
 	}
 }
 
 class BasicClimb extends StartPlayerCard {
+    name = 'BASIC CLIMB';
+    text = 'Climb 1';
 	get_actions() {
 		return {'CLIMB 1': new ClimbAction (this)}
 	}
 }
 
 class BasicSneak extends StartPlayerCard {
+    name = 'BASIC SNEAK';
+    text = 'Sneak 1+';
 	get_actions() {
 		return {'SNEAK 1+': new MoveAction (this, {base_allowance: 1, value_per_card: 1, base_noise: 0, noise_per_stack: 0})}
 	}
 }
 
-class BasicKockout extends StartPlayerCard {
+class BasicKnockout extends StartPlayerCard {
+    name = 'BASIC KNOCKOUT';
+    text = 'Knockout 1';
 	get_actions() {
 		return {'KNOCKOUT': new KnockoutAction (this)}
 	}
 }
 
 class BasicArrow extends StartPlayerCard {
+    name = 'BASIC ARROW';
+    text = 'Arrow Range 3+';
 	get_actions() {
 		return {'SHOOT ARROW 3': new ArrowAction (this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
 	}
 }
 
 class BasicLockpick extends StartPlayerCard {
+    name = 'BASIC LOCKPICK';
+    text = 'Lockpick 1+';
 	get_actions() {
 		return {'LOCKPICK 1+': new LockpickAction (this, {base_allowance: 1})}
 	}
 }
 
 class EfficientMove extends SkillCard {
+    name = 'MOVE';
+    text = 'Move 2+';
 	get_actions() {
 		return {'MOVE 2+': new MoveAction (this, {base_allowance: 2, value_per_card: 2})}
 	}
 }
 
 class EfficientAttack extends SkillCard {
+    name = 'ATTACK';
+    text = 'Attack 2+';
 	get_actions() {
 		return {'ATTACK 2+': new FightAction (this, {base_allowance: 2})}
 	}
 }
 
 class EfficientClimb extends SkillCard {
+    name = 'CLIMB';
+    text = 'Climb 1.5';
 	get_actions() {
 		return {'CLIMB 1.5': new ClimbAction (this)}
 	}
 }
 
 class EfficientSneak extends SkillCard {
+    name = 'SNEAK';
+    text = 'Sneak 1+';
 	get_actions() {
 		return {'SNEAK 1.5+': new MoveAction (this, {base_allowance: 1, value_per_card: 1.5, base_noise: 0, noise_per_stack: 0})}
 	}
 }
 
-class EfficientKockout extends SkillCard {
+class EfficientKnockout extends SkillCard {
+    name = 'KNOCKOUT';
+    text = 'Knockout 1';
 	get_actions() {
 		return {'KNOCKOUT': new KnockoutAction (this)}
 	}
 }
 
 class EfficientArrow extends SkillCard {
+    name = 'ARROW';
+    text = 'Arrow Range 5+';
 	get_actions() {
 		return {'SHOOT ARROW 5': new ArrowAction (this, {base_allowance: 5, value_per_card: 2, exhaust_on_use: this})}
 	}
 }
 
 class EfficientLockpick extends SkillCard {
+    name = 'LOCKPICK';
+    text = 'Lockpick 2+';
 	get_actions() {
 		return {'LOCKPICK 2+': new LockpickAction (this, {base_allowance: 2})}
 	}
@@ -1586,7 +1654,7 @@ class ContactMission extends Mission {
 	setup_map() {
 		let app = App.get();
 		let w,h;
-		[w,h] = app.map_card_grid_size;
+		[w,h] = app.map_card_size;
 		var map_cards = [];
 		var lev_add_on = Math.min (this.mission_level / app.map_size[0], 2);
 		var lev_thresh = app.map_size [0] - (this.mission_level % app.map_size [0]);
@@ -1633,7 +1701,7 @@ function make_event_cards() {
 
 function make_skill_cards() {
 	return [...repeatInstantiate([EfficientMove, EfficientAttack, EfficientClimb, 
-		EfficientSneak, EfficientKockout, EfficientArrow, EfficientLockpick], 3)];
+		EfficientSneak, EfficientKnockout, EfficientArrow, EfficientLockpick], 3)];
 }
 
 function make_loot_cards() {
@@ -1647,8 +1715,8 @@ function make_market_cards() {
 
 function make_player_cards() {
 	return [...repeatInstantiate([BasicMove, BasicAttack, BasicClimb, BasicSneak, 
-		BasicKockout, BasicArrow, BasicLockpick], 2)].concat(repeatInstantiate([
-		DecoyArrow, RopeArrow, GasArrow, SmokeBomb, DimmerArrow]));
+		BasicKnockout, BasicArrow, BasicLockpick], 2), ...repeatInstantiate([
+		DecoyArrow, RopeArrow, GasArrow, SmokeBomb, DimmerArrow])];
 }
 
 function make_trait_cards() {
