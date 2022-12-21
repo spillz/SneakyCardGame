@@ -26,7 +26,7 @@ class MathArray extends Array {
     vars() { //sample variance
         let s=0;
         this.forEach(el => s+=el*el);
-        return (s - this.length*this.mean()^2)/(this.length-1);
+        return(s - this.length*this.mean()^2)/(this.length-1);
     }
     var() { //population variance
         let s=0;
@@ -150,7 +150,7 @@ function shuffle(array) {
     let currentIndex = array.length,  randomIndex;
   
     // While there remain elements to shuffle...
-    while (currentIndex != 0) {
+    while(currentIndex != 0) {
   
       // Pick a remaining element...
       randomIndex = Math.floor(Math.random() * currentIndex);
@@ -329,7 +329,7 @@ function randomRange(min, max){
 
 function shuffle(arr){
     let temp, r;
-    for (let i = 1; i < arr.length; i++) {
+    for(let i = 1; i < arr.length; i++) {
         r = randomRange(0,i);
         temp = arr[i];
         arr[i] = arr[r];

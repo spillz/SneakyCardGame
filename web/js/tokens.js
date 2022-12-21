@@ -61,8 +61,8 @@ class TargetToken extends Token {
 		let ctx = app.ctx;
 		let color = colorString([0.1,0.3,0.8]);
 		let r = this.renderRect();
-		var x = r.x + Math.floor (r.w / 5);
-		var y = r.y + Math.floor (r.h / 5);
+		var x = r.x + Math.floor(r.w / 5);
+		var y = r.y + Math.floor(r.h / 5);
 		var w = 3*r.w/5;
 		var h = 3*r.h/5;
 		ctx.beginPath();
@@ -85,10 +85,10 @@ class MarketToken extends Token {
 		let ctx = app.ctx;
 		let color = colorString([0.6, 0.4, 0]);
 		let r = this.renderRect();
-		var x = r.x + r.w/5; //Math.floor (r.w / 5);
-		var y = r.y + r.h/5; //Math.floor (r.h / 5);
-		var w = 3*r.w/5; // Math.floor ((Math.floor (3 * r.w / 5)) / 2) * 2;
-		var h = 3*r.h/5; //Math.floor ((Math.floor (3 * r.h / 5)) / 2) * 2;
+		var x = r.x + r.w/5; //Math.floor(r.w / 5);
+		var y = r.y + r.h/5; //Math.floor(r.h / 5);
+		var w = 3*r.w/5; // Math.floor((Math.floor(3 * r.w / 5)) / 2) * 2;
+		var h = 3*r.h/5; //Math.floor((Math.floor(3 * r.h / 5)) / 2) * 2;
 
 		ctx.beginPath();
 		ctx.ellipse(r.center_x, r.center_y, w/2, h/2, 0, 0, 2*Math.PI);
@@ -97,16 +97,16 @@ class MarketToken extends Token {
 		ctx.fill();	
 	}
 	// on_touch_down(touch) {
-	// 	if (this.collide_point (...touch.pos)) {
-	// 		touch.grab (self);
+	// 	if(this.collide_point(...touch.pos)) {
+	// 		touch.grab(self);
 	// 		return true;
 	// 	}
 	// }
 	// on_touch_up(touch) {
-	// 	if (touch.grab_current == self) {
-	// 		touch.ungrab (self);
-	// 		if (this.collide_point (...touch.pos)) {
-	// 			this.parent.parent.parent.marketdeck.select_draw (0, 4, 0);
+	// 	if(touch.grab_current == self) {
+	// 		touch.ungrab(self);
+	// 		if(this.collide_point(...touch.pos)) {
+	// 			this.parent.parent.parent.marketdeck.select_draw(0, 4, 0);
 	// 		}
 	// 		return true;
 	// 	}
@@ -118,17 +118,17 @@ class GuardToken extends Token {
 	frozen = false;
 	on_state(event, data) {
 		let app = App.get();
-		if (this.state != 'dozing') {
+		if(this.state != 'dozing') {
 			var stats = app.stats;
-			if (this.state == 'dead') {
+			if(this.state == 'dead') {
 				stats.kills++;
 				stats.t_kills++;
 			}
-			if (this.state == 'unconscious') {
+			if(this.state == 'unconscious') {
 				stats.knockouts++;
 				stats.t_knockouts++;
 			}
-			if (this.state == 'alert' && app.board.active_player_token.map_pos == this.map_pos) {
+			if(this.state == 'alert' && app.board.active_player_token.map_pos == this.map_pos) {
 				stats.contacts++;
 				stats.t_contacts++;
 			}
@@ -160,7 +160,7 @@ class GuardToken extends Token {
 			app.ctx.closePath();
 			app.ctx.fill();
 		} 
-		else if (this.state == 'dead') {
+		else if(this.state == 'dead') {
 				//dead eyes
 				var eyeleft = r.center_x - r.w/6 - r.h*3/40;
 				var eyeright = r.center_x - r.w/6 + r.h*3/40;
@@ -207,7 +207,7 @@ class GuardToken extends Token {
 		//mouth
 		app.ctx.fillStyle = colorString([0,0,0]);
 		app.ctx.strokeStyle = app.ctx.fillStyle;
-		if (this.state == 'dead') {
+		if(this.state == 'dead') {
 			app.ctx.beginPath();
 			app.ctx.ellipse(r.x+r.w*2/5, r.y+r.h/4, 2*r.w/5, 2*r.h/5, 0, 0, 2*Math.PI);
 			app.ctx.fill()
@@ -225,9 +225,9 @@ class ObjectiveToken extends TargetToken {
 	has_loot = false;
 	picked = false;
 	on_picked(obj, value) {
-		if (this.picked) {
+		if(this.picked) {
 			var app = App.get();
-			app.level_complete ();
+			app.level_complete();
 		}
 	}
 	draw() {

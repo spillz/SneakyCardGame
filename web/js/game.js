@@ -82,8 +82,6 @@ class Game extends App {
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
         this.board.scroll_to_player();
     }
-
-
     setupMission() {
 
     }

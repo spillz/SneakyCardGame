@@ -31,7 +31,7 @@ class App {
         this.modalWidgets = this.modalWidgets.filter(m => m!=modal);
     }
     static get() { //singleton
-        if (!App.appInstance) App.appInstance = new App();
+        if(!App.appInstance) App.appInstance = new App();
         return App.appInstance;
     }
     start() {
@@ -42,7 +42,7 @@ class App {
         this.updateWindowSize();
         this.update();
     }
-    emit(event, data, topModalOnly=false) { //TODO: Need to suppress some events for a modal view (e.g., touches)
+    emit(event, data, topModalOnly=false) { //TODO: Need to suppress some events for a modal view(e.g., touches)
         if(topModalOnly && this.modalWidgets.length>0) {
             return this.modalWidgets[this.modalWidgets.length-1];
         } else {
@@ -254,7 +254,7 @@ class Widget extends Rect {
     }
     layoutChildren() { //The default widget does not layout it's children, a la kivy FloatLayout
         for(let c of this.children) c.layoutChildren();
-        //TODO: This should also handle layout of self in case the sizing is being set externally (e.g., to lock an aspect ratio)
+        //TODO: This should also handle layout of self in case the sizing is being set externally(e.g., to lock an aspect ratio)
         //If so, rename to layoutSelfAndChildren or just layout?
     }
     renderRect() {
