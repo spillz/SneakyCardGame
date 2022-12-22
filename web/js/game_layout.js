@@ -482,13 +482,13 @@ class CardSplayCloseup extends ModalView {
 }
 
 class PlayerDiscard extends CardSplay {
-	on_child_added(msg, c) {
+	on_child_added(event, c) {
 		c.faceUp = true;
 	}
 }
 
 class PlayerDeck extends CardSplay {
-	on_child_added(msg, c) {
+	on_child_added(event, c) {
 		c.faceUp = false;
 	}
 	draw_hand() {
@@ -512,9 +512,9 @@ class PlayerDeck extends CardSplay {
 		let app = App.get();
 		this.move_to(cards, app.hand);
 		if(shuffle > 0) {
-			var discards = app.playerdiscard.cards.slice(0, playerdiscard.cards.length);
+			var discards = app.playerdiscard.children.slice();
 			random.shuffle(discards);
-			app.playerdiscard.move_to(discards, self);
+			app.playerdiscard.move_to(discards, this);
 			var cards = this.children.slice(-shuffle-1, -1);
 			this.move_to(cards, app.hand);
 		}
@@ -526,39 +526,41 @@ class PlayerTraits extends CardSplay {
 	on_child_added(msg, c) {
 		c.faceUp = true;
 	}
-	on_touch_up(touch) {
-		return;
-		if(!(this.collide_point(...touch.pos))) {
-			return false;
+	on_touch_up(event, touch) { //rotate through trait cards --TODO: limit once per turn
+		let r = this.renderRect()
+		if(this.children.length>0 && r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+			this.children = [this.children[this.children.length-1],...this.children.slice(0,-1)];
+			this.active_card = this.children[this.children.length-1];
+			return true;
 		}
-		if(!(this.can_draw)) {
-			return false;
-		}
-		if(this.children.length == 0) {
-			return false;
-		}
-		this.children = [this.children[-1]].concat(this.children.slice(0, -1)); //rotate through cards
-		return true;
 	}
 }
 
 class ActiveCardSplay extends CardSplay {
 	active_card = null;
-	on_cards() {
+	on_child_added(event, child) {
 		if(this.children.length > 0) {
-			this.active_card = this.children [-(1)];
+			this.active_card = this.children [this.children.length-1];
 		}
 		else {
 			this.active_card = null;
 		}
 	}
-	on_touch_up(touch) {
-		return;
-		let app = App.get();
+	on_child_removed(event, child) {
 		if(this.children.length > 0) {
-			app.hand.cancel_action();
+			this.active_card = this.children [this.children.length-1];
 		}
-		return true;
+		else {
+			this.active_card = null;
+		}
+	}
+	on_touch_up(event, touch) {
+		let app = App.get();
+		let r = this.renderRect();
+		if(this.children.length > 0 && r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+			app.hand.cancel_action();
+			return true;
+		}
 	}
 	discard_used(unused=0, noise=0, exhaust_on_use=null, tap_on_use=null) {
 		let app = App.get();
@@ -724,8 +726,11 @@ class Hand extends CardSplay {
 }
 
 class SkillDeck extends CardSplay {
-	on_touch_up(touch) {
-		return;
+	on_touch_up(event, touch) {
+		let r = this.renderRect()
+		if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+			return true;
+		}
 	}
 	select_draw(num_to_pick=2, num_offered=4) {
 		let app = App.get();
@@ -744,13 +749,13 @@ class SkillDeck extends CardSplay {
 	card_picked(cs, pressed) {
 		let app = App.get();
 		for(var c of cs.cards) {
-			cs.cards.remove(c);
+			cs.removeChild(c);
 			if(!(c.selected)) {
 				c.faceUp = false;
 				this.children.insert(0, c);
 			}
 			else {
-				app.hand.cards.push(c);
+				app.hand.addChild(c);
 				c.faceUp = true;
 				c.selected = false;
 			}
@@ -778,13 +783,13 @@ class LootDeck extends CardSplay {
 	card_picked(cs, pressed) {
 		let app = App.get();
 		for(var c of cs.cards) {
-			cs.cards.remove(c);
+			cs.removeChild(c);
 			if(!(c.selected)) {
 				c.faceUp = false;
 				this.children.insert(0, c);
 			}
 			else {
-				app.hand.cards.push(c);
+				app.hand.addChild(c);
 				c.faceUp = true;
 				c.selected = false;
 			}
@@ -812,7 +817,7 @@ class MarketDeck extends CardSplay {
 	}
 	card_picked(cs, pressed) {
 		let app = App.get();
-		let cards = cs.cards.slice(0);
+		let cards = cs.children.slice(0,1);
 		cs.cards = [];
 		for(var c of cards) {
 			if(!(c.selected)) {
@@ -820,7 +825,7 @@ class MarketDeck extends CardSplay {
 				this.children.push(c);
 			}
 			else {
-				app.hand.cards.push(c);
+				app.hand.addChild(c);
 				c.faceUp = true;
 				c.selected = false;
 			}

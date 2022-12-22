@@ -51,7 +51,13 @@ class InputHandler {
         // Use the event's data to call out to the appropriate gesture handlers
         if(this.grabbed != null) {
             for(let t of ev.changedTouches) { 
+                let savedOffsets = [this.app.offsetX, this.app.offsetY];
+                let offsets = this.grabbed.parent.recurseOffsets([0,0]);
+                this.app.offsetX = offsets[0]*this.app.tileSize;
+                this.app.offsetY = offsets[1]*this.app.tileSize;
                 this.grabbed.emit(name, t);
+                this.app.offsetX = savedOffsets[0];
+                this.app.offsetY = savedOffsets[1];
             }
         } else {
             for(let t of ev.changedTouches) { 

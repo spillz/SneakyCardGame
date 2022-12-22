@@ -20,7 +20,6 @@ class App {
         // widget container
         this.baseWidget = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
         this.baseWidget.parent = this;
-        this.baseWidget.app = this;
         // modal widgets
         this.modalWidgets = [];
     }
@@ -80,7 +79,10 @@ class App {
         screenshake(this);
 
         this.baseWidget._draw(millis);
-    }        
+    }
+    recurseOffsets(offset) {
+        return offset;
+    }
     setupCanvas(){
         this.canvas = document.querySelector(this.canvasName);
 
@@ -181,6 +183,9 @@ class Widget extends Rect {
         for(let c of this._children) {
             yield *c.iter(...arguments);
         }
+    }
+    recurseOffsets(offset) {
+        return this.parent.recurseOffsets(offset);
     }
     addChild(child) {
         this._children.push(child);
@@ -560,6 +565,16 @@ class ScrollView extends Widget {
     setScrollY(value) {
         this.scrollY = this.children[0].h<=this.h? (this.children[0].h-this.h)/2 : Math.min(Math.max(0, value),this.children[0].h-this.h);
     }
+    recurseOffsets(offset) {
+        offset[0] += this.x - this.scrollX;
+        offset[1] += this.y - this.scrollY;
+        return this.parent.recurseOffsets(offset);
+    }
+    applyOffset() {
+        let app = App.get();
+        app.offsetX += (this.x-this.scrollX)*app.tileSize;
+        app.offsetY += (this.y-this.scrollY)*app.tileSize;
+    }
     offset_emit(c, event, touch) {
         let app = App.get();
         let savedOffset = [app.offsetX, app.offsetY];
@@ -611,7 +626,7 @@ class ScrollView extends Widget {
     }
     on_touch_cancel(event, touch) {
         let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
-        for(let c of this.children) if(this.renderRect().collide(r) && c.emit(event, touch)) return true;
+        for(let c of this.children) if(this.renderRect().collide(r) && this.offset_emit(c, event, touch)) return true;
         return false;
     }
     // on_touch_move(event, touch) {

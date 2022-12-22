@@ -40,7 +40,7 @@ class Game extends App {
 
         this.sv.addChild(this.playarea);
         this.playarea.addChild(this.board);
-        for(let w of [this.activecardsplay, this.playertraits, this.playerdeck, 
+        for(let w of [this.activecardsplay, this.playertraits, this.playerdeck, this.playerdiscard,
                     this.loot1, this.loot2, this.loot3, this.skilldeck, this.exhausted,
                     this.marketdeck, this.eventdeck, this.eventdiscard, this.hand,
                     this.sv, this.playerprompt]) {

@@ -13,18 +13,19 @@ class MapChoice extends BoxLayout {
 		this.w = 1;
 		this.h = 1;
 	}
-	on_touch_down(touch) {
+	on_touch_down(event, touch) {
 		let r = this.renderRect();
-		if(r.collidePoint(touch.pos)) {
-			touch.grab(this);
+		if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+			App.get().inputHandler.grab(this);
 			return true;
 		}
 	}
-	on_touch_up(touch) {
-		if(touch.grab_current == this) {
-			touch.ungrab(this);
+	on_touch_up(event, touch) {
+		let r = this.renderRect();
+		App.get().inputHandler.ungrab();
+		if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
 			if(['touch', 'visible'].includes(this.choice_type)) {
-				this.listener('map_choice_selected', {touch_object: this});
+				this.listener.activate('map_choice_selected', {touch_object: this});
 			}
 			return true;
 		}
@@ -48,21 +49,25 @@ class MapChoice extends BoxLayout {
 		ctx.moveTo(r.x + r.w / 10, r.y);
 		ctx.lineTo(r.x, r.y);
 		ctx.lineTo(r.x, r.y + r.h/10);
+		// ctx.stroke();
 
-		ctx.beginPath();
+		// ctx.beginPath();
 		ctx.moveTo(r.right - r.w / 10, r.y);
 		ctx.lineTo(r.right, r.y);
 		ctx.lineTo(r.right, r.y + r.h/10);
+		// ctx.stroke();
 
-		ctx.beginPath();
+		// ctx.beginPath();
 		ctx.moveTo(r.x + r.w / 10, r.bottom);
 		ctx.lineTo(r.x, r.bottom);
 		ctx.lineTo(r.x, r.bottom - r.h/10);
+		// ctx.stroke();
 
-		ctx.beginPath();
+		// ctx.beginPath();
 		ctx.moveTo(r.right - r.w / 10, r.bottom);
 		ctx.lineTo(r.right, r.bottom);
 		ctx.lineTo(r.right, r.bottom - r.h/10);
+		ctx.stroke();
 
 	}
 }
@@ -70,19 +75,22 @@ class MapChoice extends BoxLayout {
 class TokenMapChoice extends MapChoice {
 	constructor(rect, properties=null) {
 		super(rect);
+		if(properties==null) properties = {};
+		properties['map_pos'] = properties['token'].map_pos
 		this.updateProperties(properties);
 	}
-	on_touch_down(touch) {
+	on_touch_down(event, touch) {
 		let r = this.renderRect();
-		if(r.collide([touch.clientX, touch.clientY,0,0])) {
-			touch.grab(this);
+		if(r.collide(new Rect([touch.clientX, touch.clientY,0,0]))) {
+			App.get().inputHandler.grab(this);
 			return true;
 		}
 	}
-	on_touch_up(touch) {
-		if(touch.grab_current == this) {
-			touch.ungrab(this);
-			this.listener('map_choice_selected', {touch_object: this});
+	on_touch_up(event, touch) {
+		let r = this.renderRect();
+		App.get().inputHandler.ungrab();
+		if(r.collide(new Rect([touch.clientX, touch.clientY,0,0]))) {
+			this.listener.activate('map_choice_selected', {touch_object: this});
 			return true;
 		}
 	}
@@ -108,10 +116,10 @@ class Board extends GridLayout {
 			this.dimW = Math.ceil(this.children.length/this.dimW)*c.w;
 		}
 	}
-	on_addChild(event, data) {
+	on_child_added(event, data) {
 		this.onCh();
 	}
-	on_removeChild(event, data) {
+	on_child_added(event, data) {
 		this.onCh();
 	}
 	on_tokens(event, data) {
@@ -121,7 +129,7 @@ class Board extends GridLayout {
 	}
 	on_map_choices(event, data) {
 		let app = App.get();
-		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof MapChoice)), ...this.tokens];
+		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof MapChoice)), ...this.map_choices];
 	}
 	scroll_to_player() {
 		let app = App.get();
@@ -186,12 +194,12 @@ class Board extends GridLayout {
 				}
 				if(t0.map_pos[0] == t1.map_pos[0] && t0.map_pos[1] == t1.map_pos[1]) {
 					let p = t0.map_pos.toString();
-					if(clashes.includes(p)) {
-						if(!clashes.find(t0)) clashes[p] = t0;
-						if(!clashes.find(t1)) clashes[p] = t1;
+					if(p in clashes) {
+						if(!clashes[p].find(t0)) clashes[p] = t0;
+						if(!clashes[p].find(t1)) clashes[p] = t1;
 					}
 					else {
-						clashes [p] = [t0, t1];
+						clashes[p] = [t0, t1];
 					}
 				}
 			}
@@ -210,7 +218,7 @@ class Board extends GridLayout {
 	get(pos) {
 		let card, card_pos;
 		[card, card_pos] = this.get_card_and_pos(pos);
-		return card.map[card_pos];
+		return card.map.get(card_pos);
 	}
 	get_card_and_pos(pos) {
 		let app = App.get();
@@ -233,7 +241,7 @@ class Board extends GridLayout {
 		return [x, y];
 	}
 	*iter_between(pos1, pos2, off1, off2) {
-		let x1,y1,x2,y2,ox1,oy1,ox2,oy2;
+		let x1,y1,x2,y2,ox1,oy1,ox2,oy2,x1a,x2a,y1a,y2a;
 		pos1 = new Vec2(pos1);
 		pos2 = new Vec2(pos2);
 		off1 = new Vec2(off1);
@@ -242,8 +250,8 @@ class Board extends GridLayout {
 		[x2,y2]=pos2;
 		[ox1,oy1]=off1;
 		[ox2,oy2]=off2;
-		[x1,y1]=pos1.add(off1);
-		[x2,y2]=pos2.add(off1);
+		[x1a,y1a]=pos1.add(off1);
+		[x2a,y2a]=pos2.add(off2);
 		if(Math.abs(y2 - y1) == 0 && Math.abs(x2 - x1) == 0) return;
 		if(Math.abs(y2a - y1a) == 0 && Math.abs(x2a - x1a) == 0) return;
 		if(Math.abs(y2a - y1a) > Math.abs(x2a - x1a)) {
@@ -254,11 +262,11 @@ class Board extends GridLayout {
 				[y1a,y2a] = [y2a,y1a];
 				[x1a,x2a] = [x2a,x1a];
 			}
-			var y = int(y1);
+			var y = Math.floor(y1);
 			while(y < y2) {
 				var yo = y + 0.5;
 				var xo = x1a + (yo - y1a) * slope;
-				var x = int(xo);
+				var x = Math.floor(xo);
 				if(xo - x <= 0.5) {
 					if((0 <= x && x < this.w)) {
 						yield [x, y];
@@ -266,7 +274,7 @@ class Board extends GridLayout {
 					}
 				}
 				if(xo - x >= 0.5) {
-					if((0 <= x + 1 && x + 1 < this.w)) {
+					if((0 <= x + 1 && x + 1 < this.dimW)) {
 						yield [x + 1, y];
 						yield [x + 1, y + 1];
 					}
@@ -282,11 +290,11 @@ class Board extends GridLayout {
 				[y1a,y2a] = [y2a,y1a];
 				[x1a,x2a] = [x2a,x1a];
 			}
-			var x = int(x1);
+			var x = Math.floor(x1);
 			while(x < x2) {
 				var xo = x + 0.5;
 				var yo = y1a + (xo - x1a) * slope;
-				var y = int(yo);
+				var y = Math.floor(yo);
 				if(yo - y <= 0.5 + 0.0001) {
 					if((0 <= y && y < this.h)) {
 						yield [x, y];
@@ -294,7 +302,7 @@ class Board extends GridLayout {
 					}
 				}
 				if(yo - y >= 0.5 - 0.0001) {
-					if((0 <= y + 1 && y + 1 < this.h)) {
+					if((0 <= y + 1 && y + 1 < this.dimH)) {
 						yield [x, y + 1];
 						yield [x + 1, y + 1];
 					}
@@ -303,7 +311,7 @@ class Board extends GridLayout {
 			}
 		}
 		}
-	*iter_types_between(pos1, pos2, types, off1, off2) {
+	*iter_types_between(pos1, pos2, types, off1=[0,0], off2=[0,0]) {
 		for(var pos of this.iter_between(pos1, pos2, off1, off2)) {
 			if(types.includes(this[pos])) yield pos;
 		}
@@ -321,7 +329,7 @@ class Board extends GridLayout {
 		var e = 0.5;
 		for(var add1 of [[-(e), -(e)], [-(e), e], [e, -(e)], [e, e]]) {
 			for(var add2 of [[-(e), -(e)], [-(e), e], [e, -(e)], [e, e]]) {
-				var blockers = this.iter_types_between(pos1, pos2, types, add1, add2).filter(p=>!bases.includes(p));
+				var blockers = [...this.iter_types_between(pos1, pos2, types, add1, add2)].filter(p=>!bases.includes(p));
 				if(blockers.length == 0) return true;
 			}
 		}
@@ -357,7 +365,7 @@ class Board extends GridLayout {
 				if(Math.max(Math.abs(xoff), Math.abs(yoff)) + 0.5 * Math.min(Math.abs(xoff), Math.abs(yoff)) <= radius) {
 					var x0 = x + xoff;
 					var y0 = y + yoff;
-					if((0 <= y0 && y0 < this.h) && (0 <= x0 && x0 < this.dimW)) {
+					if((0 <= y0 && y0 < this.dimH) && (0 <= x0 && x0 < this.dimW)) {
 						yield [x0, y0];
 					}
 				}
@@ -507,17 +515,19 @@ class Board extends GridLayout {
 		return Math.max(d0, d1) + 0.5 * Math.min(d0, d1);
 	}
 	walkable_spots(map_pos, dist, spots) {
+		//todo: this is very clunky
 		if(Object.keys(spots).length == 0) {
 			spots [map_pos.toString()] = 0;
 		}
+		let walk_costs = {}
 		if(['U', 'L', 'L0', 'L1', 'L2'].includes(this.get(map_pos))) {
-			var walk_costs = {'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
+			walk_costs = {'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
 		}
 		else if(this.building_types.includes(this.get(map_pos))) {
-			var walk_costs = {'B': 1, 'B0': 1, 'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
+			walk_costs = {'B': 1, 'B0': 1, 'U': 1, 'L': 1, 'L0': 1, 'L1': 1, 'L2': 1}
 		}
 		for(var pos of this.iter_in_range(map_pos, 1.5)) {
-			if(walk_costs.includes(this.get(map_pos))) {
+			if(this.get(map_pos) in walk_costs) {
 				var cur_dist = spots[map_pos.toString()] + walk_costs[this.get(pos)] * this.dist(pos, map_pos);
 				if((pos.toString() in spots) && cur_dist >= spots[pos.toString()]) {
 					continue;
@@ -528,6 +538,11 @@ class Board extends GridLayout {
 				}
 			}
 		}
+		return spots;
+	}
+	walkables(map_pos, dist, spots) {
+		spots = this.walkable_spots(map_pos, dist, spots)
+		spots = Object.keys(spots).map(s=>s.split(',').map(v=>parseInt(v)));
 		return spots;
 	}
 	alert_nearby_guards(radius) {
