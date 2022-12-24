@@ -10,7 +10,14 @@ class Token extends Widget {
 		this.rect = new Rect([this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1]);
 	}
 	update_rect(msg, obj, data) {
-		this.rect = new Rect([this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1]);
+		let app=App.get();
+		let anim = new WidgetAnimation();
+		let d = app.board.dist([this.x,this.y],[this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1]])
+		if(d>0) {
+			anim.add({x: this.map_pos[0]+this.off[0], y: this.map_pos[1]+this.off[1]}, 50*d);
+			anim.start(this);	
+		}
+//		this.rect = new Rect([this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1]);
 	}
 	on_map_pos(event, data) {
 		App.get().board.token_update();

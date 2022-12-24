@@ -129,7 +129,7 @@ class CardSplay extends Label {
 	}
 	layoutChildren() {
 		let app = App.get();
-		let anim = false;
+		let anim = true;
 		var cardw = app.card_size [0];
 		var cardh = app.card_size [1];
 		let f = x=>x;
@@ -177,12 +177,11 @@ class CardSplay extends Label {
 				var x = (c != this.shownCard ? this.x : this.x + this.shownCardShift * cardw);
 			}
 			if(anim) {
-				if(this.children.length < 10) {
-					var animc = Animation({pos: c.pos, duration: i * 0.025}).add(Animation({pos: tuple([x, y]), duration: 0.2}));
-				}
-				else {
-					var animc = Animation({pos: tuple([x, y]), duration: 0.2});
-				}
+				c.w = app.card_size[0];
+				c.h = app.card_size[1];
+				let animc = new WidgetAnimation();
+				let time = i<10? (i+1) * 20 : 200;
+				animc.add({x: x, y: y}, time);
 				animc.start(c);
 			}
 			else {
@@ -524,7 +523,7 @@ class PlayerDeck extends CardSplay {
 
 class PlayerTraits extends CardSplay {
 	active_card = null;
-	on_child_added(msg, c) {
+	on_child_added(event, c) {
 		c.faceUp = true;
 	}
 	on_touch_up(event, touch) { //rotate through trait cards --TODO: limit once per turn
@@ -601,12 +600,14 @@ class ActionSelectorOption extends Label {
 	}
 	on_touch_up(event, touch) {
 		let app=App.get();
-		let r = this.renderRect();
-		if(app.inputHandler.grabbed == this && r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+		if(app.inputHandler.grabbed == this) {
+			let r = this.renderRect();
 			app.inputHandler.ungrab();
-			app.hand.selected_action = this.text;
-			this._touching = false;
-			return true;
+			if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+				app.hand.selected_action = this.text;
+				this._touching = false;
+				return true;
+			}
 		}
 	}
 	draw() {

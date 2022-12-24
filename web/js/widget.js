@@ -127,9 +127,9 @@ class Widget extends Rect {
     //TODO: Do we want pos_hint, size_hint?? maybe just "hint" collaspsing all hints in one object
     bgColor = "black";
     outlineColor = "gray";
+    _animation = null;
     constructor(rect, properties=null) {
         super(rect);
-        this.vel = new Vec2([0, 0]);
         this.parent = null;
         this.processTouches = false;
         this._children = []; //widget has arbitrarily many children
@@ -141,7 +141,7 @@ class Widget extends Rect {
         }
         return new Proxy(this, {
             set(target, name, value) {
-                if(['x','y','w','h','children','_children','_needsLayout','_events','rect'].includes[name]) return Reflect.set(...arguments);
+                if(['x','y','w','h','children','rect'].includes[name] || name[0]=='_') return Reflect.set(...arguments);
                 target[name] = value;
                 target.emit(name, value);
                 return true;
@@ -300,7 +300,7 @@ class Widget extends Rect {
         app.ctx.stroke();
     }
     update(millis) {
-        this.pos = this.pos.add(this.vel.scale(millis));
+        if(this._animation!=null) this._animation.update(millis);
         if(this._needsLayout) {
             this.layoutChildren();
             this._needsLayout = false;
@@ -308,6 +308,47 @@ class Widget extends Rect {
         }
         for(let c of this.children)
             c.update(millis);
+    }
+}
+
+class WidgetAnimation {
+    stack = [];
+    widget = null;
+    props = {}
+    elapsed = 0;
+    constructor() {
+
+    }
+    add(props, duration=1000) { 
+        this.stack.push([props, duration]);
+    }
+    update(millis) { //todo: props can be of the form {prop1: 1, prop2: 2, ...} or {prop1: [1,func1], prop2: [2,func2]}
+        let targetProps = this.stack[0][0];
+        let duration = this.stack[0][1];
+        if(this.elapsed==0) {
+            this.initProps = {};
+            for(let p in targetProps) {
+                this.initProps[p] = this.widget[p];
+            }
+        }
+        let skip = Math.max(this.elapsed+millis-duration,0);
+        this.elapsed = this.elapsed+millis-skip;
+        let wgt = duration==0? 1:this.elapsed/duration;
+        for(let p in this.initProps) {
+            this.widget[p] = (1-wgt)*this.initProps[p] + wgt*targetProps[p];
+        }
+        if(skip>=1) {
+            this.stack = this.stack.slice(1);
+            this.elapsed = skip;
+            if(this.stack.length==0) this.cancel();
+        }
+    }
+    start(widget) {
+        this.widget = widget;
+        widget._animation = this;
+    }
+    cancel() {
+        this.widget._animation = null;
     }
 }
 
