@@ -77,7 +77,7 @@ class Game extends App {
         let targets = [...this.board.iter_targets()];
         let objective = new ObjectiveToken(targets.slice(-1)[0]);
         targets = targets.slice(0,-1).map(t => new TargetToken(t));
-        let markets = [...this.board.iter_targets()].slice(0,-1).map(t => new MarketToken(t));
+        let markets = [...this.board.iter_markets()].slice(0,-1).map(t => new MarketToken(t));
 
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
         this.board.scroll_to_player();

@@ -30,6 +30,9 @@ class MapChoice extends BoxLayout {
 			return true;
 		}
 	}
+	on_touch_cancel(event, touch) {
+		App.get().inputHandler.ungrab();
+	}
 	draw() {
 		let app=App.get();
 		let ctx = app.ctx;
@@ -99,6 +102,7 @@ class TokenMapChoice extends MapChoice {
 class Board extends GridLayout {
 	tokens = [];
 	map_choices = [];
+	active_player_token = null;
 	space_size = [];
 	dimW = -1;
 	dimH = -1;
@@ -113,13 +117,13 @@ class Board extends GridLayout {
 		}
 		if(this.numY>0) {
 			this.dimH = this.numY*c.h;
-			this.dimW = Math.ceil(this.children.length/this.dimW)*c.w;
+			this.dimW = Math.ceil(this.children.length/this.dimH)*c.w;
 		}
 	}
 	on_child_added(event, data) {
 		this.onCh();
 	}
-	on_child_added(event, data) {
+	on_child_removed(event, data) {
 		this.onCh();
 	}
 	on_tokens(event, data) {
@@ -132,11 +136,12 @@ class Board extends GridLayout {
 		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof MapChoice)), ...this.map_choices];
 	}
 	scroll_to_player() {
+		if(this.active_player_token==null) return;
 		let app = App.get();
 		app.sv.setScrollX(this.active_player_token.center_x-this.parent.w/2);
 		app.sv.setScrollY(this.active_player_token.center_y-this.parent.h/2);
 	}
-	on_token_move(token, mp) {
+	on_token_move(event, token, mp) {
 		this.token_update();
 	}
 	on_token_state(token, st) {
@@ -145,26 +150,27 @@ class Board extends GridLayout {
 	token_update() {
 		//TODO: This seems very complicated. can it be simplified?
 		let p = this.active_player_token;
+		//move guards that can see player to the player
 		for(let t of this.iter_tokens('G')) {
-			if(t.map_pos != p.map_pos && ['dead', 'unconscious'].includes(t.state) && !(t.frozen)) {
-				if((1 <= this.dist(t.map_pos, p.map_pos) && this.dist(t.map_pos, p.map_pos) <= 10) 
-				&& !(['U'] + this.building_types).includes(this [p.map_pos])) {
-					if(!(this.has_types_between(t.map_pos, p.map_pos, this.building_types))) {
-						t.map_pos = p.map_pos;
-						t.state = 'alert';
-						return ;
-					}
+			if(arrEq(t.map_pos, p.map_pos) || ['dead', 'unconscious'].includes(t.state) || t.frozen) continue; 
+			if(1 <= this.dist(t.map_pos, p.map_pos) && this.dist(t.map_pos, p.map_pos) <= 10 
+			&& !['U',...this.building_types].includes(this.get(p.map_pos))) {
+				if(!(this.has_types_between(t.map_pos, p.map_pos, this.building_types))) {
+					t.map_pos = p.map_pos;
+					t.state = 'alert';
+					return ;
 				}
 			}
 		}
+		//alert guards
 		for(let t of this.iter_tokens('G')) {
-			if(t.map_pos == p.map_pos || ['unconscious', 'dead'].includes(t.state) || t.frozen) continue;
+			if(arrEq(t.map_pos,p.map_pos) || ['unconscious', 'dead'].includes(t.state) || t.frozen) continue;
 			var closest = [100, null];
 			for(let t0 of this.iter_tokens('G')) {
 				if(['alert', 'dozing'].includes(t0.state)) continue;
-				if(t0.map_pos == p.map_pos) continue;
+				if(arrEq(t0.map_pos, p.map_pos)) continue;
 				let d = this.dist(t.map_pos, t0.map_pos);
-				if((1 < d && d <= 10) && !(['U'] + this.building_types).includes(this.get(t0.map_pos))) {
+				if((1 < d && d <= 10) && !['U', ...this.building_types].includes(this.get(t0.map_pos))) {
 					if(!(this.has_types_between(t.map_pos, t0.map_pos, this.building_types))) {
 						if(d < closest [0]) {
 							closest = [d, t0];
@@ -180,7 +186,7 @@ class Board extends GridLayout {
 			}
 			let d,t0;
 			[d,t0] = closest;
-			if(t0 !== null && t.map_pos != t0.map_pos && t.state != 'alert') {
+			if(t0 !== null && !arrEq(t.map_pos, t0.map_pos) && t.state != 'alert') {
 				t.map_pos = t0.map_pos;
 				t.state = 'alert';
 				return ;
@@ -189,14 +195,14 @@ class Board extends GridLayout {
 		var clashes = {}
 		for(var t0 of this.tokens) {
 			for(var t1 of this.tokens) {
-				if(t0 == t1) {
+				if(t0 === t1) {
 					continue;
 				}
-				if(t0.map_pos[0] == t1.map_pos[0] && t0.map_pos[1] == t1.map_pos[1]) {
+				if(arrEq(t0.map_pos, t1.map_pos)) {
 					let p = t0.map_pos.toString();
 					if(p in clashes) {
-						if(!clashes[p].find(t0)) clashes[p] = t0;
-						if(!clashes[p].find(t1)) clashes[p] = t1;
+						if(!clashes[p].includes(t0)) clashes[p].push(t0);
+						if(!clashes[p].includes(t1)) clashes[p].push(t1);
 					}
 					else {
 						clashes[p] = [t0, t1];
@@ -205,11 +211,11 @@ class Board extends GridLayout {
 			}
 		}
 		for(var t of this.tokens) {
-			if(!t.map_pos.toString() in clashes) t.off = [0, 0];
+			if(!(t.map_pos.toString() in clashes)) t.off = [0, 0];
 		}
-		let offsets = [[-0.25, -0.25], [0.25, 0.25], [-0.25, 0.25], [0.25, -0.25]];
-		for(let c of clashes) {
-			for(let i=0;i<clashes[c].length;i++) {
+		let offsets = [[-0.25, -0.25], [0.25, 0.25], [-0.25, 0.25], [0.25, -0.25],[0,0.25],[0.25,0],[0,-0.25],[-0.25,0]];
+		for(let c in clashes) {
+			for(let i=0;i<Math.min(clashes[c].length,offsets.length);i++) {
 				clashes[c][i].off = offsets[i];
 			}
 		}
@@ -226,7 +232,7 @@ class Board extends GridLayout {
 		[x,y] = pos;
 		var card_x = Math.floor(x / app.map_card_grid_size [0]);
 		var card_y = Math.floor(y / app.map_card_grid_size [1]);
-		var card_ind = card_x + card_y * this.dimW;
+		var card_ind = card_x + card_y * this.numX;
 		var card = this.children[card_ind];
 		var card_pos = [x - card_x * app.map_card_grid_size [0], y - card_y * app.map_card_grid_size [1]];
 		return [card, card_pos];
@@ -268,7 +274,7 @@ class Board extends GridLayout {
 				var xo = x1a + (yo - y1a) * slope;
 				var x = Math.floor(xo);
 				if(xo - x <= 0.5) {
-					if((0 <= x && x < this.w)) {
+					if((0 <= x && x < this.dimW)) {
 						yield [x, y];
 						yield [x, y + 1];
 					}
@@ -296,7 +302,7 @@ class Board extends GridLayout {
 				var yo = y1a + (xo - x1a) * slope;
 				var y = Math.floor(yo);
 				if(yo - y <= 0.5 + 0.0001) {
-					if((0 <= y && y < this.h)) {
+					if((0 <= y && y < this.dimH)) {
 						yield [x, y];
 						yield [x + 1, y];
 					}
@@ -313,7 +319,7 @@ class Board extends GridLayout {
 		}
 	*iter_types_between(pos1, pos2, types, off1=[0,0], off2=[0,0]) {
 		for(var pos of this.iter_between(pos1, pos2, off1, off2)) {
-			if(types.includes(this[pos])) yield pos;
+			if(types.includes(this.get(pos))) yield pos;
 		}
 	}
 	has_types_between(pos1, pos2, types) {
@@ -325,11 +331,10 @@ class Board extends GridLayout {
 		return false;
 	}
 	has_line_of_sight(pos1, pos2, types) {
-		var bases = [pos1, pos2];
 		var e = 0.5;
-		for(var add1 of [[-(e), -(e)], [-(e), e], [e, -(e)], [e, e]]) {
-			for(var add2 of [[-(e), -(e)], [-(e), e], [e, -(e)], [e, e]]) {
-				var blockers = [...this.iter_types_between(pos1, pos2, types, add1, add2)].filter(p=>!bases.includes(p));
+		for(var add1 of [[-e, -e], [-e, e], [e, -e], [e, e]]) {
+			for(var add2 of [[-e, -e], [-e, e], [e, -e], [e, e]]) {
+				var blockers = [...this.iter_types_between(pos1, pos2, types, add1, add2)].filter(p=>!arrEq(p,pos1) && !arrEq(p,pos2));
 				if(blockers.length == 0) return true;
 			}
 		}
@@ -338,14 +343,14 @@ class Board extends GridLayout {
 	*iter_all(sub_rect=null) {
 		if(sub_rect !== null) {
 			for(var x = sub_rect [0]; x < Math.min(this.dimW, sub_rect [0] + sub_rect [2]); x++) {
-				for(var y = sub_rect [1]; y < Math.min(this.h, sub_rect [1] + sub_rect [3]); y++) {
+				for(var y = sub_rect [1]; y < Math.min(this.dimH, sub_rect [1] + sub_rect [3]); y++) {
 					yield [x, y];
 				}
 			}
 		}
 		else {
-			for(var x = 0; x < this.w; x++) {
-				for(var y = 0; y < this.h; y++) {
+			for(var x = 0; x < this.dimW; x++) {
+				for(var y = 0; y < this.dimH; y++) {
 					yield [x, y];
 				}
 			}
@@ -404,13 +409,13 @@ class Board extends GridLayout {
 		let x,y,w,h;
 		[x,y] = pos;
 		[w,h] = size;
-		if(must_fit && (x < 0 || y < 0 || x + w > this.w || y + h > this.h)) {
+		if(must_fit && (x < 0 || y < 0 || x + w > this.dimW || y + h > this.dimH)) {
 			return ;
 		}
 		var xl = Math.max(x, 0);
-		var xu = Math.min(x + w, this.w);
+		var xu = Math.min(x + w, this.dimW);
 		var yl = Math.max(y, 0);
-		var yu = Math.min(y + h, this.h);
+		var yu = Math.min(y + h, this.dimH);
 		for(var x0 = xl; x0 < xu; x0++) {
 			for(var y0 = yl; y0 < yu; y0++) {
 				yield [x0, y0];

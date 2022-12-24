@@ -1,6 +1,14 @@
 
 const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
 
+function arrEq(array1, array2) {
+    return array1.length == array2.length && array1.every((value, index) => value == array2[index])
+}
+
+function rads(degrees) {
+    return degrees*Math.PI/180
+}
+
 class MathArray extends Array {
     constructor(...arr) {
         if(arr.length==1 && arr[0] instanceof Array) {

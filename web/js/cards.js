@@ -586,8 +586,9 @@ class PlayerAction {
 	tap_on_use = null;
 	exhaust_on_use = null;
 	spent = 0;
-	constructor(card) {
+	constructor(card, props = {}) {
 		this.card = card;
+		for(let p in props) this[p] = props[p];
 	}
 	activate(message, props ={}) {
 		App.get().playerprompt.text = 'Default action handler. You should not see this text.';
@@ -732,7 +733,7 @@ class FightAction extends PlayerAction {
 		let guard_choices = [...board.iter_tokens('G')].
 									filter(t =>  
 									['dozing', 'alert'].includes(t.state)
-									&& this.rounded_remain()==1
+									&& this.rounded_remain()>=1
 									&& dist(board.active_player_token.map_pos, t.map_pos) == 0);
 		let map_choices = guard_choices.map(t=>board.make_token_choice(t, this, 'touch'));
 		board.map_choices = map_choices;
@@ -909,8 +910,7 @@ class ArrowAction extends PlayerAction {
 		if(!(board.active_player_clashing())) {
 			let guard_choices = [...board.iter_tokens('G')].filter(t=>
 				['dozing', 'alert'].includes(t.state)
-				&& this.rounded_remain()==1
-				&& dist(board.active_player_token.map_pos, t.map_pos) <= this.value_allowance()
+				&& dist(board.active_player_token.map_pos, t.map_pos) <= this.rounded_remain()
 				&& dist(board.active_player_token.map_pos, t.map_pos) > 0
 				&& board.has_line_of_sight(t.map_pos, board.active_player_token.map_pos, ['B', 'B0']));
 			let map_choices = guard_choices.map(t=>board.make_token_choice(t, this, 'touch'));
@@ -1212,7 +1212,7 @@ class MoveTrait extends TraitCard {
 
 		}
 		else {
-			return {'MOVE 1+': new MoveAction(card, playarea, {base_allowance: 1, tap_on_use: this})}
+			return {'MOVE 1+': new MoveAction(card, {base_allowance: 1, tap_on_use: this})}
 
 		}
 	}
@@ -1227,7 +1227,7 @@ class FightTrait extends TraitCard {
 
 		}
 		else {
-			return {'ATTACK 0.5+': new FightAction(card, playarea, {base_allowance: 0.5, value_per_card: 0.5, tap_on_use: this})}
+			return {'ATTACK 0.5+': new FightAction(card, {base_allowance: 0.5, value_per_card: 0.5, tap_on_use: this})}
 
 		}
 	}
@@ -1243,7 +1243,7 @@ class ClimbTrait extends TraitCard {
 
 		}
 		else {
-			return {'CLIMB 1': new ClimbAction(card, playarea, {tap_on_use: true})}
+			return {'CLIMB 1': new ClimbAction(card, {tap_on_use: true})}
 
 		}
 	}
@@ -1258,7 +1258,7 @@ class SneakTrait extends TraitCard {
 
 		}
 		else {
-			return {'KNOCKOUT': new KnockoutAction(card, playarea, {base_allowance: 1, tap_on_use: true})}
+			return {'KNOCKOUT': new KnockoutAction(card, {base_allowance: 1, tap_on_use: true})}
 
 		}
 	}
@@ -1273,7 +1273,7 @@ class LootTrait extends TraitCard {
 
 		}
 		else {
-			return {'LOCKPICK 1+': new LockpickAction(card, playarea, {base_allowance: 1, tap_on_use: true})}
+			return {'LOCKPICK 1+': new LockpickAction(card, {base_allowance: 1, tap_on_use: true})}
 
 		}
 	}
@@ -1288,7 +1288,7 @@ class ArcherTrait extends TraitCard {
 
 		}
 		else {
-			return {'ARROW 3+': new ArrowAction(card, playarea, {base_allowance: 3, tap_on_use: true})}
+			return {'ARROW 3+': new ArrowAction(card, {base_allowance: 3, tap_on_use: true})}
 
 		}
 	}

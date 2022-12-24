@@ -279,8 +279,9 @@ class Card extends Widget {
     image = null;
     faceUp = false;
 	selected = false;
-	bgColor = 'black';
 	outlineColor = 'gray';
+	bgColorUp = colorString([0.2,0.2,0.2]);
+	bgColorDown = colorString([0.5,0.5,0.5]);
     constructor(rect=null, properties=null) {
         super(rect);
         this.updateProperties(properties);
@@ -291,8 +292,8 @@ class Card extends Widget {
     draw() {
         if(this.faceUp) {
             //TODO: draw a card background, borders etc
-			this.bgColor='black';
-			this.outlineColor = 'gray';
+            this.bgColor = this.bgColorUp;
+			// this.bgColor='black';
             super.draw();
             let r1 = new Rect(this);
             let r2 = new Rect(this);
@@ -301,12 +302,12 @@ class Card extends Widget {
             r2.h -= r1.h;
             //TODO: Get rid of the ugly scale transforms
 			let app=App.get();
-            drawWrappedText(app.ctx, this.name, this.h/12*app.tileSize, true, r1.mult(app.tileSize).shift([app.offsetX,app.offsetY]), "yellow");
-            drawWrappedText(app.ctx, this.text, this.h/18*app.tileSize, true, r2.mult(app.tileSize).shift([app.offsetX,app.offsetY]), "white");    
+            drawWrappedText(app.ctx, this.name, Math.floor(this.h/12*app.tileSize), true, r1.mult(app.tileSize).shift([app.offsetX,app.offsetY]), "yellow");
+            drawWrappedText(app.ctx, this.text, Math.floor(this.h/14*app.tileSize), true, r2.mult(app.tileSize).shift([app.offsetX,app.offsetY]), "white");    
         } else {
 //            super.draw();
+			this.bgColor = this.bgColorDown;
 			this.outlineColor = 'black';
-			this.bgColor='gray';
 			super.draw();
 			// let r = this.renderRect();
 			// let app = App.get();
@@ -570,7 +571,7 @@ class ActiveCardSplay extends CardSplay {
 		}
 		if(this.children.length > 0) {
 			if(exhaust_on_use !== null) {
-				if(exhaust_on_use instanceof cards.TraitCard) {
+				if(exhaust_on_use instanceof TraitCard) {
 					app.playertraits.move_to([exhaust_on_use], app.exhausted);
 				}
 				else {
@@ -578,7 +579,7 @@ class ActiveCardSplay extends CardSplay {
 				}
 			}
 			if(tap_on_use !== null) {
-				if(tap_on_use instanceof cards.TraitCard) {
+				if(tap_on_use instanceof TraitCard) {
 					tap_on_use.tapped = true;
 				}
 			}
@@ -837,7 +838,7 @@ class MarketDeck extends CardSplay {
 
 class Exhausted extends CardSplay {
 	on_child_added(event, child) {
-		c.faceUp=true;
+		child.faceUp=true;
 	}
 }
 

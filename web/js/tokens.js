@@ -1,6 +1,6 @@
 class Token extends Widget {
-	map_pos = null;
-	off = null;
+	map_pos = [0,0];
+	off = [0,0];
 	constructor(map_pos) {
 		super(new Rect([0,0,1,1]), {});
 		this.off = new Vec2([0,0]);
@@ -11,6 +11,9 @@ class Token extends Widget {
 	}
 	update_rect(msg, obj, data) {
 		this.rect = new Rect([this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1]);
+	}
+	on_map_pos(event, data) {
+		App.get().board.token_update();
 	}
 }
 
@@ -66,11 +69,11 @@ class TargetToken extends Token {
 		var w = 3*r.w/5;
 		var h = 3*r.h/5;
 		ctx.beginPath();
-		ctx.moveTo(x + w/2, y);
-		ctx.lineTo(x, y + 2*h/3);
-		ctx.lineTo(x + w/4, y + h);
-		ctx.lineTo(x + 3*w/4, y + h);
-		ctx.lineTo(x + w, y + 2*h/3);
+		ctx.moveTo(x + w/2, y + h);
+		ctx.lineTo(x, y + h - 2*h/3);
+		ctx.lineTo(x + w/4, y);
+		ctx.lineTo(x + 3*w/4, y);
+		ctx.lineTo(x + w, y + h - 2*h/3);
 		ctx.closePath();
 		ctx.fillStyle = color;
 		ctx.fill();	
@@ -151,12 +154,12 @@ class GuardToken extends Token {
 		if(['dozing','alert'].includes(this.state)) {
 			app.ctx.beginPath();
 			app.ctx.ellipse(r.center_x - r.w/6, r.center_y, r.w*3/40, r.h*3/40, 
-							0, (this.state == 'dozing' ? 270 : 290), (this.state == 'dozing' ? 450 : 470) );
+							0, (this.state == 'dozing' ? rads(180) : rads(200)), (this.state == 'dozing' ? rads(360) : rads(380)) );
 			app.ctx.closePath();
 			app.ctx.fill();
 			app.ctx.beginPath();
 			app.ctx.ellipse(r.center_x + r.w/6, r.center_y, r.w*3/40, r.h*3/40, 
-							0, (this.state == 'dozing' ? 270 : 250), (this.state == 'dozing' ? 450 : 430) );
+							0, (this.state == 'dozing' ? rads(180) : rads(160)), (this.state == 'dozing' ? rads(360) : rads(340)) );
 			app.ctx.closePath();
 			app.ctx.fill();
 		} 
@@ -209,7 +212,7 @@ class GuardToken extends Token {
 		app.ctx.strokeStyle = app.ctx.fillStyle;
 		if(this.state == 'dead') {
 			app.ctx.beginPath();
-			app.ctx.ellipse(r.x+r.w*2/5, r.y+r.h/4, 2*r.w/5, 2*r.h/5, 0, 0, 2*Math.PI);
+			app.ctx.ellipse(r.center_x, r.y+2*r.h/3, r.w/10, r.h/10, 0, 0, 2*Math.PI);
 			app.ctx.fill()
 		}
 		else {

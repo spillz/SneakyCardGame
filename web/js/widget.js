@@ -342,7 +342,7 @@ class Label extends Widget {
         let fontSize;
         let app = App.get();
         if(this.fontSize==null) {
-            fontSize = this.h*app.tileSize/2;
+            fontSize = Math.floor(this.h*app.tileSize/2);
             app.ctx.font = fontSize + "px monospace";
             let scale = r.w/app.ctx.measureText(this.text).width;
             if(scale<1) fontSize *= scale;
