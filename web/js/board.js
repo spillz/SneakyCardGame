@@ -15,7 +15,7 @@ class MapChoice extends BoxLayout {
 	}
 	on_touch_down(event, touch) {
 		let r = this.renderRect();
-		if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+		if(r.collide(touch.rect)) {
 			App.get().inputHandler.grab(this);
 			return true;
 		}
@@ -23,7 +23,7 @@ class MapChoice extends BoxLayout {
 	on_touch_up(event, touch) {
 		let r = this.renderRect();
 		App.get().inputHandler.ungrab();
-		if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+		if(r.collide(touch.rect)) {
 			if(['touch', 'visible'].includes(this.choice_type)) {
 				this.listener.activate('map_choice_selected', {touch_object: this});
 			}
@@ -84,7 +84,7 @@ class TokenMapChoice extends MapChoice {
 	}
 	on_touch_down(event, touch) {
 		let r = this.renderRect();
-		if(r.collide(new Rect([touch.clientX, touch.clientY,0,0]))) {
+		if(r.collide(touch.rect)) {
 			App.get().inputHandler.grab(this);
 			return true;
 		}
@@ -92,7 +92,7 @@ class TokenMapChoice extends MapChoice {
 	on_touch_up(event, touch) {
 		let r = this.renderRect();
 		App.get().inputHandler.ungrab();
-		if(r.collide(new Rect([touch.clientX, touch.clientY,0,0]))) {
+		if(r.collide(touch.rect)) {
 			this.listener.activate('map_choice_selected', {touch_object: this});
 			return true;
 		}

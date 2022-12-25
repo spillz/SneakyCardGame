@@ -627,8 +627,8 @@ class ScrollView extends Widget {
         return result;
     }
     on_touch_down(event, touch) {
-        this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
-        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        this.oldTouch = [touch.x, touch.y, touch.identifier];
+        let r = touch.rect;
         if(this.renderRect().collide(r)) {
             for(let c of this.children) if(this.offset_emit(c, event, touch)) {
                 return true;
@@ -638,7 +638,7 @@ class ScrollView extends Widget {
     }
     on_touch_up(event, touch) {
         this.oldTouch = null;
-        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        let r = touch.rect;
         if(this.renderRect().collide(r)) {
                 for(let c of this.children) if(this.offset_emit(c, event, touch)) {
                 return true;
@@ -647,26 +647,26 @@ class ScrollView extends Widget {
         return false;
     }
     on_touch_move(event, touch) {
-        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        let r = touch.rect;
         let app = App.get();
         if(this.renderRect().collide(r)) {
             if(this.oldTouch==null || touch.identifier!=this.oldTouch[2]) {
-                this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
+                this.oldTouch = [touch.x, touch.y, touch.identifier];
             } else {
                 if(this.scrollW) {
-                    this.setScrollX(this.scrollX + (this.oldTouch[0]-touch.clientX)/app.tileSize);
+                    this.setScrollX(this.scrollX + (this.oldTouch[0]-touch.x)/app.tileSize);
                 }
                 if(this.scrollH) {
-                    this.setScrollY(this.scrollY + (this.oldTouch[1]-touch.clientY)/app.tileSize);
+                    this.setScrollY(this.scrollY + (this.oldTouch[1]-touch.y)/app.tileSize);
                 }
-                this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];    
+                this.oldTouch = [touch.x, touch.y, touch.identifier];    
             }
             for(let c of this.children) if(this.offset_emit(c, event, touch)) return true;
         }
         return false;
     }
     on_touch_cancel(event, touch) {
-        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        let r = touch.rect;
         for(let c of this.children) if(this.renderRect().collide(r) && this.offset_emit(c, event, touch)) return true;
         return false;
     }

@@ -329,7 +329,7 @@ class Card extends Widget {
     }
 
     // on_touch_down(name, touch) {
-    //     if(this.renderRect().collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+    //     if(this.renderRect().collide(touch.rect)) {
 	// 		this.faceUp = !this.faceUp;
 	// 		return true;
 	// 	}
@@ -539,7 +539,7 @@ class PlayerTraits extends CardSplay {
 	}
 	on_touch_up(event, touch) { //rotate through trait cards --TODO: limit once per turn
 		let r = this.renderRect()
-		if(this.children.length>0 && r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+		if(this.children.length>0 && r.collide(touch.rect)) {
 			this.children = [this.children[this.children.length-1],...this.children.slice(0,-1)];
 			this.active_card = this.children[this.children.length-1];
 			return true;
@@ -568,7 +568,7 @@ class ActiveCardSplay extends CardSplay {
 	on_touch_up(event, touch) {
 		let app = App.get();
 		let r = this.renderRect();
-		if(this.children.length > 0 && r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+		if(this.children.length > 0 && r.collide(touch.rect)) {
 			app.hand.cancel_action();
 			return true;
 		}
@@ -603,7 +603,7 @@ class ActionSelectorOption extends Label {
 	_touching = false;
 	on_touch_down(event, touch) {
 		let r = this.renderRect();
-		if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+		if(r.collide(touch.rect)) {
 			App.get().inputHandler.grab(this);
 			this._touching = true;
 			return true;
@@ -614,7 +614,7 @@ class ActionSelectorOption extends Label {
 		if(app.inputHandler.grabbed == this) {
 			let r = this.renderRect();
 			app.inputHandler.ungrab();
-			if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+			if(r.collide(touch.rect)) {
 				app.hand.selected_action = this.text;
 				this._touching = false;
 				return true;
@@ -653,7 +653,7 @@ class Hand extends CardSplay {
 		if(this.can_draw == false) return true;
 		for(var c of this.children.slice().reverse()) {
 			let r = c.renderRect();
-			if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+			if(r.collide(touch.rect)) {
 				if(this.shownCard==c) { //Clear an already selected card
 					this.shownCard=null;
 					this.clear_selection();
@@ -742,7 +742,7 @@ class Hand extends CardSplay {
 class SkillDeck extends CardSplay {
 	on_touch_up(event, touch) {
 		let r = this.renderRect()
-		if(r.collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) {
+		if(r.collide(touch.rect)) {
 			return true;
 		}
 	}
@@ -787,7 +787,7 @@ class LootDeck extends CardSplay {
 		let app = App.get();
 		var cards = this.children.slice(-num_offered);
 		for(var c of cards) {
-			this.children.remove(c);
+			this.children.removeChild(c);
 		}
 		app.cardselector = CardSelector(new Rect(), {num_to_pick: num_to_pick});
 		app.baseWidget.addChild(app.cardselector);
@@ -863,7 +863,7 @@ class EventDeck extends CardSplay {
 		card.faceUp=false;
 	}
 	on_touch_up(event, touch) {
-        let r = new Rect([touch.clientX, touch.clientY, 0, 0]);
+        let r = touch.rect;
 		if(this.renderRect().collide(r)) { // && c.emit(event,touch)
 			this.drawCard();
 			return true;

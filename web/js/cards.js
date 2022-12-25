@@ -154,10 +154,10 @@ class MapCard extends Widget {
 		this.updateProperties(properties);
 		}
 	on_touch_up(event, touch) {
-        if(this.renderRect().collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) this.faceUp = !this.faceUp;
+        if(this.renderRect().collide(touch.rect)) this.faceUp = !this.faceUp;
 	}
 	on_mouse_up(event, touch) {
-        if(this.renderRect().collide(new Rect([touch.clientX, touch.clientY, 0, 0]))) this.faceUp = !this.faceUp;
+        if(this.renderRect().collide(touch.rect)) this.faceUp = !this.faceUp;
 	}
 	draw() {
 		let app = App.get();
@@ -997,7 +997,7 @@ class DimmerAction extends PlayerAction {
 		if(!(board.active_player_clashing())) {
 			let pp = board.active_player_token.map_pos;
 			let map_choices = [...board.iter_lights()]
-							.filter(p=>dist(p,pp)<=this.vallue_allowance()
+							.filter(p=>dist(p,pp)<=this.value_allowance()
 							&& board.has_line_of_sight(p, pp, board.building_types))
 							.map(p=>board.make_choice(p, this, 'touch'));
 			board.map_choices = map_choices;

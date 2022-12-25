@@ -1,5 +1,34 @@
+class Touch {
+    pos = [0,0];
+    state = 'touch_up'; // one of 'touch_up', 'touch_down', 'touch_move', 'touch_cancel'
+    device = 'touch' //source of touch: touch, mouse or keyboard
+    nativeObject = null;
+    constructor(props = {}) {
+        for(let p in props) {
+            this[p] = props[p];
+        }
+    }
+    get rect() {
+        return new Rect([...this.pos, 0, 0]);
+    }
+    set x(value) {
+        this.pos[0] = value;
+    }
+    set y(value) {
+        this.pos[1] = value;
+    }
+    get x() {
+        return this.pos[0];
+    }
+    get y() {
+        return this.pos[1];
+    }
+}
+
+
 class InputHandler {
     grabbed = null;
+    mouseTouchEmulation = true;
     constructor(app) {
         this.app = app;
         this.canvas = app.canvas;
@@ -33,7 +62,7 @@ class InputHandler {
         canvas.addEventListener('touchcancel', function(ev){that.process_touch(ev, 'touch_cancel');}, false);
         canvas.addEventListener('touchend', function(ev){that.process_touch(ev, 'touch_up');}, false);
         document.addEventListener('backbutton', function(ev){that.process_back(ev);}, true);
-        canvas.addEventListener("wheel", function(ev){that.process_wheel(ev, 'wheel');}, false);
+        canvas.addEventListener('wheel', function(ev){that.process_wheel(ev, 'wheel');}, false);
     }
     grab(widget) {
         this.grabbed = widget;
@@ -50,7 +79,8 @@ class InputHandler {
     process_touch(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
         if(this.grabbed != null) {
-            for(let t of ev.changedTouches) { 
+            for(let to of ev.changedTouches) { 
+                let t = new Touch({pos:[to.clientX, to.clientY], state:name, nativeObject:to});
                 let savedOffsets = [this.app.offsetX, this.app.offsetY];
                 let offsets = this.grabbed.parent.recurseOffsets([0,0]);
                 this.app.offsetX = offsets[0]*this.app.tileSize;
@@ -60,7 +90,8 @@ class InputHandler {
                 this.app.offsetY = savedOffsets[1];
             }
         } else {
-            for(let t of ev.changedTouches) { 
+            for(let to of ev.changedTouches) { 
+                let t = new Touch({pos:[to.clientX, to.clientY], state:name, nativeObject:to});
                 this.app.emit(name, t, true);
             }
         }
@@ -69,12 +100,29 @@ class InputHandler {
     process_mouse(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
         //t.identifier, t.clientX, t.clientY
-        if(this.grabbed != null) {
-            this.grabbed.emit(name, t);
+        if(this.mouseTouchEmulation) {
+            let mapping = {'mouse_up':'touch_up','mouse_down':'touch_down','mouse_move':'touch_move','mouse_cancel':'touch_cancel'}
+            if(ev.buttons!=1 && name!='mouse_up') return;
+            let t = new Touch({pos:[ev.clientX, ev.clientY], state:mapping[name], nativeObject:ev});
+            if(this.grabbed != null) {
+                let savedOffsets = [this.app.offsetX, this.app.offsetY];
+                let offsets = this.grabbed.parent.recurseOffsets([0,0]);
+                this.app.offsetX = offsets[0]*this.app.tileSize;
+                this.app.offsetY = offsets[1]*this.app.tileSize;
+                this.grabbed.emit(mapping[name], t);
+                this.app.offsetX = savedOffsets[0];
+                this.app.offsetY = savedOffsets[1];
+            } else {
+                this.app.emit(mapping[name], t, true);
+            }
         } else {
-            this.app.emit(name, ev, true);
+            if(this.grabbed != null) {
+                this.grabbed.emit(name, ev);
+            } else {
+                this.app.emit(name, ev, true);
+            }
+            ev.preventDefault();
         }
-        ev.preventDefault();
     }
     process_wheel(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
