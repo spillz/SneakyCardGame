@@ -123,22 +123,29 @@ class CardSplay extends Label {
 	text = 'CARDSPLAY';
 	bgColor = 'black';
 	fontSize=0.5;
+	_updatedChildren = false;
 	constructor(rect, properties) {
 		super(rect);
 		this.updateProperties(properties);
 	}
+	on_child_added(event, child) {
+		this._updatedChildren = true;
+	}
+	on_child_removed(event, child) {
+		this._updatedChildren = true;
+	}
 	layoutChildren() {
 		let app = App.get();
-		let anim = true;
-		var cardw = app.card_size [0];
-		var cardh = app.card_size [1];
+		var cardw = app.card_size[0];
+		var cardh = app.card_size[1];
 		let f = x=>x;
 		var mul = (this.shownCard === null || this.shownCard == this.children.slice(-1) || this.children.length <= 1 ? 1 : 2);
 		if(this.orientation == 'horizontal') {
 			var exp_len = cardw;
 			var offset = 0;
 			if(this.children.length > 1) {
-				var delta = f(Math.max(Math.min(cardw * this.cardSpreadScale, (this.w - cardw * mul) / ((this.children.length + 1) - mul)), 2/app.tileSize));
+				var delta = f(Math.max(Math.min(cardw * this.cardSpreadScale, 
+					(this.w - cardw * mul) / ((this.children.length + 1) - mul)), 2/app.tileSize));
 			}
 			else {
 				var delta = 0;
@@ -176,13 +183,13 @@ class CardSplay extends Label {
 				var y = this.y + offset;
 				var x = (c != this.shownCard ? this.x : this.x + this.shownCardShift * cardw);
 			}
-			if(anim) {
+			if(this._updatedChildren) {
 				c.w = app.card_size[0];
 				c.h = app.card_size[1];
 				let animc = new WidgetAnimation();
 				let time = i<10? (i+1) * 20 : 200;
 				animc.add({x: x, y: y}, time);
-				animc.start(c);
+				animc.start(c);				
 			}
 			else {
 				c.rect = new Rect([x, y, app.card_size[0], app.card_size[1]]);
@@ -196,6 +203,7 @@ class CardSplay extends Label {
 			c.layoutChildren();
 			i++;
 		}
+		this._updatedChildren = false;
 	}
 	on_shownCard(exp, card) {
 		if(!(this.multiSelect)) {
@@ -211,7 +219,7 @@ class CardSplay extends Label {
 				c.selected = false;
 			}
 		}
-		this.layoutChildren();
+		this._needsLayout=true;
 	}
 	do_closeup(closeup_card, touch, time) {
 		if(!(closeup_card.faceUp)) {
@@ -220,7 +228,7 @@ class CardSplay extends Label {
 		CardSplayCloseup(__kwargtrans__({closeup_card: closeup_card, cards: this.children})).open();
 		this._clockev = null;
 	}
-	on_touch_down1(touch) {
+	on_touch_down1(event, touch) {
 		for(var c of this.children.__getslice__(0, null, -(1))) {
 			if(c.collide_point(...this.to_local(...touch.pos))) {
 				touch.grab(self);
@@ -229,7 +237,7 @@ class CardSplay extends Label {
 			}
 		}
 	}
-	on_touch_up1(touch) {
+	on_touch_up1(event, touch) {
 		if(touch.grab_current != self) {
 			return ;
 		}
@@ -483,12 +491,14 @@ class CardSplayCloseup extends ModalView {
 
 class PlayerDiscard extends CardSplay {
 	on_child_added(event, c) {
+		super.on_child_added(...arguments);
 		c.faceUp = true;
 	}
 }
 
 class PlayerDeck extends CardSplay {
 	on_child_added(event, c) {
+		super.on_child_added(...arguments);
 		c.faceUp = false;
 	}
 	draw_hand() {
@@ -524,6 +534,7 @@ class PlayerDeck extends CardSplay {
 class PlayerTraits extends CardSplay {
 	active_card = null;
 	on_child_added(event, c) {
+		super.on_child_added(...arguments);
 		c.faceUp = true;
 	}
 	on_touch_up(event, touch) { //rotate through trait cards --TODO: limit once per turn
@@ -633,6 +644,7 @@ class Hand extends CardSplay {
 	hand_size = 5;
 	cardSpreadScale = 1.0;
 	on_child_added(event, child) {
+		super.on_child_added(...arguments);
 		child.faceUp = true;
 	}
 	on_touch_up(event, touch) {
@@ -839,6 +851,7 @@ class MarketDeck extends CardSplay {
 
 class Exhausted extends CardSplay {
 	on_child_added(event, child) {
+		super.on_child_added(...arguments);
 		child.faceUp=true;
 	}
 }
@@ -846,6 +859,7 @@ class Exhausted extends CardSplay {
 class EventDeck extends CardSplay {
 	can_draw = false;
 	on_child_added(event, card) {
+		super.on_child_added(...arguments);
 		card.faceUp=false;
 	}
 	on_touch_up(event, touch) {
@@ -884,6 +898,7 @@ class EventDeck extends CardSplay {
 
 class EventDiscard extends CardSplay {
 	on_child_added(event, card) {
+		super.on_child_added(...arguments);
 		card.faceUp=true;
 	}
 }
