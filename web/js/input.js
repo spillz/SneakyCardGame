@@ -82,7 +82,8 @@ class InputHandler {
             for(let to of ev.changedTouches) { 
                 let t = new Touch({pos:[to.clientX, to.clientY], state:name, nativeObject:to});
                 let savedOffsets = [this.app.offsetX, this.app.offsetY];
-                let offsets = this.grabbed.parent.recurseOffsets([0,0]);
+//                let offsets = this.grabbed.parent.recurseOffsets([0,0]);
+                let offsets = this.grabbed.parent.recurseOffsets([this.app.offsetX/this.app.tileSize,this.app.offsetY/this.app.tileSize]);
                 this.app.offsetX = offsets[0]*this.app.tileSize;
                 this.app.offsetY = offsets[1]*this.app.tileSize;
                 this.grabbed.emit(name, t);
@@ -106,8 +107,10 @@ class InputHandler {
             let t = new Touch({pos:[ev.clientX, ev.clientY], state:mapping[name], nativeObject:ev});
             if(this.grabbed != null) {
                 let savedOffsets = [this.app.offsetX, this.app.offsetY];
-                let offsets = this.grabbed.parent.recurseOffsets([0,0]);
-                this.app.offsetX = offsets[0]*this.app.tileSize;
+//                let offsets = this.grabbed.parent.recurseOffsets([0,0]);
+//                let offsets = this.grabbed.parent.recurseOffsets([this.app.offsetX,this.app.offsetY]);
+            let offsets = this.grabbed.parent.recurseOffsets([this.app.offsetX/this.app.tileSize,this.app.offsetY/this.app.tileSize]);
+            this.app.offsetX = offsets[0]*this.app.tileSize;
                 this.app.offsetY = offsets[1]*this.app.tileSize;
                 this.grabbed.emit(mapping[name], t);
                 this.app.offsetX = savedOffsets[0];

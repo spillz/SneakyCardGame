@@ -640,7 +640,7 @@ class ScrollView extends Widget {
         this.oldTouch = null;
         let r = touch.rect;
         if(this.renderRect().collide(r)) {
-                for(let c of this.children) if(this.offset_emit(c, event, touch)) {
+            for(let c of this.children) if(this.offset_emit(c, event, touch)) {
                 return true;
             }
         }
