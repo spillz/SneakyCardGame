@@ -23,6 +23,15 @@ class Touch {
     get y() {
         return this.pos[1];
     }
+    get grabbed() {
+        return App.get().inputHandler.grabbed;
+    }
+    grab(widget) {
+        return App.get().inputHandler.grab(widget);
+    }
+    ungrab() {
+        return App.get().inputHandler.ungrab();
+    }
 }
 
 
@@ -101,6 +110,7 @@ class InputHandler {
     process_mouse(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
         //t.identifier, t.clientX, t.clientY
+        ev.preventDefault();
         if(this.mouseTouchEmulation) {
             let mapping = {'mouse_up':'touch_up','mouse_down':'touch_down','mouse_move':'touch_move','mouse_cancel':'touch_cancel'}
             if(ev.buttons!=1 && name!='mouse_up') return;
@@ -108,7 +118,6 @@ class InputHandler {
             if(this.grabbed != null) {
                 let savedOffsets = [this.app.offsetX, this.app.offsetY];
 //                let offsets = this.grabbed.parent.recurseOffsets([0,0]);
-//                let offsets = this.grabbed.parent.recurseOffsets([this.app.offsetX,this.app.offsetY]);
             let offsets = this.grabbed.parent.recurseOffsets([this.app.offsetX/this.app.tileSize,this.app.offsetY/this.app.tileSize]);
             this.app.offsetX = offsets[0]*this.app.tileSize;
                 this.app.offsetY = offsets[1]*this.app.tileSize;
@@ -124,7 +133,6 @@ class InputHandler {
             } else {
                 this.app.emit(name, ev, true);
             }
-            ev.preventDefault();
         }
     }
     process_wheel(ev, name) {

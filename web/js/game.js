@@ -86,12 +86,15 @@ class Game extends App {
 
     }
     updateWindowSize() {
-        let f = x => x;//Math.floor;
         this.prefDimW = 5*this.map_card_grid_size[0]; //Preferred width in tile units (not pixels)
         this.prefDimH = 4.2*this.map_card_grid_size[1]; //Preferred height in tile units (not pixels)
 
         super.updateWindowSize(); //Sets dimW, dimW and tileSize to best fit the preferred dimensions
-
+        this.updateCoreWidgets();
+    }
+    updateCoreWidgets() {
+        let f = x => x;//Math.floor;
+ 
         let W = this.dimW;
         let H = this.dimH;
         this.hz_cards = f(W/5); //how many cards we need to fit horizontally in a vertical orientation screen
@@ -101,7 +104,7 @@ class Game extends App {
         this.card_aspect_ratio = cgx/cgy;
 
         this.card_size = H>W ? [this.hz_cards,this.hz_cards/this.card_aspect_ratio] : 
-                          [this.vt_cards*this.card_aspect_ratio/cgx*cgx,this.vt_cards];
+                          [this.vt_cards*this.card_aspect_ratio,this.vt_cards];
         let cw,ch;
         [cw,ch] = this.card_size;
                                       

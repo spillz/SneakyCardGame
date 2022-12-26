@@ -359,10 +359,11 @@ function rightPad(textArray){
 }
 
 class Timer {
-    constructor(time, elapsed=0) {
+    constructor(time, elapsed=0, callback=null) {
         this.elapsed = 0; //elapsed time on timer
         this.timer = time; //time when timer will be triggered
         this.triggered = false; //true on the frame when the elapsed exceeds the timer
+        this.callback = callback;
         if(elapsed>0) {
             this.tick(elapsed);
         }
@@ -377,6 +378,7 @@ class Timer {
         }
         this.elapsed+=millis;
         if(this.elapsed>=this.timer) {
+            if(this.callback != null) this.callback('timer', this);
             this.triggered = true;
             return true;
         }

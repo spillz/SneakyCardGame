@@ -15,13 +15,25 @@ class App {
         this.offsetY = 0;
         this.shakeX = 0;                 
         this.shakeY = 0;      
+        this._needsLayout = false;
 
+        // timer container
+        this.timer_tick = null;
+        this.timers = [];
 
         // widget container
         this.baseWidget = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
         this.baseWidget.parent = this;
         // modal widgets
         this.modalWidgets = [];
+    }
+    addTimer(duration, callback) {
+        let t = new Timer(duration, 0, callback);
+        this.timers.push(t);
+        return t;
+    }
+    removeTimer(timer) {
+        this.timers = this.timers.filter(t=>t!=timer);
     }
     addModal(modal) {
         this.modalWidgets.push(modal);
@@ -43,7 +55,7 @@ class App {
     }
     emit(event, data, topModalOnly=false) { //TODO: Need to suppress some events for a modal view(e.g., touches)
         if(topModalOnly && this.modalWidgets.length>0) {
-            return this.modalWidgets[this.modalWidgets.length-1];
+            return this.modalWidgets[this.modalWidgets.length-1].emit(event, data);
         } else {
             if(this.baseWidget.emit(event, data)) return true;
             for(let mw of this.modalWidgets) {
@@ -64,12 +76,17 @@ class App {
         if(this.timer_tick!=null){
             millis = Math.min(n_timer_tick - this.timer_tick, 30); //maximum of 30 ms refresh
         }
+        for(let t of this.timers) {
+            t.tick(millis);
+        }
         this.baseWidget.update(millis);
         for(let mw of this.modalWidgets) mw.update(millis);
+
         this.draw(millis);
 
         let that = this;
         window.requestAnimationFrame(() => that.update());
+        this.timer_tick = n_timer_tick;
     }
     draw(millis){
         this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
@@ -79,6 +96,7 @@ class App {
         screenshake(this);
 
         this.baseWidget._draw(millis);
+        for(let mw of this.modalWidgets) mw._draw(millis);
     }
     recurseOffsets(offset) {
         return offset;
@@ -113,12 +131,33 @@ class App {
         this.dimH = Math.floor(sh/scale);
         this.dimW = Math.floor(sw/scale);    
     }
+    applyHints(c) {
+        let hints = c.hints;
+        if('x' in hints) c.x = this.x + hints['x']*this.w;
+        if('y' in hints) c.y = this.y + hints['y']*this.h;
+        if('center_x' in hints) c.center_x = this.x + hints['center_x']*this.w;
+        if('center_y' in hints) c.center_y = this.y + hints['center_y']*this.h;
+        if('right' in hints) c.right = this.x + hints['right']*this.w;
+        if('bottom' in hints) c.bottom = this.x + hints['bottom']*this.w;
+        if('w' in hints) c.w = hints['x']*this.w;
+        if('h' in hints) c.h = hints['h']*this.h;        
+    }
     updateWindowSize() {
         this.w = window.innerHeight;
         this.h = window.innerWidth;
         this.tileSize = this.getTileScale();
         this.fitMaptoTileSize(this.tileSize);
         this.setupCanvas();
+
+        this.baseWidget.w = this.dimW;
+        this.baseWidget.h = this.dimH;
+        this.applyHints(this.baseWidget);
+        for(let mw of this.modalWidgets) {
+            mw.w = this.dimW;
+            mw.h = this.dimH;
+            this.applyHints(mw);
+        }
+        this._needsLayout = true;
     }
 }
 
@@ -128,6 +167,7 @@ class Widget extends Rect {
     bgColor = "black";
     outlineColor = "gray";
     _animation = null;
+    hints = {};
     constructor(rect, properties=null) {
         super(rect);
         this.parent = null;
@@ -257,8 +297,22 @@ class Widget extends Rect {
         for(let c of this.children) if(c.emit(event, touch)) return true;
         return false;
     }
+    applyHints(c) {
+        let hints = c.hints;
+        if('x' in hints) c.x = this.x + hints['x']*this.w;
+        if('y' in hints) c.y = this.y + hints['y']*this.h;
+        if('center_x' in hints) c.center_x = this.x + hints['center_x']*this.w;
+        if('center_y' in hints) c.center_y = this.y + hints['center_y']*this.h;
+        if('right' in hints) c.right = this.x + hints['right']*this.w;
+        if('bottom' in hints) c.bottom = this.x + hints['bottom']*this.w;
+        if('w' in hints) c.w = hints['x']*this.w;
+        if('h' in hints) c.h = hints['h']*this.h;        
+    }
     layoutChildren() { //The default widget does not layout it's children, a la kivy FloatLayout
-        for(let c of this.children) c.layoutChildren();
+        for(let c of this.children) {
+            this.applyHints(c);
+            c.layoutChildren();
+        }
         //TODO: This should also handle layout of self in case the sizing is being set externally(e.g., to lock an aspect ratio)
         //If so, rename to layoutSelfAndChildren or just layout?
     }
@@ -736,10 +790,12 @@ class ModalView extends Widget {
     closeOnTouchOutside = true;
     popup() {
         let app = App.get();
+        this.parent = app;
         app.addModal(this);
     }
     close() {
         let app = App.get();
+        this.parent = null;
         app.removeModal(this);
     }
 }
