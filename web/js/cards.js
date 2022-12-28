@@ -153,12 +153,6 @@ class MapCard extends Widget {
 		this.processTouches=true;
 		this.updateProperties(properties);
 		}
-	on_touch_up(event, touch) {
-        if(this.renderRect().collide(touch.rect)) this.faceUp = !this.faceUp;
-	}
-	on_mouse_up(event, touch) {
-        if(this.renderRect().collide(touch.rect)) this.faceUp = !this.faceUp;
-	}
 	draw() {
 		let app = App.get();
 		if(!this.faceUp) {
@@ -941,11 +935,13 @@ class GasAction extends PlayerAction {
 			return true;
 		}
 		if(message == 'map_choice_selected') {
+			let obj = props['touch_object'];
 			let guards_affected = [...board.iter_tokens('G')].filter(t=> 
 				['dozing', 'alert'].includes(t.state)
-				&& 0 < dist(board.active_player_token.map_pos, t.map_pos) <= this.radius);
+				&& dist(obj.map_pos, t.map_pos) <= this.radius);
 			guards_affected.map(g=>g.state = 'unconscious');
 			board.token_update();
+			this.spent=this.value_allowance();
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 			return ;
 		}
@@ -955,7 +951,8 @@ class GasAction extends PlayerAction {
 		if(!(board.active_player_clashing())) {
 			let pp = board.active_player_token.map_pos;
 			let map_choices = [...board.iter_types_in_range(pp, board.path_types, this.value_allowance())]
-							.filter(t=>board.has_line_of_sight(t, pp, board.building_types))
+							.filter(t=>board.has_line_of_sight(t, pp, board.building_types)
+								&& !arrEq(board.active_player_token.map_pos, t))
 							.map(t=>board.make_choice(t, this, 'touch'));
 			board.map_choices = map_choices;
 		}
@@ -1030,19 +1027,19 @@ class LockpickAction extends PlayerAction {
 		}
 		if(message == 'map_choice_selected') {
 			let obj = props ['touch_object'];
-			let target = [...board.iter_tokens('T')].filter(t=>t.map_pos==obj.map_pos);
+			let target = [...board.iter_tokens('T')].filter(t=>arrEq(t.map_pos,obj.map_pos));
 			if(target.length > 0) {
-				let target = target [0];
+				let t0 = target[0];
 				let pick = this.value_allowance();
 				board.alert_nearby_guards(this.base_noise);
-				if(pick >= target.lock_level) {
-					target.picked = true;
-					board.tokens.remove(target);
+				if(pick >= t0.lock_level) {
+					t0.picked = true;
+					board.tokens = board.tokens.filter(t=>t!=t0);
 					this.spent = pick;
-					if(target.has_loot) {
+					if(t0.has_loot) {
 						let loot_decks = [playarea.loot1, playarea.loot2, playarea.loot3];
-						loot_decks [target.loot_level - 1].select_draw(1, (1 + pick) - target.lock_level);
-						this.loot_pos = target.map_pos;
+						loot_decks [t0.loot_level - 1].select_draw(1, (1 + pick) - t0.lock_level);
+						this.loot_pos = t0.map_pos;
 					}
 				}
 			}
@@ -1064,10 +1061,10 @@ class LockpickAction extends PlayerAction {
 		board.map_choices = [];
 		if(!(board.active_player_clashing())) {
 			if(this.loot_pos !== null) {
-				let move_choices = [...board.iter_types_in_range(this.loot_pos, board.path_types, {radius: 1})]
+				let move_choices = [...board.iter_types_in_range(this.loot_pos, board.path_types, 1)]
 									.filter(m=>dist(this.loot_pos, m)>=1)
 									.map(m=>board.make_choice(m, this, set_choice_type(m, p.map_pos, board, 3)));
-				board.map_choices = map_choices;
+				board.map_choices = move_choices;
 			}
 			else if(!board.building_types.includes(board [board.active_player_token.map_pos])) {
 				let target_choices = [...board.iter_targets()].filter(t=>dist(p.map_pos,t)==1);
@@ -1156,7 +1153,7 @@ class MarketAction extends PlayerAction {
 		if(message == 'map_choice_selected') {
 			board.alert_nearby_guards(this.base_noise);
 			var obj = props['touch_object'];
-			var market = board.iter_tokens('M').filter(t=>t.map_pos==obj.map_pos);
+			var market = board.iter_tokens('M').filter(t=>arrEq(t.map_pos,obj.map_pos));
 			if(market.length > 0) {
 				this.spent = this.value_allowance();
 				this.market_pos = obj.map_pos;

@@ -90,7 +90,7 @@ class CardSelector extends ModalView {
 		return super.on_touch_down(...arguments);
 	}
 	on_touch_up(event, touch) {
-		if(this.grabbed!=this) {
+		if(touch.grabbed==this) {
 			touch.ungrab(this);
 			let card = this._touched_card;
 			if(!(card.renderRect().collide(touch.rect))) {
@@ -149,13 +149,13 @@ class CardSplay extends Widget {
 		var cardw = app.card_size[0];
 		var cardh = app.card_size[1];
 		let f = x=>x;
-		var mul = (this.shownCard == null || this.shownCard == this.children[this.children.length-1] || this.children.length <= 1 ? 1 : 2);
+		var mul = (this.shownCard == null || this.shownCard == this.children[this.children.length-1] || this.children.length <= 1) ? 1 : 2;
 		if(this.orientation == 'horizontal') {
 			var exp_len = cardw;
 			var offset = 0;
 			if(this.children.length > 1) {
 				var delta = f(Math.max(Math.min(cardw * this.cardSpreadScale, 
-					(this.w - cardw * mul) / ((this.children.length + 1) - mul)), 2/app.tileSize));
+					(this.w - cardw * mul) / (this.children.length - mul)), 2/app.tileSize));
 			}
 			else {
 				var delta = 0;
@@ -494,21 +494,20 @@ class PlayerTraits extends CardSplay {
 		c.faceUp = true;
 	}
 	on_touch_up(event, touch) { //rotate through trait cards --TODO: limit once per turn
+		super.on_touch_up(...arguments);
 		let r = this.renderRect()
-		let stop = false;
 		if(this.children.length>0 && r.collide(touch.rect)) {
 			this.children = [this.children[this.children.length-1],...this.children.slice(0,-1)];
 			this.active_card = this.children[this.children.length-1];
-			stop = true;
+			return true;
 		}
-		stop = stop || super.on_touch_up(...arguments);
-		return stop;
 	}
 }
 
 class ActiveCardSplay extends CardSplay {
 	active_card = null;
 	on_child_added(event, child) {
+		child.selected=false;
 		if(this.children.length > 0) {
 			this.active_card = this.children [this.children.length-1];
 		}
@@ -717,7 +716,7 @@ class SkillDeck extends CardSplay {
 			return ;
 		}
 		for(var c of cards) {
-			this.children.removeChild(c);
+			this.removeChild(c);
 		}
 		let cardselector = new CardSelector(cards, {numToPick: num_to_pick});
 		cardselector.bind('closed', (e,c,p)=>this.card_picked(e,c,p));
@@ -738,14 +737,15 @@ class SkillDeck extends CardSplay {
 		}
 	}
 }
+
 class LootDeck extends CardSplay {
 	select_draw(num_to_pick=1, num_offered=1) {
 		let app = App.get();
 		var cards = this.children.slice(-num_offered);
 		for(var c of cards) {
-			this.children.removeChild(c);
+			this.removeChild(c);
 		}
-		let cardselector = CardSelector(cards, {numToPick: num_to_pick});
+		let cardselector = new CardSelector(cards, {numToPick: num_to_pick});
 		cardselector.bind('closed', (e,c,p)=>this.card_picked(e,c,p));
 		cardselector.popup();
 	}

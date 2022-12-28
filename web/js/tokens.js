@@ -138,7 +138,7 @@ class GuardToken extends Token {
 				stats.knockouts++;
 				stats.t_knockouts++;
 			}
-			if(this.state == 'alert' && app.board.active_player_token.map_pos == this.map_pos) {
+			if(this.state == 'alert' && arrEq(app.board.active_player_token.map_pos, this.map_pos)) {
 				stats.contacts++;
 				stats.t_contacts++;
 			}
@@ -201,6 +201,7 @@ class GuardToken extends Token {
 				var eyeleft = r.x + r.w / 3 - this.w*3/40;
 				var eyeright = r.x + r.w / 3 + this.w*3/40;
 				var eyemiddle = r.center_y;
+				app.ctx.lineWidth = r.w/40;
 				app.ctx.beginPath();
 				app.ctx.moveTo(eyeleft, eyemiddle);
 				app.ctx.lineTo(eyeright, eyemiddle);
