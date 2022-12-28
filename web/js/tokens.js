@@ -106,21 +106,21 @@ class MarketToken extends Token {
 		ctx.fillStyle = color;
 		ctx.fill();	
 	}
-	// on_touch_down(touch) {
-	// 	if(this.collide_point(...touch.pos)) {
-	// 		touch.grab(self);
-	// 		return true;
-	// 	}
-	// }
-	// on_touch_up(touch) {
-	// 	if(touch.grab_current == self) {
-	// 		touch.ungrab(self);
-	// 		if(this.collide_point(...touch.pos)) {
-	// 			this.parent.parent.parent.marketdeck.select_draw(0, 4, 0);
-	// 		}
-	// 		return true;
-	// 	}
-	// }
+	on_touch_down(event, touch) {
+		if(this.renderRect().collide(touch.rect)) {
+			touch.grab(this);
+			return true;
+		}
+	}
+	on_touch_up(event, touch) {
+		let app=App.get();
+		if(touch.grabbed != this) return; 
+		touch.ungrab();
+		if(this.renderRect().collide(touch.rect)) {
+			app.marketdeck.select_draw(0, 4, 0);
+			return true;
+		}
+	}
 }
 
 class GuardToken extends Token {

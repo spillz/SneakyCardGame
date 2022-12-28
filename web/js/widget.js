@@ -1,5 +1,23 @@
 
 class App {
+    //App is the main object class for a kivy-like UI application
+    //to run in the browser. 
+    //Currently it is setup in a singleton model allowing one app
+    //per html page.
+    //The App maintains the HTML5 Canvas and drawing Context
+    //It manages the update loop in update method
+    //User interaction is handled in the inputHandler instance
+    //and it will automatically bubble input events through
+    //the widget heirarchy.
+    //Every app has a baseWidget and an array of modalWidgets.
+    //Global events can be propagated to baseWidget and modalWidgets
+    //via the emit method (it will be up to child widgets to
+    //emit thos events to tehir own children -- see on_touch_up
+    //and on_touch_down implementations).
+    //The modalWidgets are drawn over the top of the baseWidget
+    //Use App.get() to access the running app instance. The
+    //widgets added toh app will also access the running
+    //app instance 
     static appInstance = null;
     constructor() {
         if(App.appInstance!=null) return appInstance; //singleton
@@ -22,7 +40,7 @@ class App {
         this.timers = [];
 
         // widget container
-        this.baseWidget = new Widget(new Rect([0, 0, this.dimW, this.dimH]));
+        this.baseWidget = new Widget(null, {hints:{x:0, y:0, w:1, h:1}});
         this.baseWidget.parent = this;
         // modal widgets
         this.modalWidgets = [];
@@ -37,6 +55,7 @@ class App {
     }
     addModal(modal) {
         this.modalWidgets.push(modal);
+        this._needsLayout = true;
     }
     removeModal(modal) {
         this.modalWidgets = this.modalWidgets.filter(m => m!=modal);
@@ -70,6 +89,12 @@ class App {
             yield *mw.iter(...arguments);
         }
     }
+    findById(id) {
+        for(let w of this.iter(true, false)) {
+            if('id' in w && w.id==id) return w;
+        }
+        return null;
+    }
     update() {
         let millis = 15;
         let n_timer_tick = Date.now();
@@ -79,13 +104,14 @@ class App {
         for(let t of this.timers) {
             t.tick(millis);
         }
+        if(this._needsLayout) this.layoutChildren();
+
         this.baseWidget.update(millis);
         for(let mw of this.modalWidgets) mw.update(millis);
 
         this.draw(millis);
 
-        let that = this;
-        window.requestAnimationFrame(() => that.update());
+        window.requestAnimationFrame(() => this.update());
         this.timer_tick = n_timer_tick;
     }
     draw(millis){
@@ -133,14 +159,14 @@ class App {
     }
     applyHints(c) {
         let hints = c.hints;
-        if('x' in hints) c.x = this.x + hints['x']*this.w;
-        if('y' in hints) c.y = this.y + hints['y']*this.h;
-        if('center_x' in hints) c.center_x = this.x + hints['center_x']*this.w;
-        if('center_y' in hints) c.center_y = this.y + hints['center_y']*this.h;
-        if('right' in hints) c.right = this.x + hints['right']*this.w;
-        if('bottom' in hints) c.bottom = this.x + hints['bottom']*this.w;
-        if('w' in hints) c.w = hints['x']*this.w;
-        if('h' in hints) c.h = hints['h']*this.h;        
+        if('w' in hints) c.w = hints['w']*this.dimW;
+        if('h' in hints) c.h = hints['h']*this.dimH;
+        if('x' in hints) c.x = hints['x']*this.dimW;
+        if('y' in hints) c.y = hints['y']*this.dimH;
+        if('center_x' in hints) c.center_x = hints['center_x']*this.dimW;
+        if('center_y' in hints) c.center_y = hints['center_y']*this.dimH;
+        if('right' in hints) c.right = hints['right']*this.dimW;
+        if('bottom' in hints) c.bottom = hints['bottom']*this.dimH;
     }
     updateWindowSize() {
         this.w = window.innerHeight;
@@ -149,21 +175,33 @@ class App {
         this.fitMaptoTileSize(this.tileSize);
         this.setupCanvas();
 
-        this.baseWidget.w = this.dimW;
-        this.baseWidget.h = this.dimH;
-        this.applyHints(this.baseWidget);
-        for(let mw of this.modalWidgets) {
-            mw.w = this.dimW;
-            mw.h = this.dimH;
-            this.applyHints(mw);
-        }
         this._needsLayout = true;
+    }
+    layoutChildren() {
+        //Key concept: 
+        //As a general rule, each widget (and the app) controls the placement of its child widgets.
+        //Whenever the layout properties (x,y,w,h etc) of any widget (or the app itself) have changed, 
+        //all layout properites of the children of that widget will be updated at the next update call. 
+        //Each widget has an internal _needsLayout boolean that tracks whether the layoutChildren should 
+        //be called in that widget's update routine. That flag gets cleared once the layoutChildren of the 
+        //child has been called to prevent multiple unecessary calls.
+
+        // The layout in the app will respect hints but otherwise assume the widgets will control their
+        // size and postioning
+        this._needsLayout = false;
+//        this.baseWidget.rect = new Rect([0, 0, this.dimW, this.dimH])
+        this.applyHints(this.baseWidget);
+        this.baseWidget.layoutChildren();
+        for(let mw of this.modalWidgets) {
+//            mw.rect = new Rect([0, 0, this.dimW, this.dimH])
+            this.applyHints(mw);
+            mw.layoutChildren();
+        }
     }
 }
 
 
 class Widget extends Rect {
-    //TODO: Do we want pos_hint, size_hint?? maybe just "hint" collaspsing all hints in one object
     bgColor = "black";
     outlineColor = "gray";
     _animation = null;
@@ -224,11 +262,21 @@ class Widget extends Rect {
             yield *c.iter(...arguments);
         }
     }
+    findById(id) {
+        for(let w of this.iter(true, false)) {
+            if('id' in w && w.id==id) return w;
+        }
+        return null;
+    }
     recurseOffsets(offset) {
         return this.parent.recurseOffsets(offset);
     }
-    addChild(child) {
-        this._children.push(child);
+    addChild(child, pos=-1) {
+        if(pos==-1) {
+            this._children.push(child);
+        } else {
+            this._children = [...this._children.slice(0,pos), child, ...this._children.slice(pos)];
+        }
         this.emit('child_added', child);
         child.parent = this;
         this._needsLayout = true;
@@ -257,9 +305,25 @@ class Widget extends Rect {
         this._needsLayout = true;
         this[0] = val;
     }
+    set center_x(val) {
+        this._needsLayout = true;
+        this[0] = val-this[2]/2;
+    }
+    set right(val) {
+        this._needsLayout = true;
+        this[0] = val-this[2];
+    }
     set y(val) {
         this._needsLayout = true;
         this[1] = val;
+    }
+    set center_y(val) {
+        this._needsLayout = true;
+        this[1] = val-this[3]/2;
+    }
+    set bottom(val) {
+        this._needsLayout = true;
+        this[1] = val-this[3];
     }
     set w(val) {
         this._needsLayout = true;
@@ -272,8 +336,20 @@ class Widget extends Rect {
     get x() {
         return this[0];
     }
+    get center_x() {
+        return this[0] + this[2]/2;
+    }
+    get right() {
+        return this[0] + this[2];
+    }
     get y() {
         return this[1];
+    }
+    get center_y() {
+        return this[1] + this[3]/2;
+    }
+    get bottom() {
+        return this[1] + this[3];
     }
     get w() {
         return this[2];
@@ -299,16 +375,17 @@ class Widget extends Rect {
     }
     applyHints(c) {
         let hints = c.hints;
+        if('w' in hints) c.w = hints['w']*this.w;
+        if('h' in hints) c.h = hints['h']*this.h;        
         if('x' in hints) c.x = this.x + hints['x']*this.w;
         if('y' in hints) c.y = this.y + hints['y']*this.h;
         if('center_x' in hints) c.center_x = this.x + hints['center_x']*this.w;
         if('center_y' in hints) c.center_y = this.y + hints['center_y']*this.h;
         if('right' in hints) c.right = this.x + hints['right']*this.w;
-        if('bottom' in hints) c.bottom = this.x + hints['bottom']*this.w;
-        if('w' in hints) c.w = hints['x']*this.w;
-        if('h' in hints) c.h = hints['h']*this.h;        
+        if('bottom' in hints) c.bottom = this.y + hints['bottom']*this.y;
     }
-    layoutChildren() { //The default widget does not layout it's children, a la kivy FloatLayout
+    layoutChildren() { //The default widget has children but does not apply a layout a la kivy FloatLayout
+        this._needsLayout = false;
         for(let c of this.children) {
             this.applyHints(c);
             c.layoutChildren();
@@ -340,7 +417,6 @@ class Widget extends Rect {
             c._draw(millis);
     }
     draw() {
-//        App.get().sprites.entitiesItems.draw(this.sprite, this.getDisplayX(), this.getDisplayY(), this.getFlipped());
         //Usually widget should draw itself, then draw children in order
         //TODO: Get rid of the ugly scale transforms
         let r = this.renderRect();
@@ -355,11 +431,7 @@ class Widget extends Rect {
     }
     update(millis) {
         if(this._animation!=null) this._animation.update(millis);
-        if(this._needsLayout) {
-            this.layoutChildren();
-            this._needsLayout = false;
-//            this._layoutHints = {};
-        }
+        if(this._needsLayout) this.layoutChildren();
         for(let c of this.children)
             c.update(millis);
     }
@@ -453,6 +525,31 @@ class Label extends Widget {
     }
 }
 
+class Button extends Label {
+    selectColor = colorString([0.7,0.7,0.8]);
+    bgColor = colorString([0.5,0.5,0.5]);
+    on_touch_down(event, touch) {
+        if(this.renderRect().collide(touch.rect)) {
+            touch.grab(this);
+            return true;
+        }
+    }
+    on_touch_up(event, touch) {
+        if(touch.grabbed!=this) return;
+        touch.ungrab();
+        if(this.renderRect().collide(touch.rect)) {
+            this.emit('press', null);
+            return true;
+        }
+    }
+    draw() {
+        let saved = this.bgColor;
+        if(App.get().inputHandler.grabbed==this) this.bgColor = this.selectColor;
+        super.draw();
+        this.bgColor = saved;
+    }
+}
+
 class Image extends Widget {
 
 }
@@ -485,6 +582,7 @@ class BoxLayout extends Widget {
         this._needsLayout = true;
     }
     layoutChildren() {
+        this._needsLayout = false;
         if(this.orientation=='vertical') {
             let num = this.children.length;
             let h = this.h - this.spacingY*num - 2*this.paddingY;
@@ -555,6 +653,7 @@ class GridLayout extends Widget {
         this._needsLayout = true;
     }
     layoutChildren() {
+        this._needsLayout = false;
         if(this.numX>0) {
             let numX = this.numX;
             let numY = Math.ceil(this.children.length/this.numX);
@@ -619,13 +718,14 @@ class ScrollView extends Widget {
         this.oldMouse = null;
     }
     layoutChildren() {
+        this._needsLayout = false;
         this.setScrollX(this.scrollX);
         this.setScrollY(this.scrollY);
         if(!this.scrollW) this.children.apply(c=>c.w=this.w);
         if(!this.scrollH) this.children.apply(c=>c.h=this.h);
-        // this.children[0].x = this.x-this.scrollX;
-        // this.children[0].y = this.y-this.scrollY;
-        // this.children[0].layoutChildren();
+        for(let c of this.children) {
+            c.layoutChildren();
+        }
     }
     *iter(recursive=true, inView=true) {
         yield this;
@@ -639,6 +739,17 @@ class ScrollView extends Widget {
                 yield *c.iter(...arguments);
             }
         }
+    }
+    applyHints(c) {
+        let hints = c.hints;
+        if('w' in hints) c.w = hints['w']*this.w;
+        if('h' in hints) c.h = hints['h']*this.h;        
+        if('x' in hints) c.x = hints['x']*this.w;
+        if('y' in hints) c.y = hints['y']*this.h;
+        if('center_x' in hints) c.center_x = hints['center_x']*this.w;
+        if('center_y' in hints) c.center_y = hints['center_y']*this.h;
+        if('right' in hints) c.right = hints['right']*this.w;
+        if('bottom' in hints) c.bottom = hints['bottom']*this.y;
     }
     on_scrollW(event, value) {
         this._needsLayout = true;
@@ -793,7 +904,8 @@ class ModalView extends Widget {
         this.parent = app;
         app.addModal(this);
     }
-    close() {
+    close(exitVal=0) {
+        this.emit('closed',exitVal);
         let app = App.get();
         this.parent = null;
         app.removeModal(this);
