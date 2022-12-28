@@ -1,6 +1,34 @@
-Animation class implementation [done 12/24/2022]
-Mouse touch emulation [done 12/25/2022]
-Card closeup implementation
-Card picker implementation
+Bug fix remaining cards (e.g., water arrow)
 Mission menu and stats screen
 Stealth card action (slip through the light)
+More detailed card text
+Strip rect arg from all widget constructors and put in properties instead
+TextEntry widget using DOM Input
+Fix Layout (use a fixed size card and larger map card)
+Implement zoom in the scroll view
+Centering card splay
+Tutorial
+Map cards start face down and are revealed (at least in some missions)
+Implement missions
+Implement card color/glyph system for combos [moon (cunning), fire (attack), stream (movement), air(hiding)]
+Add church sites (card scrapping in exchange for donation)
+Sites that grant bonuses if you start a turn on them
+More events (e.g., cards that stuff negative cards in player's deck)
+More traits
+More playing cards
+Graphical improvements: Textured cards
+Graphical improvements: Map texturing
+Graphical improvements: Token texturing and animation
+Graphical improvements: Particle animation for actions
+Graphical improvements: Idle animation
+Sound: music
+Sound: guard audibles
+Sound: misc
+Keyboard support
+Local co-op
+Network co-op
+
+Card closeup implementation [done 12/28/2022]
+Card picker implementation [done 12/26/2022]
+Mouse touch emulation [done 12/25/2022]
+Animation class implementation [done 12/24/2022]
