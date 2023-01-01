@@ -105,6 +105,20 @@ function screenshake(app){
 }
 
 function drawText(ctx, text, size, centered, rect, color){
+    if(size<1) {
+        ctx.save();
+        ctx.scale(0.01,0.01);
+        ctx.fillStyle = color;
+        ctx.font = Math.ceil(size*100) + "px monospace";
+        let textX = rect.x;
+        let textY = rect.y+rect.h-(rect.h-size)/2;
+        if(centered){
+            textX += (rect.w-0.01*ctx.measureText(text).width)/2;
+        }
+        ctx.fillText(text, textX*100, textY*100);
+        ctx.restore();
+        return;
+    }
     ctx.fillStyle = color;
     ctx.font = size + "px monospace";
     let textX = rect.x;
@@ -117,6 +131,36 @@ function drawText(ctx, text, size, centered, rect, color){
 
 function drawWrappedText(ctx, text, size, centered, rect, color){
     //TODO: handle explicit newlines in text
+    if(size<1) {
+        ctx.save();
+        ctx.scale(0.01,0.01);
+        ctx.fillStyle = color;
+        ctx.font = Math.ceil(size*100) + "px monospace";
+
+        let y = rect.y+size;
+        while(text!="") {
+            let x = rect.x;
+            let rowsNeeded = 0.01*ctx.measureText(text).width / rect.w;
+            let maxletters = Math.floor(text.length/rowsNeeded);
+            let substr = text.substring(0,maxletters);
+            let lastIndex = substr.lastIndexOf(" ");
+            if(lastIndex<0 || substr.length==text.length) {
+                lastIndex = substr.length;
+            }
+            substr = substr.substring(0, lastIndex);
+            text = text.substring(lastIndex+1);
+    
+            if(centered) {
+                let w = 0.01*ctx.measureText(substr).width;
+                x = x + (rect.w - w)/2
+            }
+            ctx.fillText(substr, x*100, y*100);
+    
+            y += size;
+        }    
+        ctx.restore();
+        return;
+    }
     ctx.fillStyle = color;
     ctx.font = size + "px monospace";
 

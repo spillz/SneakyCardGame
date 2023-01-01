@@ -8,6 +8,12 @@ class Touch {
             this[p] = props[p];
         }
     }
+    copy() {
+        return new Touch({pos:[...this.pos], state:this.state, device:this.device, nativeObject:this.nativeObject});
+    }
+    local(widget) {
+        return new Touch({pos:[...widget.to_local(this.pos)], state:this.state, device:this.device, nativeObject:this.nativeObject});
+    }
     get rect() {
         return new Rect([...this.pos, 0, 0]);
     }
@@ -80,7 +86,7 @@ class InputHandler {
         this.grabbed = null;
     }
     process_back(ev) {
-        console.log('Back pressed', ev)
+        //TODO: This is not working
         let state = true;
         this.set("menu", state); //TODO: true or false depend on ev state
     }
@@ -89,19 +95,14 @@ class InputHandler {
         // Use the event's data to call out to the appropriate gesture handlers
         if(this.grabbed != null) {
             for(let to of ev.changedTouches) { 
-                let t = new Touch({pos:[to.clientX, to.clientY], state:name, nativeObject:to});
-                let savedOffsets = [this.app.offsetX, this.app.offsetY];
-//                let offsets = this.grabbed.parent.recurseOffsets([0,0]);
-                let offsets = this.grabbed.parent.recurseOffsets([this.app.offsetX/this.app.tileSize,this.app.offsetY/this.app.tileSize]);
-                this.app.offsetX = offsets[0]*this.app.tileSize;
-                this.app.offsetY = offsets[1]*this.app.tileSize;
+                let pos0 = [to.clientX, to.clientY];
+                let pos = [...this.grabbed.iterParents()].reverse().reduce((prev,cur)=>cur.to_local(prev), pos0);
+                let t = new Touch({pos:pos, state:name, nativeObject:to});
                 this.grabbed.emit(name, t);
-                this.app.offsetX = savedOffsets[0];
-                this.app.offsetY = savedOffsets[1];
             }
         } else {
             for(let to of ev.changedTouches) { 
-                let t = new Touch({pos:[to.clientX, to.clientY], state:name, nativeObject:to});
+                let t = new Touch({pos:this.app.to_local([to.clientX, to.clientY]), state:name, nativeObject:to});
                 this.app.emit(name, t, true);
             }
         }
@@ -114,17 +115,13 @@ class InputHandler {
         if(this.mouseTouchEmulation) {
             let mapping = {'mouse_up':'touch_up','mouse_down':'touch_down','mouse_move':'touch_move','mouse_cancel':'touch_cancel'}
             if(ev.buttons!=1 && name!='mouse_up') return;
-            let t = new Touch({pos:[ev.clientX, ev.clientY], state:mapping[name], nativeObject:ev});
             if(this.grabbed != null) {
-                let savedOffsets = [this.app.offsetX, this.app.offsetY];
-//                let offsets = this.grabbed.parent.recurseOffsets([0,0]);
-            let offsets = this.grabbed.parent.recurseOffsets([this.app.offsetX/this.app.tileSize,this.app.offsetY/this.app.tileSize]);
-            this.app.offsetX = offsets[0]*this.app.tileSize;
-                this.app.offsetY = offsets[1]*this.app.tileSize;
+                let pos0 = [ev.clientX, ev.clientY];
+                let pos = [...this.grabbed.iterParents()].reverse().reduce((prev,cur)=>cur.to_local(prev), pos0);
+                let t = new Touch({pos:pos, state:mapping[name], nativeObject:ev});
                 this.grabbed.emit(mapping[name], t);
-                this.app.offsetX = savedOffsets[0];
-                this.app.offsetY = savedOffsets[1];
             } else {
+                let t = new Touch({pos:this.app.to_local([ev.clientX, ev.clientY]), state:mapping[name], nativeObject:ev});
                 this.app.emit(mapping[name], t, true);
             }
         } else {

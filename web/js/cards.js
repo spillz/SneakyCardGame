@@ -159,8 +159,9 @@ class MapCard extends Widget {
 			super.draw();
 			return;
 		}
-        let rr = this.renderRect();
-        var size = [rr.w / this.w - 1, rr.h / this.h - 1];
+        let rr = this.rect;
+		let size = [1 - 1.0/app.tileSize,1 - 1.0/app.tileSize];
+//        var size = [rr.w / this.w - 1, rr.h / this.h - 1];
         let color0 = colorString([0,0,0]);
         for(var pos of this.map.iter_all()) {
 			var i,j;
@@ -176,11 +177,12 @@ class MapCard extends Widget {
                 app.ctx.fill();    
             } 
             else {
-                var s = [size [0] + 1, size [1] + 1];
+//				let s = size;
+                var s = [size[0] + 1.0/app.tileSize, size[1] + 1.0/app.tileSize];
                 app.ctx.fillStyle = color;
                 app.ctx.fill();    
 				app.ctx.strokeStyle = color0;
-				app.ctx.lineWidth = 1;
+				app.ctx.lineWidth = 1.0/app.tileSize;
 				var cx = x + s [0] / 2;
                 var cy = y + s [1] / 2;
                 var adj = [...this.map.iter_types_in_range([i, j], this.building_types, 1)]

@@ -14,14 +14,14 @@ class MapChoice extends BoxLayout {
 		this.h = 1;
 	}
 	on_touch_down(event, touch) {
-		let r = this.renderRect();
+		let r = this;
 		if(r.collide(touch.rect)) {
 			App.get().inputHandler.grab(this);
 			return true;
 		}
 	}
 	on_touch_up(event, touch) {
-		let r = this.renderRect();
+		let r = this;
 		App.get().inputHandler.ungrab();
 		if(r.collide(touch.rect)) {
 			if(['touch', 'visible'].includes(this.choice_type)) {
@@ -36,7 +36,7 @@ class MapChoice extends BoxLayout {
 	draw() {
 		let app=App.get();
 		let ctx = app.ctx;
-		let r = this.renderRect();
+		let r = this.rect;
 
         //     rgb: (240,69,0) if self.choice_type=='touch' else(192,0,0) if self.choice_type=='visible' else(170,170,170)
 		ctx.fillStyle = self.choice_type=='touch' ? colorString([240/255,69/255,0]) : colorString([192/255,0,0]);
@@ -46,7 +46,7 @@ class MapChoice extends BoxLayout {
 		let w = 3*r.w/5;
 		let h = 3*r.h/5;
 		ctx.strokeStyle = colorString([0.8,0.8,0]);
-		ctx.lineWidth = 1+r.w/20;
+		ctx.lineWidth = 2.0/app.tileSize;
 
 		ctx.beginPath();
 		ctx.moveTo(r.x + r.w / 10, r.y);
@@ -83,14 +83,14 @@ class TokenMapChoice extends MapChoice {
 		this.updateProperties(properties);
 	}
 	on_touch_down(event, touch) {
-		let r = this.renderRect();
+		let r = this;
 		if(r.collide(touch.rect)) {
 			App.get().inputHandler.grab(this);
 			return true;
 		}
 	}
 	on_touch_up(event, touch) {
-		let r = this.renderRect();
+		let r = this;
 		App.get().inputHandler.ungrab();
 		if(r.collide(touch.rect)) {
 			this.listener.activate('map_choice_selected', {touch_object: this});

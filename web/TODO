@@ -1,11 +1,13 @@
+Catch page unload
+Fix the placeholder player token icon
+Load/save game in progress
 Bug fix remaining cards (e.g., water arrow)
 Mission menu and stats screen
 Stealth card action (slip through the light)
 More detailed card text
 Strip rect arg from all widget constructors and put in properties instead
 TextEntry widget using DOM Input
-Fix Layout (use a fixed size card and larger map card)
-Implement zoom in the scroll view
+Fix Screen Layout (use a fixed size card and larger map card)
 Centering card splay
 Tutorial
 Map cards start face down and are revealed (at least in some missions)
@@ -16,6 +18,8 @@ Sites that grant bonuses if you start a turn on them
 More events (e.g., cards that stuff negative cards in player's deck)
 More traits
 More playing cards
+Levels of guards and other enemy types (e.g., dog)
+More terrain types and building heights
 Graphical improvements: Textured cards
 Graphical improvements: Map texturing
 Graphical improvements: Token texturing and animation
@@ -28,6 +32,8 @@ Keyboard support
 Local co-op
 Network co-op
 
+Refactor parent/child layout and touch interaction using "local" coordinates. No more renderrect and recurseoffsets garbage [12/31/2022]
+Implement zoom in the scroll view [done 12/31/2022]
 Card closeup implementation [done 12/28/2022]
 Card picker implementation [done 12/26/2022]
 Mouse touch emulation [done 12/25/2022]

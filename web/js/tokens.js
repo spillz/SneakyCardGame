@@ -16,6 +16,8 @@ class Token extends Widget {
 		if(d>0) {
 			anim.add({x: this.map_pos[0]+this.off[0], y: this.map_pos[1]+this.off[1]}, 50*d);
 			anim.start(this);	
+		} else {
+			this.rect = [this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1];
 		}
 //		this.rect = new Rect([this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1]);
 	}
@@ -27,7 +29,7 @@ class Token extends Widget {
 class PlayerToken extends Token {
 	draw() {
 		let app = App.get();
-		let r = this.renderRect();
+		let r = this.rect;
 
 		//Draw head
 		app.ctx.fillStyle = colorString([0.65,0.65,0.75]);
@@ -70,9 +72,9 @@ class TargetToken extends Token {
 		let app = App.get();
 		let ctx = app.ctx;
 		let color = colorString([0.1,0.3,0.8]);
-		let r = this.renderRect();
-		var x = r.x + Math.floor(r.w / 5);
-		var y = r.y + Math.floor(r.h / 5);
+		let r = this.rect;
+		var x = r.x + (r.w / 5);
+		var y = r.y + (r.h / 5);
 		var w = 3*r.w/5;
 		var h = 3*r.h/5;
 		ctx.beginPath();
@@ -94,7 +96,7 @@ class MarketToken extends Token {
 		let app = App.get();
 		let ctx = app.ctx;
 		let color = colorString([0.6, 0.4, 0]);
-		let r = this.renderRect();
+		let r = this.rect;
 		var x = r.x + r.w/5; //Math.floor(r.w / 5);
 		var y = r.y + r.h/5; //Math.floor(r.h / 5);
 		var w = 3*r.w/5; // Math.floor((Math.floor(3 * r.w / 5)) / 2) * 2;
@@ -107,7 +109,7 @@ class MarketToken extends Token {
 		ctx.fill();	
 	}
 	on_touch_down(event, touch) {
-		if(this.renderRect().collide(touch.rect)) {
+		if(this.collide(touch.rect)) {
 			touch.grab(this);
 			return true;
 		}
@@ -116,7 +118,7 @@ class MarketToken extends Token {
 		let app=App.get();
 		if(touch.grabbed != this) return; 
 		touch.ungrab();
-		if(this.renderRect().collide(touch.rect)) {
+		if(this.collide(touch.rect)) {
 			app.marketdeck.select_draw(0, 4, 0);
 			return true;
 		}
@@ -147,7 +149,7 @@ class GuardToken extends Token {
 
 	draw() {
 		let app=App.get();
-		let r = this.renderRect();
+		let r = this.rect;
 
 		//Draw head
 		app.ctx.fillStyle = ['dozing','alert'].includes(this.state)? colorString([0.75,0,0]) : colorString([0.5,0.1,0.1]);
@@ -244,7 +246,7 @@ class ObjectiveToken extends TargetToken {
 	draw() {
 		let app=App.get();
 		let ctx = app.ctx;
-		let r = this.renderRect();
+		let r = this.rect;
 
 		let x = r.x+r.w/5;
 		let y = r.y+r.h/5;

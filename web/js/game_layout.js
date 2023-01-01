@@ -81,7 +81,7 @@ class CardSelector extends ModalView {
 	}
 	on_touch_down(event, touch) {
 		for(let card of this._cards.children) {
-			if(card.renderRect().collide(touch.rect)) {
+			if(card.collide(touch.rect)) {
 				touch.grab(this);
 				this._touched_card = card;
 				return true;
@@ -93,7 +93,7 @@ class CardSelector extends ModalView {
 		if(touch.grabbed==this) {
 			touch.ungrab(this);
 			let card = this._touched_card;
-			if(!(card.renderRect().collide(touch.rect))) {
+			if(!(card.collide(touch.rect))) {
 				return true;
 			}
 			if(this.numToPick > 1) {
@@ -161,7 +161,7 @@ class CardSplay extends Widget {
 				var delta = 0;
 			}
 			if(delta == 2/app.tileSize) {
-				var max_splay = f((this.w - cardw) / (2/app.tileSize));
+				var max_splay = f((this.w - cardw) / delta);
 			}
 			else {
 				var max_splay = this.children.length;
@@ -177,7 +177,7 @@ class CardSplay extends Widget {
 				var delta = 0;
 			}
 			if(delta == -2/app.tileSize) {
-				var max_splay = f((this.h - cardh) / (2/app.tileSize));
+				var max_splay = f((this.h - cardh) / -delta);
 			}
 			else {
 				var max_splay = this.children.length;
@@ -244,7 +244,7 @@ class CardSplay extends Widget {
 	}
 	on_touch_down(event, touch) {
 		for(var c of this.children) {
-			if(c.renderRect().collide(touch.rect)) {
+			if(c.collide(touch.rect)) {
 				touch.grab(this);
 				this._clockev = App.get().addTimer(500, (e,d) => this.do_closeup(e, d, c));
 				return true;
@@ -299,14 +299,14 @@ class Card extends Widget {
             r2.h -= r1.h;
             //TODO: Get rid of the ugly scale transforms
 			let app=App.get();
-            drawWrappedText(app.ctx, this.name, Math.floor(this.h/12*app.tileSize), true, r1.mult(app.tileSize).shift([app.offsetX,app.offsetY]), "yellow");
-            drawWrappedText(app.ctx, this.text, Math.floor(this.h/14*app.tileSize), true, r2.mult(app.tileSize).shift([app.offsetX,app.offsetY]), "white");    
+            drawWrappedText(app.ctx, this.name, (this.h/12), true, r1, "yellow");
+            drawWrappedText(app.ctx, this.text, (this.h/14), true, r2, "white");    
         } else {
 //            super.draw();
 			this.bgColor = this.bgColorDown;
 			this.outlineColor = 'black';
 			super.draw();
-			// let r = this.renderRect();
+			// let r = this;
 			// let app = App.get();
 			// app.ctx.beginPath();
 			// app.ctx.rect(r[0], r[1], r[2], r[3]);
@@ -319,7 +319,7 @@ class Card extends Widget {
     }
 
     // on_touch_down(name, touch) {
-    //     if(this.renderRect().collide(touch.rect)) {
+    //     if(this.collide(touch.rect)) {
 	// 		this.faceUp = !this.faceUp;
 	// 		return true;
 	// 	}
@@ -336,7 +336,7 @@ class ButLabel extends Label {
 	pressed = BooleanProperty(false);
 	touching = BooleanProperty(false);
 	on_touch_down(event, touch) {
-		if(this.renderRect().collide(touch.rect)) {
+		if(this.collide(touch.rect)) {
 			touch.grab(this);
 			this.touching = true;
 			return true;
@@ -345,7 +345,7 @@ class ButLabel extends Label {
 	on_touch_up(event, touch) {
 		if(touch.grabbed == this) {
 			touch.ungrab(self);
-			if(this.renderRect().collide(touch.rect)) {
+			if(this.collide(touch.rect)) {
 				this.pressed = true;
 			}
 			this.touching = false;
@@ -421,7 +421,7 @@ class CardSplayCloseup extends ModalView {
 		this._needsLayout = true;
 	}
 	on_touch_down_card(event, card, touch) {
-		if(card.renderRect().collide(touch.rect)) {
+		if(card.collide(touch.rect)) {
 			touch.grab(card);
 			return true;
 		}
@@ -438,7 +438,7 @@ class CardSplayCloseup extends ModalView {
 		}
 	}
 	on_touch_down_sv(event, sv, touch) {
-		if(!(this.scroll_view.renderRect().collide(touch.rect))) {
+		if(!(this.scroll_view.collide(touch.rect))) {
 			this.close();
 			return true;
 		}
@@ -495,7 +495,7 @@ class PlayerTraits extends CardSplay {
 	}
 	on_touch_up(event, touch) { //rotate through trait cards --TODO: limit once per turn
 		super.on_touch_up(...arguments);
-		let r = this.renderRect()
+		let r = this
 		if(this.children.length>0 && r.collide(touch.rect)) {
 			this.children = [this.children[this.children.length-1],...this.children.slice(0,-1)];
 			this.active_card = this.children[this.children.length-1];
@@ -526,7 +526,7 @@ class ActiveCardSplay extends CardSplay {
 	on_touch_up(event, touch) {
 		super.on_touch_up(...arguments);
 		let app = App.get();
-		let r = this.renderRect();
+		let r = this;
 		let stop = false;
 		if(this.children.length > 0 && r.collide(touch.rect)) {
 			app.hand.cancel_action();
@@ -562,7 +562,7 @@ class ActiveCardSplay extends CardSplay {
 class ActionSelectorOption extends Label {
 	_touching = false;
 	on_touch_down(event, touch) {
-		let r = this.renderRect();
+		let r = this;
 		if(r.collide(touch.rect)) {
 			App.get().inputHandler.grab(this);
 			this._touching = true;
@@ -572,7 +572,7 @@ class ActionSelectorOption extends Label {
 	on_touch_up(event, touch) {
 		let app=App.get();
 		if(app.inputHandler.grabbed == this) {
-			let r = this.renderRect();
+			let r = this;
 			app.inputHandler.ungrab();
 			if(r.collide(touch.rect)) {
 				app.hand.selected_action = this.text;
@@ -614,7 +614,7 @@ class Hand extends CardSplay {
 		if(this.children.length == 0) return true;
 		if(this.can_draw == false) return true;
 		for(var c of this.children.slice().reverse()) {
-			let r = c.renderRect();
+			let r = c;
 			if(r.collide(touch.rect)) {
 				if(this.shownCard==c) { //Clear an already selected card
 					this.shownCard=null;
@@ -704,7 +704,7 @@ class Hand extends CardSplay {
 class SkillDeck extends CardSplay {
 	on_touch_up(event, touch) {
 		super.on_touch_up(...arguments);
-		let r = this.renderRect()
+		let r = this
 		if(r.collide(touch.rect)) {
 			return true;
 		}
@@ -809,7 +809,7 @@ class EventDeck extends CardSplay {
 	on_touch_up(event, touch) {
 		super.on_touch_up(...arguments);
         let r = touch.rect;
-		if(this.renderRect().collide(r)) { // && c.emit(event,touch)
+		if(this.collide(r)) { // && c.emit(event,touch)
 			this.drawCard();
 			return true;
 		}
@@ -877,26 +877,9 @@ class Stats extends BoxLayout {
 			this.t_showing = false;
 		}
 	}
-	on_parent1(event, parent) {
-		var args = tuple([].slice.apply(arguments).slice(1));
-		let app = App.get();
-		if(parent === null) {
-			return ;
-		}
-		this.center_x = Math.floor(-(app.width) / 4);
-		this.center_y = Math.floor(-(app.height) / 4);
-		this.width = Math.floor(app.width / 4);
-		this.h = Math.floor(app.height / 4);
-		var center_x = parent.center_x;
-		var center_y = parent.center_y;
-		var width = Math.floor((3 * parent.width) / 4);
-		var height = Math.floor((3 * parent.height) / 4);
-		var anim = Animation(__kwargtrans__({center_x: center_x, center_y: center_y, width: width, height: height, duration: 0.2}));
-		anim.start(self);
-	}
 	on_touch_down(event, touch) {
 		for(var but of tuple([this.restart, this.quit, this.py_next])) {
-			if(but.renderRect().collide(touch.rect) && but.active) {
+			if(but.collide(touch.rect) && but.active) {
 				touch.grab(self);
 				return true;
 			}
@@ -907,19 +890,19 @@ class Stats extends BoxLayout {
 		let app = App.get();
 		if(touch.grabbed == this) {
 			touch.ungrab(this.restart);
-			if(this.restart.renderRect().collide(touch.rect)) {
+			if(this.restart.collide(touch.rect)) {
 				app.restart_game();
 				this.reset();
 				app.menu_showing = false;
 				return true;
 			}
-			if(this.py_next.renderRect().collide(touch.rect)) {
+			if(this.py_next.collide(touch.rect)) {
 				app.next_level();
 				this.reset(false);
 				app.menu_showing = false;
 				return true;
 			}
-			if(this.quit.renderRect().collide(touch.rect)) {
+			if(this.quit.collide(touch.rect)) {
 				touch.ungrab(this.quit);
 				App.get().stop();
 				return true;

@@ -15,10 +15,10 @@ class SpriteSheet {
             spriteLoc[1]*this.spriteSize,
             this.spriteSize,
             this.spriteSize,
-            flipped*(x*game.tileSize + game.shakeX + game.offsetX),
-            y*game.tileSize  + game.shakeY + game.offsetY,
-            flipped*game.tileSize,
-            game.tileSize
+            flipped*x,
+            y,
+            flipped,
+            1
         );
         if(flipx) {
             game.ctx.scale(-1,1);
@@ -35,10 +35,10 @@ class SpriteSheet {
             spriteLoc[1]*this.spriteSize,
             this.spriteSize,
             this.spriteSize,
-            flipped*(x*game.tileSize + game.shakeX + game.offsetX),
-            y*game.tileSize  + game.shakeY + game.offsetY,
-            flipped*game.tileSize*scale,
-            game.tileSize*scale
+            flipped*(x),
+            y,
+            flipped*scale,
+            scale
         );
         if(flipx) {
             game.ctx.scale(-1,1);
@@ -48,12 +48,11 @@ class SpriteSheet {
         game.ctx.save();
 //        let flipped = 1 - 2*flipx;
         if(anchor == 'center') {
-            anchor = [game.tileSize/2,game.tileSize/2];
+            anchor = [1/2,1/2];
         } else {
-            anchor = [anchor[0]*game.tileSize, anchor[1]*game.tileSize];
+            anchor = [anchor[0], anchor[1]];
         }
-        game.ctx.translate(x*game.tileSize + game.shakeX + game.offsetX + anchor[0], 
-                        y*game.tileSize + game.shakeY + game.offsetY + anchor[1]);
+        game.ctx.translate(x, y);
         game.ctx.rotate(angle * Math.PI / 180);
         if(flipx) {
             game.ctx.scale(-1,1);
@@ -67,8 +66,8 @@ class SpriteSheet {
             this.spriteSize,
             0, //-game.tileSize+anchor[0],
             0, //-game.tileSize+anchor[1],
-            game.tileSize,
-            game.tileSize
+            1,
+            1
         );
         game.ctx.restore();
     }
@@ -78,12 +77,12 @@ class SpriteSheet {
         let th = spriteLoc[3];
 //        let flipped = 1 - 2*flipx;
         if(anchor == 'center') {
-            anchor = [tw*game.tileSize/2,th*game.tileSize/2];
+            anchor = [tw*1/2,th*1/2];
         } else {
-            anchor = [anchor[0]*game.tileSize, anchor[1]*game.tileSize];
+            anchor = [anchor[0], anchor[1]];
         }
-        game.ctx.translate(x*game.tileSize + game.shakeX + game.offsetX + anchor[0], 
-                        y*game.tileSize + game.shakeY + game.offsetY + anchor[1]);
+        game.ctx.translate(x + anchor[0], 
+                        y + anchor[1]);
         game.ctx.rotate(angle * Math.PI / 180);
         if(flipx) {
             game.ctx.scale(-1,1);
@@ -97,13 +96,14 @@ class SpriteSheet {
             this.spriteSize*th,
             0,
             0,
-            game.tileSize*tw,
-            game.tileSize*th
+            tw,
+            th
         );
         game.ctx.restore();
     }
 }
 
+//TODO: This can be deleted or replaced with something relevant to sneaky game
 var monsterRowLocIds = {
     OneEye: 0,
     TwoEye: 1,

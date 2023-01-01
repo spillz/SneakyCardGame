@@ -121,11 +121,17 @@ class App {
         this.shakeAmount = 0;
         screenshake(this);
 
+        this.ctx.save();
+        this.ctx.translate(this.offsetX + this.shakeX, this.offsetY + this.shakeY);
+        this.ctx.scale(this.tileSize, this.tileSize);
+
         this.baseWidget._draw(millis);
         for(let mw of this.modalWidgets) mw._draw(millis);
+        this.ctx.restore();
     }
-    recurseOffsets(offset) {
-        return offset;
+    to_local(pos) {
+        return [(pos[0]-this.offsetX-this.shakeX)/this.tileSize, (pos[1]-this.offsetY-this.shakeY)/this.tileSize];
+//        return pos;
     }
     setupCanvas(){
         this.canvas = document.querySelector(this.canvasName);
@@ -233,6 +239,9 @@ class Widget extends Rect {
         this[3] = rect[3];
         this._needsLayout = true;
     }
+    get rect() {
+        return new Rect(this);
+    }
     updateProperties(properties) {
         for(let p in properties) {
             this[p] = properties[p];
@@ -262,14 +271,18 @@ class Widget extends Rect {
             yield *c.iter(...arguments);
         }
     }
+    *iterParents() {
+        yield this.parent;
+        if(this.parent != App.get()) yield *this.parent.iterParents();
+    }
     findById(id) {
         for(let w of this.iter(true, false)) {
             if('id' in w && w.id==id) return w;
         }
         return null;
     }
-    recurseOffsets(offset) {
-        return this.parent.recurseOffsets(offset);
+    to_local(pos) {
+        return pos;
     }
     addChild(child, pos=-1) {
         if(pos==-1) {
@@ -393,24 +406,6 @@ class Widget extends Rect {
         //TODO: This should also handle layout of self in case the sizing is being set externally(e.g., to lock an aspect ratio)
         //If so, rename to layoutSelfAndChildren or just layout?
     }
-    renderRect() {
-        let app = App.get();
-        let r = new Rect(this);
-        r[0] = r[0] * app.tileSize + app.shakeX + app.offsetX;
-        r[1] = r[1] * app.tileSize + app.shakeY + app.offsetY;
-        r[2] = r[2] * app.tileSize;
-        r[3] = r[3] * app.tileSize;
-        return r;        
-    }
-    localRect() {
-        let app = App.get();
-        let r = new Rect(this);
-        r[0] = (r[0] - app.shakeX - app.offsetX)/app.tileSize;
-        r[1] = (r[1] - app.shakeY - app.offsetY)/app.tileSize;
-        r[2] = r[2]/app.tileSize;
-        r[3] = r[3]/app.tileSize;
-        return r;        
-    }
     _draw(millis) {
         if(this.draw()=='abort') return;
         for(let c of this.children)
@@ -418,14 +413,13 @@ class Widget extends Rect {
     }
     draw() {
         //Usually widget should draw itself, then draw children in order
-        //TODO: Get rid of the ugly scale transforms
-        let r = this.renderRect();
+        let r = this.rect;
         let app = App.get();
         app.ctx.beginPath();
         app.ctx.rect(r[0], r[1], r[2], r[3]);
         app.ctx.fillStyle = this.bgColor;
         app.ctx.fill();
-        app.ctx.lineWidth = 1; //app.tileSize / 16;
+        app.ctx.lineWidth = 1.0/app.tileSize;
         app.ctx.strokeStyle = this.outlineColor;
         app.ctx.stroke();
     }
@@ -505,18 +499,9 @@ class Label extends Widget {
         }
     draw() {
         super.draw();
-        let r = this.renderRect();
-        let fontSize;
+        let r = this.rect;
         let app = App.get();
-        if(this.fontSize==null) {
-            fontSize = Math.floor(this.h*app.tileSize/2);
-            app.ctx.font = fontSize + "px monospace";
-            let scale = r.w/app.ctx.measureText(this.text).width;
-            if(scale<1) fontSize *= scale;
-        } else {
-            fontSize = this.fontSize*app.tileSize;
-        }
-        app.ctx.font = fontSize + "px monospace";
+        let fontSize = this.fontSize==null? this.h/2 : this.fontSize;
         if(this.wrap) {
             drawWrappedText(app.ctx, this.text, fontSize, this.align=="center", r, this.color);
         } else {
@@ -529,7 +514,7 @@ class Button extends Label {
     selectColor = colorString([0.7,0.7,0.8]);
     bgColor = colorString([0.5,0.5,0.5]);
     on_touch_down(event, touch) {
-        if(this.renderRect().collide(touch.rect)) {
+        if(this.collide(touch.rect)) {
             touch.grab(this);
             return true;
         }
@@ -537,7 +522,7 @@ class Button extends Label {
     on_touch_up(event, touch) {
         if(touch.grabbed!=this) return;
         touch.ungrab();
-        if(this.renderRect().collide(touch.rect)) {
+        if(this.collide(touch.rect)) {
             this.emit('press', null);
             return true;
         }
@@ -710,6 +695,7 @@ class ScrollView extends Widget {
     scrollH = true;
     scrollX = 0;
     scrollY = 0;
+    zoom = 1;
     constructor(rect, properties) {
         super(rect);
         this.updateProperties(true);
@@ -766,36 +752,24 @@ class ScrollView extends Widget {
         this._needsLayout = true;
     }
     setScrollX(value) {
-        this.scrollX = this.children[0].w<=this.w? (this.children[0].w-this.w)/2 : Math.min(Math.max(0, value),this.children[0].w-this.w);
+        this.scrollX = this.children[0].w*this.zoom<this.w ? 
+                        (this.children[0].w-this.w/this.zoom)/2 : 
+                        Math.min(Math.max(0, value),this.children[0].w-this.w/this.zoom);
     }
     setScrollY(value) {
-        this.scrollY = this.children[0].h<=this.h? (this.children[0].h-this.h)/2 : Math.min(Math.max(0, value),this.children[0].h-this.h);
+        this.scrollY = this.children[0].h*this.zoom<this.h ? 
+                        (this.children[0].h-this.h/this.zoom)/2 : 
+                        Math.min(Math.max(0, value),this.children[0].h-this.h/this.zoom);
     }
-    recurseOffsets(offset) {
-        offset[0] += this.x - this.scrollX;
-        offset[1] += this.y - this.scrollY;
-        return this.parent.recurseOffsets(offset);
-    }
-    applyOffset() {
-        let app = App.get();
-        app.offsetX += (this.x-this.scrollX)*app.tileSize;
-        app.offsetY += (this.y-this.scrollY)*app.tileSize;
-    }
-    offset_emit(c, event, touch) {
-        let app = App.get();
-        let savedOffset = [app.offsetX, app.offsetY];
-        app.offsetX += (this.x-this.scrollX)*app.tileSize;
-        app.offsetY += (this.y-this.scrollY)*app.tileSize;
-        let result = c.emit(event, touch);
-        app.offsetX = savedOffset[0];
-        app.offsetY = savedOffset[1];
-        return result;
+    to_local(pos) {
+        return [(pos[0]-this.x)/this.zoom+this.scrollX, (pos[1]-this.y)/this.zoom+this.scrollY];
     }
     on_touch_down(event, touch) {
-        this.oldTouch = [touch.x, touch.y, touch.identifier];
         let r = touch.rect;
-        if(this.renderRect().collide(r)) {
-            for(let c of this.children) if(this.offset_emit(c, event, touch)) {
+        if(this.collide(r)) {
+            let tl = touch.local(this);
+            this.oldTouch = [tl.x, tl.y, tl.identifier];
+            for(let c of this.children) if(c.emit(event, tl)) {
                 return true;
             }
         }
@@ -804,8 +778,9 @@ class ScrollView extends Widget {
     on_touch_up(event, touch) {
         this.oldTouch = null;
         let r = touch.rect;
-        if(this.renderRect().collide(r)) {
-            for(let c of this.children) if(this.offset_emit(c, event, touch)) {
+        if(this.collide(r)) {
+            let tl = touch.local(this);
+            for(let c of this.children) if(c.emit(event, tl)) {
                 return true;
             }
         }
@@ -814,29 +789,31 @@ class ScrollView extends Widget {
     on_touch_move(event, touch) {
         let r = touch.rect;
         let app = App.get();
-        if(this.renderRect().collide(r)) {
-            if(this.oldTouch==null || touch.identifier!=this.oldTouch[2]) {
-                this.oldTouch = [touch.x, touch.y, touch.identifier];
-            } else {
+        if(this.collide(r)) {
+            let tl = touch.local(this);
+            if(this.oldTouch!=null && tl.identifier==this.oldTouch[2]) {
                 if(this.scrollW) {
-                    this.setScrollX(this.scrollX + (this.oldTouch[0]-touch.x)/app.tileSize);
+                    this.setScrollX(this.scrollX + (this.oldTouch[0] - tl.x));
                 }
                 if(this.scrollH) {
-                    this.setScrollY(this.scrollY + (this.oldTouch[1]-touch.y)/app.tileSize);
+                    this.setScrollY(this.scrollY + (this.oldTouch[1] - tl.y));
                 }
-                this.oldTouch = [touch.x, touch.y, touch.identifier];    
+                //Need to recalc after moving scroll bars
+                tl = touch.local(this);
+                this.oldTouch = [tl.x, tl.y, tl.identifier];    
             }
-            for(let c of this.children) if(this.offset_emit(c, event, touch)) return true;
+            for(let c of this.children) if(c.emit(event, tl)) return true;
         }
         return false;
     }
     on_touch_cancel(event, touch) {
         let r = touch.rect;
-        for(let c of this.children) if(this.renderRect().collide(r) && this.offset_emit(c, event, touch)) return true;
+        let tl = touch.local(this);
+        for(let c of this.children) if(this.collide(r) && c.emit(event, tl)) return true;
         return false;
     }
     // on_touch_move(event, touch) {
-    //     if(this.renderRect().collide(r)) {
+    //     if(this.collide(r)) {
     //         if(this.oldTouch==null || touch.identifier!=this.oldTouch[2]) {
     //             this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
     //             return;
@@ -853,8 +830,9 @@ class ScrollView extends Widget {
     //     }
     // }
     on_mouse_move(event, mouse) {
+        return
         let app = App.get();
-        let r = this.renderRect();
+        let r = this;
         if(r.collide(new Rect([mouse.clientX, mouse.clientY,0,0]))) {
             if(this.oldMouse==null || mouse.buttons!=1) {
                 this.oldMouse = [mouse.clientX, mouse.clientY];
@@ -865,7 +843,7 @@ class ScrollView extends Widget {
                 this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
             }
             if(this.scrollH) {
-                this.scrollY += (this.oldMouse[1]-mouse.clientY)/app.tileSize; 
+                this.scrollY += (this.oldMouse[1]-mouse.clientY)/app.tileSize;
                 this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
             }
             this.oldMouse = [mouse.clientX, mouse.clientY];
@@ -878,20 +856,24 @@ class ScrollView extends Widget {
             this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
         }
         if(this.scrollH) {
-            this.scrollY += (wheel.deltaY)/app.tileSize; 
+            this.scrollY += (wheel.deltaY)/app.tileSize;
             this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
         }
 
     }
     _draw() {
         this.draw();
-        let r = this.renderRect();
+        let r = this.rect;
         let app = App.get();
         app.ctx.save();
         app.ctx.beginPath();
         app.ctx.rect(r[0],r[1],r[2],r[3]);
         app.ctx.clip();
-        app.ctx.translate((this.x-this.scrollX)*app.tileSize, (this.y-this.scrollY)*app.tileSize);
+        app.ctx.translate(this.x-this.scrollX*this.zoom,
+                        this.y-this.scrollY*this.zoom)
+        // app.ctx.translate((this.x-this.scrollX*this.zoom)*app.tileSize, 
+        //                   (this.y-this.scrollY*this.zoom)*app.tileSize);
+        app.ctx.scale(this.zoom, this.zoom);
         this.children[0]._draw()
         app.ctx.restore();
     }
