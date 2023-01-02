@@ -3,16 +3,17 @@ class Touch {
     state = 'touch_up'; // one of 'touch_up', 'touch_down', 'touch_move', 'touch_cancel'
     device = 'touch' //source of touch: touch, mouse or keyboard
     nativeObject = null;
+    nativeEvent = null;
     constructor(props = {}) {
         for(let p in props) {
             this[p] = props[p];
         }
     }
     copy() {
-        return new Touch({pos:[...this.pos], state:this.state, device:this.device, nativeObject:this.nativeObject});
+        return new Touch({pos:[...this.pos], state:this.state, device:this.device, nativeObject:this.nativeObject, nativeEvent:this.nativeEvent});
     }
     local(widget) {
-        return new Touch({pos:[...widget.to_local(this.pos)], state:this.state, device:this.device, nativeObject:this.nativeObject});
+        return new Touch({pos:[...widget.to_local(this.pos)], state:this.state, device:this.device, nativeObject:this.nativeObject, nativeEvent:this.nativeEvent});
     }
     get rect() {
         return new Rect([...this.pos, 0, 0]);
@@ -97,12 +98,12 @@ class InputHandler {
             for(let to of ev.changedTouches) { 
                 let pos0 = [to.clientX, to.clientY];
                 let pos = [...this.grabbed.iterParents()].reverse().reduce((prev,cur)=>cur.to_local(prev), pos0);
-                let t = new Touch({pos:pos, state:name, nativeObject:to});
+                let t = new Touch({pos:pos, state:name, nativeObject:to, nativeEvent:ev});
                 this.grabbed.emit(name, t);
             }
         } else {
             for(let to of ev.changedTouches) { 
-                let t = new Touch({pos:this.app.to_local([to.clientX, to.clientY]), state:name, nativeObject:to});
+                let t = new Touch({pos:this.app.to_local([to.clientX, to.clientY]), state:name, nativeObject:to, nativeEvent:ev});
                 this.app.emit(name, t, true);
             }
         }

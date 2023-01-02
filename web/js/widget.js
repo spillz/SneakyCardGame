@@ -370,6 +370,10 @@ class Widget extends Rect {
     get h() {
         return this[3];
     }
+    on_wheel(event, wheel) {
+        for(let c of this.children) if(c.emit(event, wheel)) return true;
+        return false;
+    }
     on_touch_down(event, touch) {
         for(let c of this.children) if(c.emit(event, touch)) return true;
         return false;
@@ -698,10 +702,11 @@ class ScrollView extends Widget {
     zoom = 1;
     constructor(rect, properties) {
         super(rect);
-        this.updateProperties(true);
+        this.updateProperties(properties);
         this.processTouches = true;
         this.oldTouch = null;
         this.oldMouse = null;
+        this._lastDist = null;
     }
     layoutChildren() {
         this._needsLayout = false;
@@ -766,6 +771,7 @@ class ScrollView extends Widget {
     }
     on_touch_down(event, touch) {
         let r = touch.rect;
+        this._lastDist = null;
         if(this.collide(r)) {
             let tl = touch.local(this);
             this.oldTouch = [tl.x, tl.y, tl.identifier];
@@ -777,6 +783,7 @@ class ScrollView extends Widget {
     }
     on_touch_up(event, touch) {
         this.oldTouch = null;
+        this._lastDist = null;
         let r = touch.rect;
         if(this.collide(r)) {
             let tl = touch.local(this);
@@ -791,22 +798,36 @@ class ScrollView extends Widget {
         let app = App.get();
         if(this.collide(r)) {
             let tl = touch.local(this);
-            if(this.oldTouch!=null && tl.identifier==this.oldTouch[2]) {
-                if(this.scrollW) {
-                    this.setScrollX(this.scrollX + (this.oldTouch[0] - tl.x));
+            if(touch.nativeEvent==null || touch.nativeEvent.touches.length==1) {
+                if(this.oldTouch!=null && tl.identifier==this.oldTouch[2]) {
+                    if(this.scrollW) {
+                        this.setScrollX(this.scrollX + (this.oldTouch[0] - tl.x));
+                    }
+                    if(this.scrollH) {
+                        this.setScrollY(this.scrollY + (this.oldTouch[1] - tl.y));
+                    }
+                    //Need to recalc positions after moving scroll bars
+                    tl = touch.local(this);
+                    this.oldTouch = [tl.x, tl.y, tl.identifier];    
                 }
-                if(this.scrollH) {
-                    this.setScrollY(this.scrollY + (this.oldTouch[1] - tl.y));
+            } 
+            else if(touch.nativeEvent.touches.length==2) {
+                let t0 = touch.nativeEvent.touches[0];
+                let t1 = touch.nativeEvent.touches[1];
+                let d = dist([t0.clientX, t0.clientY], [t1.clientX, t1.clientY]);
+                if(this._lastDist != null) {
+                    let zoom = this.zoom * d/this._lastDist;
+                    let minZoom = Math.min(this.w/this.children[0].w, this.h/this.children[0].h)
+                    this.zoom = Math.max(zoom, minZoom);
                 }
-                //Need to recalc after moving scroll bars
-                tl = touch.local(this);
-                this.oldTouch = [tl.x, tl.y, tl.identifier];    
+                this._lastDist = d;
             }
             for(let c of this.children) if(c.emit(event, tl)) return true;
         }
         return false;
     }
     on_touch_cancel(event, touch) {
+        this._lastDist = null;
         let r = touch.rect;
         let tl = touch.local(this);
         for(let c of this.children) if(this.collide(r) && c.emit(event, tl)) return true;
@@ -851,14 +872,17 @@ class ScrollView extends Widget {
     }
     on_wheel(event, wheel) {
         let app = App.get();
-        if(this.scrollW) {
-            this.scrollX += (wheel.deltaX)/app.tileSize;
-            this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
-        }
-        if(this.scrollH) {
-            this.scrollY += (wheel.deltaY)/app.tileSize;
-            this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
-        }
+        let zoom = this.zoom / (1 + wheel.deltaY/app.h);
+        let minZoom = Math.min(this.w/this.children[0].w, this.h/this.children[0].h)
+        this.zoom = Math.max(zoom, minZoom);
+        // if(this.scrollW) {
+        //     this.scrollX += (wheel.deltaX)/app.tileSize;
+        //     this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
+        // }
+        // if(this.scrollH) {
+        //     this.scrollY += (wheel.deltaY)/app.tileSize;
+        //     this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
+        // }
 
     }
     _draw() {
@@ -891,5 +915,12 @@ class ModalView extends Widget {
         let app = App.get();
         this.parent = null;
         app.removeModal(this);
+    }
+    on_touch_down(event, touch) {
+        if(this.closeOnTouchOutside && !this.collide(touch.rect)) {
+            this.close();
+            return true;
+        }
+        super.on_touch_down(event, touch);
     }
 }

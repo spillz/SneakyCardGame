@@ -8,7 +8,6 @@ class Game extends App {
     vt_cards = 1; //how many cards we need to fit vertically in a horizontal orientation screen
     card_size = [4,6];
     scroll_size = [10,10];
-    zoom = 1.0;
     map_scale = 1
     map_card_size = [5,7];
     constructor() {
@@ -29,7 +28,7 @@ class Game extends App {
         this.eventdeck = new EventDeck(r, {text: 'EVENT\nDECK'});
         this.eventdiscard = new EventDiscard(r, {text: 'EVENT\nDISCARD'});
         this.hand = new Hand(r, {text: 'PLAYER\nHAND'});
-        this.sv = new ScrollView(r);
+        this.sv = new ScrollView(r, {zoom: 1});
         this.board = new Board([0,0,this.map_card_size[0]*this.map_size[0], 
             this.map_card_size[1]*this.map_size[1]],
             {numX: this.map_size[0]});
@@ -86,7 +85,7 @@ class Game extends App {
 
     }
     updateWindowSize() {
-        this.prefDimW = 5*this.map_card_grid_size[0]; //Preferred width in tile units (not pixels)
+        this.prefDimW = 4*this.map_card_grid_size[0]; //Preferred width in tile units (not pixels)
         this.prefDimH = 4.2*this.map_card_grid_size[1]; //Preferred height in tile units (not pixels)
 
         super.updateWindowSize(); //Sets dimW, dimW and tileSize to best fit the preferred dimensions
@@ -97,7 +96,7 @@ class Game extends App {
  
         let W = this.dimW;
         let H = this.dimH;
-        this.hz_cards = f(W/5); //how many cards we need to fit horizontally in a vertical orientation screen
+        this.hz_cards = f(W/4); //how many cards we need to fit horizontally in a vertical orientation screen
         this.vt_cards = f(H/4.2); //how many cards we need to fit vertically in a horizontal orientation screen
         let cgx = this.map_card_grid_size[0];
         let cgy = this.map_card_grid_size[1];
@@ -110,7 +109,6 @@ class Game extends App {
                                       
         this.scroll_size = H>W ? [W, H-16*f(ch/5)] : 
                             [W-12*f(cw/5), H-6*f(ch/5)];
-        this.zoom = 1.0;
         this.map_scale = Math.max(this.scroll_size[1]/(3*ch), 
                              this.scroll_size[0]/(6*cw));
         this.map_card_size = [5,7];

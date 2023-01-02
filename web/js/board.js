@@ -138,8 +138,8 @@ class Board extends GridLayout {
 	scroll_to_player() {
 		if(this.active_player_token==null) return;
 		let app = App.get();
-		app.sv.setScrollX(this.active_player_token.center_x-this.parent.w/2);
-		app.sv.setScrollY(this.active_player_token.center_y-this.parent.h/2);
+		app.sv.setScrollX(this.active_player_token.center_x-app.sv.children[0].w/app.sv.zoom/2);
+		app.sv.setScrollY(this.active_player_token.center_y-app.sv.children[0].h/app.sv.zoom/2);
 	}
 	on_token_move(event, token, mp) {
 		this.token_update();

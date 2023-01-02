@@ -129,6 +129,7 @@ class CardSplay extends Widget {
 	text = 'CARDSPLAY';
 	bgColor = 'black';
 	fontSize=0.5;
+	grabbed_child = null;
 	_updatedChildren = false;
 	constructor(rect, properties) {
 		super(rect);
@@ -243,9 +244,10 @@ class CardSplay extends Widget {
 		this._clockev = null;
 	}
 	on_touch_down(event, touch) {
-		for(var c of this.children) {
+		for(var c of this.children.slice().reverse()) {
 			if(c.collide(touch.rect)) {
 				touch.grab(this);
+				this.grabbed_child = c;
 				this._clockev = App.get().addTimer(500, (e,d) => this.do_closeup(e, d, c));
 				return true;
 			}
@@ -254,6 +256,7 @@ class CardSplay extends Widget {
 	on_touch_up(event, touch) {
 		if(touch.grabbed != this) return;
 		touch.ungrab();
+		this.grabbed_child = null;
 		if(this._clockev != null) {
 			App.get().removeTimer(this._clockev);
 			this._clockev = null;
@@ -473,15 +476,15 @@ class PlayerDeck extends CardSplay {
 		app.board.scroll_to_player();
 	}
 	draw_cards(n) {
-		var shuffle = n - this.children.length;
+		var sh = n - this.children.length;
 		var cards = this.children.slice(-n-1, -1);
 		let app = App.get();
 		this.move_to(cards, app.hand);
-		if(shuffle > 0) {
+		if(sh > 0) {
 			var discards = app.playerdiscard.children.slice();
-			random.shuffle(discards);
+			discards = shuffle(discards);
 			app.playerdiscard.move_to(discards, this);
-			var cards = this.children.slice(-shuffle-1, -1);
+			var cards = this.children.slice(-sh-1, -1);
 			this.move_to(cards, app.hand);
 		}
 	}
@@ -564,19 +567,26 @@ class ActionSelectorOption extends Label {
 	on_touch_down(event, touch) {
 		let r = this;
 		if(r.collide(touch.rect)) {
-			App.get().inputHandler.grab(this);
+			touch.grab(this);
 			this._touching = true;
 			return true;
 		}
 	}
+	on_touch_move(event, touch) {
+		if(touch.grabbed==this) {
+			this._touching = this.collide(touch.rect);
+		}
+		return super.on_touch_move(event, touch);
+	}
 	on_touch_up(event, touch) {
 		let app=App.get();
-		if(app.inputHandler.grabbed == this) {
+		if(touch.grabbed == this) {
 			let r = this;
-			app.inputHandler.ungrab();
+			this._touching = false;
+			touch.ungrab();
 			if(r.collide(touch.rect)) {
 				app.hand.selected_action = this.text;
-				this._touching = false;
+				this.parent.parent.close();
 				return true;
 			}
 		}
@@ -586,13 +596,25 @@ class ActionSelectorOption extends Label {
 		super.draw();
 	}
 }
-class ActionSelector extends BoxLayout {
+class ActionSelector extends ModalView {
 	constructor(card, actions) {
 		let app = App.get();
 		let h = Object.keys(actions).length
-		super(new Rect([card.x, card.y-h, card.w, h])); //TODO: This rect should be set in the layout call of the parent
+		super(new Rect([card.x, card.y-h, card.w, h*2]),
+			{hints:{center_x:0.5,
+					center_y:0.5,
+					w:0.5}}); //TODO: This rect should be set in the layout call of the parent
+		let b = new BoxLayout(null, {orientation:'vertical', hints:{x:0,y:0,w:1,h:1}});
 		for(var a in actions) {
-			this.addChild(new ActionSelectorOption(new Rect(), {text: a}));
+			b.addChild(new ActionSelectorOption(new Rect(), {text: a}));
+		}
+		this.addChild(b);
+	}
+	on_closed(event, value) {
+		let hand = App.get().hand;
+		hand.action_selector = null;
+		if(hand.selected_action=='') {
+			hand.clear_selection();
 		}
 	}
 }
@@ -609,41 +631,39 @@ class Hand extends CardSplay {
 	}
 	on_touch_up(event, touch) {
 		if(touch.grabbed!=this) return super.on_touch_up(...arguments);
+		let grabbed_child = this.grabbed_child;
 		super.on_touch_up(...arguments);
 		let app = App.get();
 		if(this.children.length == 0) return true;
 		if(this.can_draw == false) return true;
-		for(var c of this.children.slice().reverse()) {
-			let r = c;
-			if(r.collide(touch.rect)) {
-				if(this.shownCard==c) { //Clear an already selected card
-					this.shownCard=null;
-					this.clear_selection();
-				}
-				else if(this.selected_action != '') { //Add card to the currently selected card action
-					var action_fn = this.actions [this.selected_action];
-					if(action_fn.activate('can_stack', {stacked_card: c})) {
-						this.move_to([c], app.activecardsplay, 0);
-						action_fn.activate('card_stacked', {stacked_card: c});
-						return true;
-					}
-				}
-				else {
-					this.shownCard = c; //Change to a new selected
-					this.selected_action = '';
-					app.board.map_choices = [];
-					let actions = c.get_actions(app);
-					for(let tc of app.playertraits.children.slice(-1)) {
-						let trait_actions = tc.get_actions_for_card(c, app);
-						for(let ta in trait_actions) {
-							actions[ta] = trait_actions[ta];
-						}
-					}
-					this.show_card_actions(c, actions);
-					app.playerprompt.text = 'Select an action for this card';
+		let c = grabbed_child;
+		if(c!=null && c.collide(touch.rect)) {
+			if(this.shownCard==c) { //Clear an already selected card
+				this.shownCard=null;
+				this.clear_selection();
+			}
+			else if(this.selected_action != '') { //Add card to the currently selected card action
+				var action_fn = this.actions [this.selected_action];
+				if(action_fn.activate('can_stack', {stacked_card: c})) {
+					this.move_to([c], app.activecardsplay, 0);
+					action_fn.activate('card_stacked', {stacked_card: c});
 					return true;
 				}
-				break;
+			}
+			else {
+				this.shownCard = c; //Change to a new selected
+				this.selected_action = '';
+				app.board.map_choices = [];
+				let actions = c.get_actions(app);
+				for(let tc of app.playertraits.children.slice(-1)) {
+					let trait_actions = tc.get_actions_for_card(c, app);
+					for(let ta in trait_actions) {
+						actions[ta] = trait_actions[ta];
+					}
+				}
+				this.show_card_actions(c, actions);
+				app.playerprompt.text = 'Select an action for this card';
+				return true;
 			}
 		}
 		return true;
@@ -655,31 +675,22 @@ class Hand extends CardSplay {
 			var action = this.selected_action;
 			var action_fn = this.actions[action];
 			action_fn.activate('card_action_selected');
-			this.clear_card_actions();
 		}
 	}
 	clear_selection() {
 		let app = App.get();
 		app.playerprompt.text = 'Select a card to play or touch the event deck to end your turn';
 		app.board.map_choices = [];
+		this.shownCard = null;
 		this.children.filter(c=>c.selected).map(c=>c.selected=false);
-		this.clear_card_actions();
 		this.selected_action = '';
-	}
-	clear_card_actions() {
-		if(this.action_selector !== null) {
-			let app=App.get();
-			app.baseWidget.removeChild(this.action_selector);
-			this.action_selector = null;
-		}
 	}
 	show_card_actions(card, actions) {
 		let app = App.get();
-		this.clear_card_actions();
 		this.selected_action = '';
 		this.actions = actions;
 		this.action_selector = new ActionSelector(card, actions);
-		app.baseWidget.addChild(this.action_selector);
+		this.action_selector.popup();
 	}
 	cancel_action() {
 		if(this.selected_action != '') {
