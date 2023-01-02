@@ -113,11 +113,11 @@ class Board extends GridLayout {
 		let c = this.children[0];
 		if(this.numX>0) {
 			this.dimW = this.numX*c.w;
-			this.dimH = Math.ceil(this.children.length/this.dimW)*c.h;
+			this.dimH = Math.ceil(this.children.length/this.numX)*c.h;
 		}
 		if(this.numY>0) {
 			this.dimH = this.numY*c.h;
-			this.dimW = Math.ceil(this.children.length/this.dimH)*c.w;
+			this.dimW = Math.ceil(this.children.length/this.numY)*c.w;
 		}
 	}
 	on_child_added(event, data) {
