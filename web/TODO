@@ -1,3 +1,7 @@
+BUG: scroll to player
+BUG: discard used cards if partially complete action cancelled
+Zoom: center on mouse/touch pos
+Mousewheel: Ctrl+ to zoom, shift+ to horiz scroll, unmod to vert scroll
 Catch page unload
 Fix the placeholder player token icon
 Load/save game in progress
@@ -32,6 +36,7 @@ Keyboard support
 Local co-op
 Network co-op
 
+BUG: cannot move beyond first row of map cards [done 1/2/2022]
 Refactor parent/child layout and touch interaction using "local" coordinates. No more renderrect and recurseoffsets garbage [12/31/2022]
 Implement zoom in the scroll view [done 12/31/2022]
 Card closeup implementation [done 12/28/2022]
