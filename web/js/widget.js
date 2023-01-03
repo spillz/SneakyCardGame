@@ -1,4 +1,23 @@
 
+//NON-FUNCTIONAL EXPERIMENTAL AUTOBIND CODE A LA KIVY
+function evalFunc(event, srcOb, value, destOb) {
+
+}
+
+function bindString(string, baseObject) {
+    const re = /(w+)\.(w+)/g;
+    let app = App.get();
+    for(let prop of string.matchAll(re)) {
+        let ob = app.findById(prop[0]);
+        ob.bind(prop[1], evalFunc);
+        let pr = app.findById(prop[1]);
+
+    }
+}
+//END OF AUTO BIND CODE
+
+var b = bindString;
+
 class App {
     //App is the main object class for a kivy-like UI application
     //to run in the browser. 
@@ -70,7 +89,12 @@ class App {
         this.setupCanvas();
         this.inputHandler = new InputHandler(this);
         this.updateWindowSize();
-        this.update();
+
+        window.onload = () => this._start();
+    }
+    _start() {
+        screen.orientation.unlock();
+        this.update();    
     }
     emit(event, data, topModalOnly=false) { //TODO: Need to suppress some events for a modal view(e.g., touches)
         if(topModalOnly && this.modalWidgets.length>0) {
@@ -387,6 +411,10 @@ class Widget extends Rect {
         return false;
     }
     on_touch_cancel(event, touch) {
+        for(let c of this.children) if(c.emit(event, touch)) return true;
+        return false;
+    }
+    on_back_button(event, history) {
         for(let c of this.children) if(c.emit(event, touch)) return true;
         return false;
     }

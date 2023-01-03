@@ -42,6 +42,7 @@ class Touch {
 }
 
 
+
 class InputHandler {
     grabbed = null;
     mouseTouchEmulation = true;
@@ -77,19 +78,18 @@ class InputHandler {
         canvas.addEventListener('touchmove', function(ev){that.process_touch(ev, 'touch_move');}, false);
         canvas.addEventListener('touchcancel', function(ev){that.process_touch(ev, 'touch_cancel');}, false);
         canvas.addEventListener('touchend', function(ev){that.process_touch(ev, 'touch_up');}, false);
-        document.addEventListener('backbutton', function(ev){that.process_back(ev);}, true);
         canvas.addEventListener('wheel', function(ev){that.process_wheel(ev, 'wheel');}, false);
+
+        window.history.replaceState(null, document.title, location.pathname+"#!/backbutton");
+        window.history.pushState(null, document.title, location.pathname);
+        // location.href = location.href+"#!/backbutton";
+        window.addEventListener("popstate", function(ev) {that.process_back(ev, 'back_button')}, false);
     }
     grab(widget) {
         this.grabbed = widget;
     }
     ungrab() {
         this.grabbed = null;
-    }
-    process_back(ev) {
-        //TODO: This is not working
-        let state = true;
-        this.set("menu", state); //TODO: true or false depend on ev state
     }
     // touchstart handler
     process_touch(ev, name) {
@@ -108,6 +108,25 @@ class InputHandler {
             }
         }
         ev.preventDefault();
+    }
+    process_back(ev, name) {
+        console.log(ev, name);
+        if(location.hash === "#!/backbutton") {
+            history.replaceState(null, document.title, location.pathname);
+            this.app.emit('back_button', ev)
+        }
+
+        //       history.replaceState(null, document.title, location.pathname);
+        //       history.replaceState(null, document.title, location.pathname+"#!/backbutton");
+        //         setTimeout(function(){
+        //         this.process_back(ev, 'back_button');
+        //         //location.replace("https://ryanseddon.com/");
+        //       },);
+        //     }
+        //   }, false);
+          
+
+
     }
     process_mouse(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
@@ -142,7 +161,6 @@ class InputHandler {
         }
         ev.preventDefault();
     }
-
     vibrate(intensity1, intensity2, duration) {
         window.navigator.vibrate(duration); //default vibration does not support intensity -- could simulate by staggering pulses over the duration
     }

@@ -138,8 +138,15 @@ class Board extends GridLayout {
 	scroll_to_player() {
 		if(this.active_player_token==null) return;
 		let app = App.get();
-		app.sv.setScrollX(this.active_player_token.center_x-app.sv.children[0].w/app.sv.zoom/2);
-		app.sv.setScrollY(this.active_player_token.center_y-app.sv.children[0].h/app.sv.zoom/2);
+		//TODO: Fix this -- need to use the map_pos
+		let mp = new Rect([...this.active_player_token.map_pos, 1, 1]);
+		let sx = Math.min(Math.max(mp.center_x-app.sv.w/app.sv.zoom/2,0),app.sv.children[0].w-app.sv.w/app.sv.zoom);
+		let sy = Math.min(Math.max(mp.center_y-app.sv.h/app.sv.zoom/2,0),app.sv.children[0].h-app.sv.h/app.sv.zoom)
+		let anim = new WidgetAnimation();
+		anim.add({scrollX:sx, scrollY:sy}, 100);
+		anim.start(app.sv);
+//		app.sv.setScrollX(sx);
+//		app.sv.setScrollY(sy);
 	}
 	on_token_move(event, token, mp) {
 		this.token_update();

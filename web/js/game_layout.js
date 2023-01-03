@@ -539,7 +539,7 @@ class ActiveCardSplay extends CardSplay {
 	discard_used(unused=0, noise=0, exhaust_on_use=null, tap_on_use=null) {
 		let app = App.get();
 		if(unused > 0) {
-			let cards0 = this.children.slice(0);
+			let cards0 = this.children.slice(0,unused);
 			this.move_to(cards0, app.hand);
 		}
 		if(this.children.length > 0) {
@@ -628,6 +628,11 @@ class Hand extends CardSplay {
 	on_child_added(event, child) {
 		super.on_child_added(...arguments);
 		child.faceUp = true;
+	}
+	on_back_button(event, touch) {
+		let app = App.get();
+		if(app.stats.parent == null) app.stats.popup();
+		else app.stats.close();
 	}
 	on_touch_up(event, touch) {
 		if(touch.grabbed!=this) return super.on_touch_up(...arguments);
@@ -859,7 +864,7 @@ class EventDiscard extends CardSplay {
 	}
 }
 
-class Stats extends BoxLayout {
+class Stats extends ModalView {
 	kills = 0;
 	knockouts = 0;
 	contacts = 0;
@@ -886,10 +891,31 @@ class Stats extends BoxLayout {
 			this.t_loot = 0;
 			this.t_rounds = 0;
 			this.t_showing = false;
-		}
+		}		
+		this.addChild(new BoxLayout(null, {
+			orientation: 'vertical',
+			children: [
+				new Label(null, {text: 'GAME OVER'}),
+				new BoxLayout(null, {orientation:'vertical', hints: {w:1,h:1}, 
+					children: [
+						new Label(null, {id:'kills', text:b('Kills: {root.kills} / {root.tkills}')}),
+						new Label(null, {id:'knockouts', text:b('Knockouts: {root.knockouts} / {root.tknockouts}')}),
+						new Label(null, {id:'contacts', text:b('Kills: {root.contacts} / {root.tcontacts}')}),
+						new Label(null, {id:'loot', text:b('Kills: {root.loot} / {root.tloot}')}),
+						new Label(null, {id:'rounds', text:b('Kills: {root.rounds} / {root.trounds}')}),
+						new Label(null, {id:'missions', text:b('Kills: {root.missions} / {root.missions}')}),
+						new BoxLayout(null, {hints: {w:1,h:1/6}, orientation:'horizontal', 
+							children: [
+								Button(null, {text:'RESTART', id:'restart'}),
+								Button(null, {text:'QUIT', id:'quit'}),
+								Button(null, {text:'NEXT', id:'next'}),
+							]})
+				]})
+			]}));	
+
 	}
 	on_touch_down(event, touch) {
-		for(var but of tuple([this.restart, this.quit, this.py_next])) {
+		for(var but of [this.restart, this.quit, this.py_next]) {
 			if(but.collide(touch.rect) && but.active) {
 				touch.grab(self);
 				return true;
