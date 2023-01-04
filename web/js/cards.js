@@ -512,7 +512,7 @@ class SpawnEvent extends EventCard {
 		if(bests !== null) {
 			var np = board.get_pos_from_card(card, bests);
 			var g = new board.token_types['G'](np);
-			board.tokens.push(g);
+			board.tokens = [...board.tokens, g];
 			g.map_pos = np;
 		}
 	}
@@ -533,9 +533,10 @@ class PatrolEvent extends EventCard {
 			if(gcard != pcard) continue;
 			if(gpos == ppos) continue;
 			var pts = [...gcard.spawns, ...gcard.waypoints];
-            var pt = pts.find(p => p[0]==gpos[0] && p[1]==gpos[1]);
-			if(pt==undefined) pt = pts[pts.length-1];
-			g.map_pos = board.get_pos_from_card(gcard, pt);
+            var pt = pts.indexOf(p => arrEq(p, gpos));
+			if(pt==undefined) pt = 0;
+			else pt = pt<pts.length-1?pt+1:0;
+			g.map_pos = board.get_pos_from_card(gcard, pts[pt]);
 		}
 	}
 }
@@ -676,9 +677,9 @@ class GlideAction extends PlayerAction {
 		var spots = [];
 		var pp = board.active_player_token.map_pos;
 		if(!(board.active_player_clashing())) {
-			if(board.building_types.includes(board.get([board.active_player_token.map_pos]))) {
-				var spots = board.iter_types_in_range(board.active_player_token.map_pos, 
-								board.building_types, this.value_allowance())
+			if(board.building_types.includes(board.get(board.active_player_token.map_pos))) {
+				var spots = [...board.iter_types_in_range(board.active_player_token.map_pos, 
+								board.building_types, this.value_allowance())]
 								.filter(p=>board.has_types_between(p, pp, board.path_types));
 			}
 			else {
@@ -696,8 +697,6 @@ class GlideAction extends PlayerAction {
 }
 
 class FightAction extends PlayerAction {
-	noise_per_stack = 1;
-	base_allowance = 1;
 	activate(message, props ={}) {
 		var playarea = App.get();
 		var board = playarea.board;
@@ -1302,7 +1301,7 @@ function set_choice_type(pos1, pos2, board, dist_cap=2) {
 		var visible = false;
 		if(!['B', 'U'].includes(board.get(pos1))) {
 			visible = [...board.iter_tokens('G')].filter(g=>['alert','dozing'].includes(g.state) && !g.frozen && 
-						dist(g.map_pos, pos1)<=10 && !(board.has_types_between(g.map_pos, pos1, 'B')))>0
+						dist(g.map_pos, pos1)<=10 && !(board.has_types_between(g.map_pos, pos1, 'B'))).length>0;
 		}
 		return visible? 'visible' : 'touch';
 	}

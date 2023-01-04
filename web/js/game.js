@@ -8,7 +8,7 @@ class Game extends App {
     vt_cards = 1; //how many cards we need to fit vertically in a horizontal orientation screen
     card_size = [4,6];
     scroll_size = [10,10];
-    map_scale = 1
+    map_scale = 1;
     map_card_size = [5,7];
     constructor() {
         super();
@@ -34,7 +34,7 @@ class Game extends App {
             {numX: this.map_size[0]});
         this.playarea = new Widget([0,0,this.map_card_size[0]*this.map_size[0], 
             this.map_card_size[1]*this.map_size[1]]);
-        this.playerprompt = new Label(r, { fontSize: 0.5,
+        this.playerprompt = new PlayerPrompt(r, { fontSize: 0.5,
                 text: 'Select a card from your hand to play, or tap the event card to end your turn'});
 
         this.sv.addChild(this.playarea);
@@ -57,14 +57,14 @@ class Game extends App {
         this.marketcards = make_market_cards(this);
         this.skillcards = make_skill_cards(this);
 
+        this.setupNewGame();
+    }
+    setupNewGame() {
         this.mission = new ContactMission({mission_level:this.stats.missions+1});
         this.board.children = this.mission.setup_map(this);
         this.eventdeck.children = this.mission.setup_events(this);
         this.eventdeck.can_draw = true;
 
-        this.setupNewGame();
-    }
-    setupNewGame() {
         this.playerdeck.children = shuffle(this.playercards);
         this.playertraits.children = shuffle(this.traitcards);
         this.loot1.children = shuffle(this.lootcards);

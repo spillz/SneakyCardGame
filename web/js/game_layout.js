@@ -266,7 +266,8 @@ class CardSplay extends Widget {
 	move_to(cards, deck, pos=null) {
 		let chf = this.children.filter(c => !(cards.includes(c)));
 		this.children = this.children.filter(c => !(cards.includes(c)));
-		deck.children = [...deck.children.slice(0,pos), ...cards, ...deck.children.slice(pos)];
+		if(pos==null) deck.children = [...deck.children.slice(), ...cards];
+		else deck.children = [...deck.children.slice(0,pos), ...cards, ...deck.children.slice(pos)];
 	}
 }
 
@@ -455,6 +456,27 @@ class PlayerDiscard extends CardSplay {
 	}
 }
 
+class PlayerPrompt extends Label {
+	on_touch_down(event, touch) {
+		if(this.collide(touch.rect)) {
+			touch.grab(this);
+			return true;
+		}
+		return super.on_touch_down(event, touch);
+	}
+	on_touch_up(event, touch) {
+		let app=App.get()
+		if(touch.grabbed == this) {
+			touch.ungrab()
+			if(this.collide(touch.rect)) {
+				if(app.stats.parent==null) app.stats.popup();
+				return true;
+			}
+		}
+		return super.on_touch_up(event, touch);
+	}
+}
+
 class PlayerDeck extends CardSplay {
 	on_child_added(event, c) {
 		super.on_child_added(...arguments);
@@ -603,7 +625,7 @@ class ActionSelector extends ModalView {
 		super(new Rect([card.x, card.y-h, card.w, h*2]),
 			{hints:{center_x:0.5,
 					center_y:0.5,
-					w:0.5}}); //TODO: This rect should be set in the layout call of the parent
+					w:0.5}}); 
 		let b = new BoxLayout(null, {orientation:'vertical', hints:{x:0,y:0,w:1,h:1}});
 		for(var a in actions) {
 			b.addChild(new ActionSelectorOption(new Rect(), {text: a}));
@@ -852,6 +874,7 @@ class EventDeck extends CardSplay {
 		this.move_to([card], app.eventdiscard);
 		card.activate(app.board);
 		app.playerdeck.draw_hand();
+		app.board.token_update();
 		app.stats.rounds++;
 		app.stats.t_rounds++;
 	}
@@ -860,6 +883,7 @@ class EventDeck extends CardSplay {
 class EventDiscard extends CardSplay {
 	on_child_added(event, card) {
 		super.on_child_added(...arguments);
+		this.emit('discard', card);
 		card.faceUp=true;
 	}
 }
@@ -877,6 +901,36 @@ class Stats extends ModalView {
 	t_contacts = 0;
 	t_loot = 0;
 	t_rounds = 0;
+	hints = {x:0.1, y:0.1, w:0.8, h:0.8};
+	id = 'stats'
+	constructor() {
+		super(null, {});
+		this.addChild(new BoxLayout(null, {
+			hints: {x:0, y:0, w:1, h:1},
+			orientation: 'vertical',
+			children: [
+				new Label(null, {text: 'GAME OVER', hints: {w:1,h:0.2}}),
+				new BoxLayout(null, {orientation:'vertical', hints: {w:1,h:0.8}, 
+					children: [
+						new Label(null, {id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
+						new Label(null, {id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
+						new Label(null, {id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
+						new Label(null, {id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
+						new Label(null, {id:'rounds', text: (stats)=>`Rounds: ${stats.rounds} / ${stats.t_rounds}`}),
+						new Label(null, {id:'missions', text: (stats)=>`Missions: ${stats.missions}`}),
+						new BoxLayout(null, {orientation:'horizontal', hints: {w:1,h:1/6}, paddingX:0.1, spacingX:0.1, 
+							children: [
+								new Button(null, {text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
+								new Button(null, {text:'RESTART', id:'restart', on_press:(ev,ob,press)=>this.restartGame()}),
+								new Button(null, {text:'NEXT', id:'next', disable:true}),
+							]})
+				]})
+			]}));
+	}
+	restartGame() {
+		this.reset();
+		App.get().setupNewGame();
+	}
 	reset(totals=true) {
 		this.kills = 0;
 		this.knockouts = 0;
@@ -892,36 +946,6 @@ class Stats extends ModalView {
 			this.t_rounds = 0;
 			this.t_showing = false;
 		}		
-		this.addChild(new BoxLayout(null, {
-			orientation: 'vertical',
-			children: [
-				new Label(null, {text: 'GAME OVER'}),
-				new BoxLayout(null, {orientation:'vertical', hints: {w:1,h:1}, 
-					children: [
-						new Label(null, {id:'kills', text:b('Kills: {root.kills} / {root.tkills}')}),
-						new Label(null, {id:'knockouts', text:b('Knockouts: {root.knockouts} / {root.tknockouts}')}),
-						new Label(null, {id:'contacts', text:b('Kills: {root.contacts} / {root.tcontacts}')}),
-						new Label(null, {id:'loot', text:b('Kills: {root.loot} / {root.tloot}')}),
-						new Label(null, {id:'rounds', text:b('Kills: {root.rounds} / {root.trounds}')}),
-						new Label(null, {id:'missions', text:b('Kills: {root.missions} / {root.missions}')}),
-						new BoxLayout(null, {hints: {w:1,h:1/6}, orientation:'horizontal', 
-							children: [
-								Button(null, {text:'RESTART', id:'restart'}),
-								Button(null, {text:'QUIT', id:'quit'}),
-								Button(null, {text:'NEXT', id:'next'}),
-							]})
-				]})
-			]}));	
-
-	}
-	on_touch_down(event, touch) {
-		for(var but of [this.restart, this.quit, this.py_next]) {
-			if(but.collide(touch.rect) && but.active) {
-				touch.grab(self);
-				return true;
-			}
-		}
-		return true;
 	}
 	on_touch_up(event, touch) {
 		let app = App.get();

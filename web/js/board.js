@@ -38,14 +38,15 @@ class MapChoice extends BoxLayout {
 		let ctx = app.ctx;
 		let r = this.rect;
 
-        //     rgb: (240,69,0) if self.choice_type=='touch' else(192,0,0) if self.choice_type=='visible' else(170,170,170)
-		ctx.fillStyle = self.choice_type=='touch' ? colorString([240/255,69/255,0]) : colorString([192/255,0,0]);
+		const colors = {'touch': colorString([0.8,0.8,0]), 'visible': colorString([192/255,0,0]), 'info': colorString([170/255,170/255,170/255])}
+		// const colors = {'touch': colorString([240/255,69/255,0]), 'visible': colorString([192/255,0,0]), 'info': colorString([170/255,170/255,170/255])}
+		// ctx.fillStyle = colors[this.choice_type];
 
 		let x = r.x+r.w/5;
 		let y = r.y+r.h/5;
 		let w = 3*r.w/5;
 		let h = 3*r.h/5;
-		ctx.strokeStyle = colorString([0.8,0.8,0]);
+		ctx.strokeStyle = colors[this.choice_type];
 		ctx.lineWidth = 2.0/app.tileSize;
 
 		ctx.beginPath();
@@ -138,15 +139,12 @@ class Board extends GridLayout {
 	scroll_to_player() {
 		if(this.active_player_token==null) return;
 		let app = App.get();
-		//TODO: Fix this -- need to use the map_pos
 		let mp = new Rect([...this.active_player_token.map_pos, 1, 1]);
 		let sx = Math.min(Math.max(mp.center_x-app.sv.w/app.sv.zoom/2,0),app.sv.children[0].w-app.sv.w/app.sv.zoom);
 		let sy = Math.min(Math.max(mp.center_y-app.sv.h/app.sv.zoom/2,0),app.sv.children[0].h-app.sv.h/app.sv.zoom)
 		let anim = new WidgetAnimation();
 		anim.add({scrollX:sx, scrollY:sy}, 100);
 		anim.start(app.sv);
-//		app.sv.setScrollX(sx);
-//		app.sv.setScrollY(sy);
 	}
 	on_token_move(event, token, mp) {
 		this.token_update();
@@ -474,18 +472,19 @@ class Board extends GridLayout {
 		}
 	}
 	hide_light(pos, permanent=false) {
+		let app=App.get()
 		let c,p;
 		[c,p] = this.get_card_and_pos(pos);
 		let light = (c.lights.find(l => l[0]==p[0] && l[1]==p[1]));
 		if(light == undefined) return false;
-		let lights = c.lights.filter(light);
+		let lights = c.lights.filter(l=>l!=light);
 		c.light_map(lights);
-		c.draw_grid();
-		var relight_fn = function(event, card) {
-			card.light_map(card.lights);
-			card.draw_grid();
-		};
-		this.parent.parent.eventdiscard.bind('discard', c);
+		if(!permanent) {
+			app.eventdiscard.bind('discard', (event, deck,  card) => {
+					c.light_map(c.lights);
+					this.token_update();
+				});
+		}
 	}
 	nearest_guard(map_pos, max_range=null, states=['dozing','alert']) {
 		var gts = [...this.tokens].filter(t=> t instanceof GuardToken && states.includes(t.state));

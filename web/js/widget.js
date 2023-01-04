@@ -240,6 +240,7 @@ class Widget extends Rect {
         super(rect);
         this.parent = null;
         this.processTouches = false;
+        this._deferredProps = null;
         this._children = []; //widget has arbitrarily many children
         this._needsLayout = true;
         this._events = {
@@ -266,9 +267,45 @@ class Widget extends Rect {
     get rect() {
         return new Rect(this);
     }
+    deferredProperties() {
+        let app = App.get();
+        let properties = this._deferredProps;
+        this._deferredProps = null;
+        for(let p in properties) {
+            if(!p.startsWith('on_') && typeof properties[p] == 'function') { //Dynamic property binding
+                //TODO: this needs to be deferred again if any of the objs can't be found yet
+                let func = properties[p];
+                let args,rval;
+                [args, rval] = func.toString().split('=>')
+                args = args.replace('(','').replace(')','').split(',').map(a=>a.trim());
+                let objs = args.map(a=>app.findById(a));
+                let obmap = {}
+                for(let a of args) {
+                    obmap[a] = app.findById(a);
+                }
+                //Bind to all object properties in the RHS of the function
+                const re = /(\w+)\.(\w+)/g;
+                for(let pat of rval.matchAll(re)) {
+                    let pr,ob;
+                    [ob, pr] = pat.slice(1);
+                    obmap[ob].bind(pr, (evt, obj, data)=> { try { this[p] = func(...objs) } catch(error) {console.log('Dynamic binding error',this,p,error)}});
+                }
+                //Immediately evaluate the function on the property
+                try {
+                    this[p] = func(...objs);
+                } catch(error) {
+                    console.log('Dynamic binding error',this,p,error)
+                }
+            }
+        }
+    }
     updateProperties(properties) {
         for(let p in properties) {
-            this[p] = properties[p];
+            if(!p.startsWith('on_') && typeof properties[p] == 'function') { //Dynamic property binding
+                this._deferredProps = properties;
+            } else {
+                this[p] = properties[p];
+            }
         }    
     }
     bind(event, func) {
@@ -427,7 +464,7 @@ class Widget extends Rect {
         if('center_x' in hints) c.center_x = this.x + hints['center_x']*this.w;
         if('center_y' in hints) c.center_y = this.y + hints['center_y']*this.h;
         if('right' in hints) c.right = this.x + hints['right']*this.w;
-        if('bottom' in hints) c.bottom = this.y + hints['bottom']*this.y;
+        if('bottom' in hints) c.bottom = this.y + hints['bottom']*this.h;
     }
     layoutChildren() { //The default widget has children but does not apply a layout a la kivy FloatLayout
         this._needsLayout = false;
@@ -456,10 +493,10 @@ class Widget extends Rect {
         app.ctx.stroke();
     }
     update(millis) {
+        if(this._deferredProps!=null) this.deferredProperties();
         if(this._animation!=null) this._animation.update(millis);
         if(this._needsLayout) this.layoutChildren();
-        for(let c of this.children)
-            c.update(millis);
+        for(let c of this.children) c.update(millis);
     }
 }
 
@@ -545,25 +582,48 @@ class Label extends Widget {
 class Button extends Label {
     selectColor = colorString([0.7,0.7,0.8]);
     bgColor = colorString([0.5,0.5,0.5]);
+    disableColor1 = colorString([0.2,0.2,0.2])
+    disableColor2 = colorString([0.4,0.4,0.4])
+    disable = false;
+    constructor(rect, props) {
+        super(rect);
+        this.updateProperties(props);
+    }
     on_touch_down(event, touch) {
-        if(this.collide(touch.rect)) {
+        if(!this.disable && this.collide(touch.rect)) {
             touch.grab(this);
+            this._touching = true;
             return true;
         }
+        return super.on_touch_down();
     }
     on_touch_up(event, touch) {
         if(touch.grabbed!=this) return;
         touch.ungrab();
-        if(this.collide(touch.rect)) {
+        if(!this.disable && this.collide(touch.rect)) {
+            this._touching = false;
             this.emit('press', null);
             return true;
         }
+        return super.on_touch_up();
     }
+	on_touch_move(event, touch) {
+		if(touch.grabbed==this && !this.disable) {
+			this._touching = this.collide(touch.rect);
+		}
+		return super.on_touch_move(event, touch);
+	}
     draw() {
         let saved = this.bgColor;
-        if(App.get().inputHandler.grabbed==this) this.bgColor = this.selectColor;
+        let saved2 = this.color;
+        if(this._touching) this.bgColor = this.selectColor;
+        if(this.disable) {
+            this.bgColor = this.disableColor1;
+            this.color = this.disableColor2;
+        }
         super.draw();
         this.bgColor = saved;
+        this.color = saved2;
     }
 }
 
@@ -578,63 +638,99 @@ class BoxLayout extends Widget {
     paddingY = 0;
     orientation = 'vertical';
     constructor(rect, properties=null) {
-        super(rect, properties);
+        super(rect);
+        this.updateProperties(properties);
     }
-    on_numX() {
+    on_numX(event, data) {
         this._needsLayout = true;
     }
-    on_numY() {
+    on_numY(event, data) {
         this._needsLayout = true;
     }
-    on_spacingX() {
+    on_spacingX(event, data) {
         this._needsLayout = true;
     }
-    on_spacingY() {
+    on_spacingY(event, data) {
         this._needsLayout = true;
     }
-    on_paddingX() {
+    on_paddingX(event, data) {
         this._needsLayout = true;
     }
-    on_paddingY() {
+    on_paddingY(event, data) {
         this._needsLayout = true;
     }
+    on_orientation(event, data) {
+        this._needsLayout = true;
+    }
+    applyHints(c,w=null,h=null) {
+        if(w==null) w=this.w;
+        if(h==null) h=this.h;
+        let hints = c.hints;
+        if('w' in hints) c.w = hints['w']*w;
+        if('h' in hints) c.h = hints['h']*h;        
+        if('x' in hints) c.x = this.x + hints['x']*w;
+        if('y' in hints) c.y = this.y + hints['y']*h;
+        if('center_x' in hints) c.center_x = this.x + hints['center_x']*w;
+        if('center_y' in hints) c.center_y = this.y + hints['center_y']*h;
+        if('right' in hints) c.right = this.x + hints['right']*w;
+        if('bottom' in hints) c.bottom = this.y + hints['bottom']*h;
+    }
+
     layoutChildren() {
         this._needsLayout = false;
         if(this.orientation=='vertical') {
             let num = this.children.length;
             let h = this.h - this.spacingY*num - 2*this.paddingY;
             let w = this.w - 2*this.paddingX;
-            let ch = h/num;
+
+            let fixedh = 0
+            for(let c of this.children) {
+                this.applyHints(c,w,h);
+                if('h' in c.hints) {
+                    c.h = h*c.hints['h'];
+                    fixedh += c.h;
+                    num--;
+                }
+            }
+            let ch = (h-fixedh)/num;
             let cw = w;
             let y = this.y+this.paddingY;
             let x = this.x+this.paddingX;
-            for(let i=0;i<this.children.length;i++) {
-                this.children[i].x=x;
-                this.children[i].y=y;
-                this.children[i].w=cw;
-                this.children[i].h=ch;
-                this.children[i].layoutChildren();
-                y+=this.spacingY+ch;
+            for(let c of this.children) {
+                c.y=y;
+                if(!('x' in c.hints)) c.x=x;
+                if(!('w' in c.hints)) c.w=cw;
+                if(!('h' in c.hints)) c.h=ch;
+                c.layoutChildren();
+                y+=this.spacingY+c.h;
             }
             return;
         }
         if(this.orientation=='horizontal') {
-            num = this.children.length;
+            let num = this.children.length;
             let h = this.h - 2*this.paddingY;
             let w = this.w - this.spacingX*num - 2*this.paddingX;
+            let fixedw = 0
+            for(let c of this.children) {
+                this.applyHints(c,w,h);
+                if('w' in c.hints) {
+                    c.w = w*c.hints['w'];
+                    fixedw += c.w;
+                    num--;
+                }
+            }
             let ch = h;
-            let cw = w/num;
+            let cw = (w-fixedw)/num;
             let y = this.y+this.paddingY;
             let x = this.x+this.paddingX;
-            for(let i=0;i<this.children.length;i++) {
-                this.children[i].x=x;
-                this.children[i].y=y;
-                this.children[i].w=cw;
-                this.children[i].h=ch;
-                this.children[i].layoutChildren();
-                x+=this.spacingX+cw;
+            for(let c of this.children) {
+                c.x=x;
+                if(!('y' in c.hints)) c.y=y;
+                if(!('w' in c.hints)) c.w=cw;
+                if(!('h' in c.hints)) c.h=ch;
+                c.layoutChildren();
+                x+=this.spacingX+c.w;
             }
-
         }
     }
 }
@@ -736,12 +832,31 @@ class ScrollView extends Widget {
         this.oldMouse = null;
         this._lastDist = null;
     }
+    on_child_added(event, child) {
+        if(this.children.length==1) {
+            this.setScrollX(0);
+            this.setScrollY(0);
+            this._needsLayout = true;
+            child.bind('rect', (event, obj, data) => this._needsLayout = true);
+            child.bind('w', (event, obj, data) => this._needsLayout = true);
+            child.bind('h', (event, obj, data) => this._needsLayout = true);
+        }
+    }
+    on_child_removed(event, child) {
+        if(this.children.length==0) {
+            this.setScrollX(0);
+            this.setScrollY(0);
+            this._needsLayout = true;
+        }
+    }
     layoutChildren() {
         this._needsLayout = false;
         this.setScrollX(this.scrollX);
         this.setScrollY(this.scrollY);
-        if(!this.scrollW) this.children.apply(c=>c.w=this.w);
-        if(!this.scrollH) this.children.apply(c=>c.h=this.h);
+        this.children[0].x = 0;
+        this.children[0].y = 0;
+        // if(!this.scrollW) this.children[0].w = this.w;
+        // if(!this.scrollH) this.children[0].h = this.h;
         for(let c of this.children) {
             c.layoutChildren();
         }
@@ -768,7 +883,7 @@ class ScrollView extends Widget {
         if('center_x' in hints) c.center_x = hints['center_x']*this.w;
         if('center_y' in hints) c.center_y = hints['center_y']*this.h;
         if('right' in hints) c.right = hints['right']*this.w;
-        if('bottom' in hints) c.bottom = hints['bottom']*this.y;
+        if('bottom' in hints) c.bottom = hints['bottom']*this.h;
     }
     on_scrollW(event, value) {
         this._needsLayout = true;
@@ -861,23 +976,6 @@ class ScrollView extends Widget {
         for(let c of this.children) if(this.collide(r) && c.emit(event, tl)) return true;
         return false;
     }
-    // on_touch_move(event, touch) {
-    //     if(this.collide(r)) {
-    //         if(this.oldTouch==null || touch.identifier!=this.oldTouch[2]) {
-    //             this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
-    //             return;
-    //         }
-    //         if(this.scrollW) {
-    //             this.scrollX += (this.oldTouch[0]-touch.clientX)/app.tileSize;
-    //             this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
-    //         }
-    //         if(this.scrollH) {
-    //             this.scrollY += (this.oldTouch[1]-touch.clientY)/app.tileSize; 
-    //             this.scrollY = Math.max(0, Math.min(this.scrollY, this.children[0].h-this.h))
-    //         }
-    //         this.oldTouch = [touch.clientX, touch.clientY, touch.identifier];
-    //     }
-    // }
     on_mouse_move(event, mouse) {
         return
         let app = App.get();
