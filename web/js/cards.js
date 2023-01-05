@@ -488,6 +488,7 @@ class CityMap extends MapCard {
 }
 
 class EventCard extends Card {
+	backText = 'EVENT';
 	activate(board) {
 		// pass;
 	}
@@ -1109,7 +1110,8 @@ class DecoyAction extends PlayerAction {
 				if(t instanceof board.token_types['G'] && ['alert', 'dozing'].includes(t.state) && (0 < dist(t.map_pos, obj.map_pos) && dist(t.map_pos, obj.map_pos) <= 10)) {
 					if(!(board.has_types_between(t.map_pos, obj.map_pos, board.building_types))) {
 						t.map_pos = obj.map_pos;
-						t.state = 'alert';
+						if(t.state!='alert') t.state = 'alert';
+						t.frozen = true;
 					}
 				}
 			}
@@ -1193,101 +1195,95 @@ class MarketAction extends PlayerAction {
 }
 
 class TraitCard extends Card {
+	lowerText = 'TRAIT';
 	tapped = false;
 	exhausted = false;
 	get_actions_for_card(card) {
 		return {}
 
 	}
+	on_tapped(event, data) {
+		this.bgColor = this.tapped? colorString([0.5,0.5,0.5]): colorString([0.2,0.2,0.2]);
+		this.textColor = this.tapped? 'gray':'white';
+		this.nameColor = this.tapped? 'gray':'yellow';
+		this.lowerTextColor = this.tapped? 'gray':'yellow';
+	}
 }
 
 class MoveTrait extends TraitCard {
 	name = 'MOVE';
-	text = 'All cards gain MOVE 1+';
+	text = 'Once per round: play hand card as MOVE 1[+1].';
 	get_actions_for_card(card, playarea) {
 		if(this.tapped || this.exhausted) {
-			return {}
-
+			return {};
 		}
 		else {
-			return {'MOVE 1+': new MoveAction(card, {base_allowance: 1, tap_on_use: this})}
-
+			return {'MOVE 1[+1]': new MoveAction(card, {base_allowance: 1, tap_on_use: this})};
 		}
 	}
 }
 
 class FightTrait extends TraitCard {
 	name = 'FIGHT';
-	text = 'All cards gain FIGHT 1+';
+	text = 'Once per round: play hand card as FIGHT 0.5[+0.5].';
 	get_actions_for_card(card, playarea) {
 		if(this.tapped || this.exhausted) {
-			return {}
-
+			return {};
 		}
 		else {
-			return {'ATTACK 0.5+': new FightAction(card, {base_allowance: 0.5, value_per_card: 0.5, tap_on_use: this})}
-
+			return {'ATTACK 0.5[+0.5]': new FightAction(card, {base_allowance: 0.5, value_per_card: 0.5, tap_on_use: this})};
 		}
 	}
 }
 
 class ClimbTrait extends TraitCard {
     name = 'CLIMBER'
-    text = 'Hand cards gain Climb 1'
-
+    text = 'Once per round: play hand card as CLIMB 1.'
 	get_actions_for_card(card, playarea) {
 		if(this.tapped || this.exhausted) {
-			return {}
-
+			return {};
 		}
 		else {
-			return {'CLIMB 1': new ClimbAction(card, {tap_on_use: true})}
-
+			return {'CLIMB 1': new ClimbAction(card, {tap_on_use: true})};
 		}
 	}
 }
 
 class SneakTrait extends TraitCard {
 	name = 'SLINKER';
-    text = 'Hand cards gain Stealth 0.5+ and Knockout 1';
+    text = 'Once per round: play hand card as SNEAK 0.5[+0.5] or KNOCKOUT 1';
 	get_actions_for_card(card, playarea) {
 		if(this.tapped || this.exhausted) {
-			return {}
-
+			return {};
 		}
 		else {
-			return {'KNOCKOUT': new KnockoutAction(card, {base_allowance: 1, tap_on_use: true})}
-
+			return {'KNOCKOUT 1': new KnockoutAction(card, {base_allowance: 1, tap_on_use: true})};
 		}
 	}
 }
 
 class LootTrait extends TraitCard {
     name = 'LOOTER';
-    text = 'Hand cards gain Lockpick 1+';
+    text = 'Once per round: play hand card as LOCKPICK 1[+1]';
 	get_actions_for_card(card, playarea) {
 		if(this.tapped || this.exhausted) {
-			return {}
-
+			return {};
 		}
 		else {
-			return {'LOCKPICK 1+': new LockpickAction(card, {base_allowance: 1, tap_on_use: true})}
-
+			return {'LOCKPICK 1[+1]': new LockpickAction(card, {base_allowance: 1, tap_on_use: true})};
 		}
 	}
 }
 
 class ArcherTrait extends TraitCard {
     name = 'ARCHER';
-    text = 'Arrows cards in hand can be fired';
+    text = 'Once per round: fired arrows cards go to discard instead of exhausting';
 	get_actions_for_card(card, playarea) {
 		if(this.tapped || this.exhausted) {
-			return {}
-
+			return {};
 		}
 		else {
-			return {'ARROW 3+': new ArrowAction(card, {base_allowance: 3, tap_on_use: true})}
-
+			return {'ARROW 3[+2]': new ArrowAction(card, {base_allowance: 3, tap_on_use: true})};
 		}
 	}
 }
@@ -1319,9 +1315,11 @@ class StartPlayerCard extends PlayerCard {
 }
 
 class LootCard extends PlayerCard {
+	lowerText = 'LOOT';
 }
 
 class SkillCard extends PlayerCard {
+	lowerText = 'SKILL';
 }
 
 class TreasureCard extends LootCard {
@@ -1334,26 +1332,27 @@ class TreasureCard extends LootCard {
 
 class SkeletonKey extends LootCard {
     name = 'SKELETON KEY';
-    text = 'LOCKPICK 4+';
+    text = 'LOCKPICK 4[+1]. Draw loot cards equal to the lockpick value minus the lock level and keep 1, discard the rest. Exhausts after use.';
 	get_actions() {
-		return {'LOCKPICK 4+': new LockpickAction(this, {base_allowance: 4, value_per_card: 1, exhaust_on_use: this})}
+		return {'LOCKPICK 4[+1]': new LockpickAction(this, {base_allowance: 4, value_per_card: 1, exhaust_on_use: this})}
 	}
 }
 
 class MarketCard extends PlayerCard {
+	lowerText = 'BLACK MARKET'
 }
 
 class GasArrow extends MarketCard {
     name = 'GAS ARROW';
-    text = 'Arrow Range 3+. KOs all enemies in the space.';
+    text = 'Arrow Range 3[+2]. KOs all enemies in the space. Exhausts after use.';
 	get_actions() {
-		return {'SHOOT GAS 3+': new GasAction(this, {base_allowance: 3, value_per_card: 2, radius: 1, exhaust_on_use: this})}
+		return {'SHOOT GAS 3[+2]': new GasAction(this, {base_allowance: 3, value_per_card: 2, radius: 1, exhaust_on_use: this})}
 	}
 }
 
 class RopeArrow extends MarketCard {
     name = 'ROPE ARROW';
-    text = 'Arrow Range 3+. Climb 1.5 on top of a roof or exhaust to traverse from roof to roof.';
+    text = 'Climb 1.5 on top of a roof or exhaust to traverse 2 spaces from roof to roof. Exhausts after use.';
 	get_actions() {
 		return {'CLIMB 1.5': new ClimbAction(this, {base_allowance: 1.5, value_per_card: 1, max_height: 2}), 'TRAVERSE 2': new GlideAction(this, {base_allowance: 2, value_per_card: 1, max_height: 2, exhaust_on_use: this})}
 	}
@@ -1361,23 +1360,23 @@ class RopeArrow extends MarketCard {
 
 class DimmerArrow extends MarketCard {
     name = 'DIMMER ARROW';
-    text = 'Arrow Range 3+. Temporarily puts out a light in range until the event phase.';
+    text = 'Arrow Range 3[+2]. Temporarily puts out a light in range until the event phase. Exhausts after use.';
 	get_actions() {
-		return {'SHOOT DIMMER 3+': new DimmerAction(this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
+		return {'SHOOT DIMMER 3[+2]': new DimmerAction(this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
 	}
 }
 
 class DecoyArrow extends MarketCard {
     name = 'DECOY ARROW';
-    text = 'Arrow Range 3+. Alert or dozing guards in line of sight move to targeted space';
+    text = 'Arrow Range 3[+2]. Alert or dozing guards in line of sight move to targeted space then freeze. Exhausts after use.';
 	get_actions() {
-		return {'SHOOT DECOY 3+': new DecoyAction(this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
+		return {'SHOOT DECOY 3[+2]': new DecoyAction(this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
 	}
 }
 
 class SmokeBomb extends MarketCard {
     name = 'SMOKE BOMB';
-    text = 'Smoke 1. Enemies in your space cannot see or engage with you until the event phase.';
+    text = 'Smoke 1. Enemies in your space cannot see or engage with you until the event phase. Exhausts after use.';
 	get_actions() {
 		return {'SMOKE BOMB': new SmokeBombAction(this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
 	}
@@ -1395,17 +1394,17 @@ class Hypnotize extends MarketCard {
 
 class BasicMove extends StartPlayerCard {
     name = 'BASIC MOVE';
-    text = 'Move 1.5+';
+    text = 'Move 1.5[+1.5]';
 	get_actions() {
-		return {'MOVE 1.5+': new MoveAction(this, {base_allowance: 1.5, value_per_card: 1.5})}
+		return {'MOVE 1.5[+1.5]': new MoveAction(this, {base_allowance: 1.5, value_per_card: 1.5})}
 	}
 }
 
 class BasicAttack extends StartPlayerCard {
     name = 'BASIC ATTACK';
-    text = 'Attack 1+';
+    text = 'Attack 1[+1]';
 	get_actions() {
-		return {'ATTACK 1+': new FightAction(this, {base_allowance: 2})}
+		return {'ATTACK 1[+1]': new FightAction(this, {base_allowance: 1, value_per_card: 1})}
 	}
 }
 
@@ -1419,9 +1418,9 @@ class BasicClimb extends StartPlayerCard {
 
 class BasicSneak extends StartPlayerCard {
     name = 'BASIC SNEAK';
-    text = 'Sneak 1+';
+    text = 'Sneak 1[+1]';
 	get_actions() {
-		return {'SNEAK 1+': new MoveAction(this, {base_allowance: 1, value_per_card: 1, base_noise: 0, noise_per_stack: 0})}
+		return {'SNEAK 1[+1]': new MoveAction(this, {base_allowance: 1, value_per_card: 1, base_noise: 0, noise_per_stack: 0})}
 	}
 }
 
@@ -1429,39 +1428,39 @@ class BasicKnockout extends StartPlayerCard {
     name = 'BASIC KNOCKOUT';
     text = 'Knockout 1';
 	get_actions() {
-		return {'KNOCKOUT': new KnockoutAction(this)}
+		return {'KNOCKOUT 1': new KnockoutAction(this)}
 	}
 }
 
 class BasicArrow extends StartPlayerCard {
     name = 'BASIC ARROW';
-    text = 'Arrow Range 3+';
+    text = 'Arrow Range 3[+2]';
 	get_actions() {
-		return {'SHOOT ARROW 3': new ArrowAction(this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
+		return {'SHOOT ARROW 3[+2]': new ArrowAction(this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
 	}
 }
 
 class BasicLockpick extends StartPlayerCard {
     name = 'BASIC LOCKPICK';
-    text = 'Lockpick 1+';
+    text = 'Lockpick 1[+1]';
 	get_actions() {
-		return {'LOCKPICK 1+': new LockpickAction(this, {base_allowance: 1})}
+		return {'LOCKPICK 1[+1]': new LockpickAction(this, {base_allowance: 1})}
 	}
 }
 
 class EfficientMove extends SkillCard {
     name = 'MOVE';
-    text = 'Move 2+';
+    text = 'Move 2[+2]';
 	get_actions() {
-		return {'MOVE 2+': new MoveAction(this, {base_allowance: 2, value_per_card: 2})}
+		return {'MOVE 2[+2]': new MoveAction(this, {base_allowance: 2, value_per_card: 2})}
 	}
 }
 
 class EfficientAttack extends SkillCard {
     name = 'ATTACK';
-    text = 'Attack 2+';
+    text = 'Attack 2[+1]';
 	get_actions() {
-		return {'ATTACK 2+': new FightAction(this, {base_allowance: 2})}
+		return {'ATTACK 2[+1]': new FightAction(this, {base_allowance: 2})}
 	}
 }
 
@@ -1475,9 +1474,9 @@ class EfficientClimb extends SkillCard {
 
 class EfficientSneak extends SkillCard {
     name = 'SNEAK';
-    text = 'Sneak 1+';
+    text = 'Sneak 1[+1.5]';
 	get_actions() {
-		return {'SNEAK 1.5+': new MoveAction(this, {base_allowance: 1, value_per_card: 1.5, base_noise: 0, noise_per_stack: 0})}
+		return {'SNEAK 1[+1.5]': new MoveAction(this, {base_allowance: 1, value_per_card: 1.5, base_noise: 0, noise_per_stack: 0})}
 	}
 }
 
@@ -1485,23 +1484,23 @@ class EfficientKnockout extends SkillCard {
     name = 'KNOCKOUT';
     text = 'Knockout 1';
 	get_actions() {
-		return {'KNOCKOUT': new KnockoutAction(this)}
+		return {'KNOCKOUT 1': new KnockoutAction(this)}
 	}
 }
 
 class EfficientArrow extends SkillCard {
     name = 'ARROW';
-    text = 'Arrow Range 5+';
+    text = 'Arrow Range 5[+2]';
 	get_actions() {
-		return {'SHOOT ARROW 5': new ArrowAction(this, {base_allowance: 5, value_per_card: 2, exhaust_on_use: this})}
+		return {'SHOOT ARROW 5[+2]': new ArrowAction(this, {base_allowance: 5, value_per_card: 2, exhaust_on_use: this})}
 	}
 }
 
 class EfficientLockpick extends SkillCard {
     name = 'LOCKPICK';
-    text = 'Lockpick 2+';
+    text = 'Lockpick 2[+1]';
 	get_actions() {
-		return {'LOCKPICK 2+': new LockpickAction(this, {base_allowance: 2})}
+		return {'LOCKPICK 2[+1]': new LockpickAction(this, {base_allowance: 2})}
 	}
 }
 
@@ -1522,6 +1521,8 @@ class Mission extends Card {
 }
 
 class ContactMission extends Mission {
+	title = 'Contact Mission';
+	text = 'Get to your contact locked inside the building marked with a gold star.';
 	setup_events() {
 		var events = make_event_cards();
 		shuffle(events);

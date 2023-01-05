@@ -275,7 +275,13 @@ class CardSplay extends Widget {
 
 class Card extends Widget {
     name = 'card name';
+	nameColor = 'yellow';
     text = 'card text';
+	textColor = 'white';
+	lowerText = null;
+	lowerTextColor = 'yellow';
+	backText = null;
+	backTextColor = 'yellow';
     image = null;
     faceUp = false;
 	selected = false;
@@ -286,10 +292,7 @@ class Card extends Widget {
     constructor(rect=null, properties=null) {
         super(rect);
         this.updateProperties(properties);
-        // let that = this
-        // this.bind('touch_down', (name, obj, t) => that.onTouchDown(name, obj, t));
     }
-
     draw() {
         if(this.faceUp) {
             //TODO: draw a card background, borders etc
@@ -298,18 +301,29 @@ class Card extends Widget {
             super.draw();
             let r1 = new Rect(this);
             let r2 = new Rect(this);
+            let r3 = new Rect(this);
             r1.h = this.h/5;
             r2.y += r1.h;
-            r2.h -= r1.h;
+            r2.h -= 2*r1.h;
+			r3.y += r1.h+r2.h;
+			r3.h = this.h/5;
             //TODO: Get rid of the ugly scale transforms
 			let app=App.get();
-            drawWrappedText(app.ctx, this.name, (this.h/12), true, r1, "yellow");
-            drawWrappedText(app.ctx, this.text, (this.h/14), true, r2, "white");    
+            drawWrappedText(app.ctx, this.name, (this.h/12), true, r1, this.nameColor);
+            drawWrappedText(app.ctx, this.text, (this.h/14), true, r2, this.textColor);
+			if(this.lowerText!=null) {
+				drawWrappedText(app.ctx, this.lowerText, (this.h/14), true, r3, this.lowerTextColor);
+			}  
         } else {
 //            super.draw();
 			this.bgColor = this.bgColorDown;
 			this.outlineColor = 'black';
 			super.draw();
+			if(this.backText!=null) {
+				let app = App.get();
+				let r1 = new Rect(this);
+				drawWrappedText(app.ctx, this.backText, (this.h/12), true, r1, this.backTextColor);
+			}
 			// let r = this;
 			// let app = App.get();
 			// app.ctx.beginPath();
@@ -870,7 +884,7 @@ class EventDeck extends CardSplay {
 		// if(app.clear_and_check_end_game()) {
 		// 	return;
 		// }
-		for(var t of app.board.iter_tokens('G')) {
+		for(var t of app.board.iter_tokens('G')) { //Unfreeze frozen guards
 			t.frozen = false;
 		}
 		var card = this.children.slice(-1)[0];
