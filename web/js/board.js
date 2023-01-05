@@ -156,6 +156,11 @@ class Board extends GridLayout {
 	token_update() {
 		//TODO: This seems very complicated. can it be simplified?
 		let p = this.active_player_token;
+		for(let t of this.iter_tokens('G')) {
+			if(arrEq(t.map_pos,p.map_pos) && t.state=='dozing' && !t.frozen) {
+				t.state = 'alert';
+			}
+		}
 		//move guards that can see player to the player
 		for(let t of this.iter_tokens('G')) {
 			if(arrEq(t.map_pos, p.map_pos) || ['dead', 'unconscious'].includes(t.state) || t.frozen) continue; 
@@ -172,15 +177,7 @@ class Board extends GridLayout {
 		}
 		//alert guards
 		for(let t of this.iter_tokens('G')) {
-			if(arrEq(t.map_pos,p.map_pos)) {
-				if(t.state=='dozing') {
-					t.state = 'alert';
-				}
-				else {
-					continue;
-				}
-			}
-			if(['unconscious', 'dead'].includes(t.state) || t.frozen) continue;
+			if(arrEq(t.map_pos,p.map_pos) || ['unconscious', 'dead'].includes(t.state) || t.frozen) continue;
 			var closest = [100, null];
 			for(let t0 of this.iter_tokens('G')) {
 				if(['alert', 'dozing'].includes(t0.state)) continue;

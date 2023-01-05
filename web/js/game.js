@@ -98,7 +98,6 @@ class Game extends App {
         let markets = [...this.board.iter_markets()].slice(0,-1).map(t => new MarketToken(t));
 
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
-        this.board.scroll_to_player();
     }
     setupNextLevel() {
         this.clear_state();
@@ -129,7 +128,6 @@ class Game extends App {
         let markets = [...this.board.iter_markets()].slice(0,-1).map(t => new MarketToken(t));
 
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
-        this.board.scroll_to_player();
 
     }
     missionComplete() {

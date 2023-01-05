@@ -1,14 +1,11 @@
-BUG: scroll to player
-BUG: discard used cards if partially complete action cancelled
-Zoom: center on mouse/touch pos
+Zoom: center on mouse/touch pos [partial fixed -- need to math out logic]
 Mousewheel: Ctrl+ to zoom, shift+ to horiz scroll, unmod to vert scroll
 Catch page unload
 Fix the placeholder player token icon
 Load/save game in progress
-Bug fix remaining cards (e.g., water arrow)
 Mission menu and stats screen
 Stealth card action (slip through the light)
-More detailed card text
+More detailed card text [partial fixed]
 Strip rect arg from all widget constructors and put in properties instead
 TextEntry widget using DOM Input
 Fix Screen Layout (use a fixed size card and larger map card)
@@ -17,7 +14,7 @@ Tutorial
 Map cards start face down and are revealed (at least in some missions)
 Implement missions
 Implement card color/glyph system for combos [moon (cunning), fire (attack), stream (movement), air(hiding)]
-Add church sites (card scrapping in exchange for donation)
+Add church sites (card scrapping in exchange for donation?)
 Sites that grant bonuses if you start a turn on them
 More events (e.g., cards that stuff negative cards in player's deck)
 More traits
@@ -36,6 +33,9 @@ Keyboard support
 Local co-op
 Network co-op
 
+BUG: fix remaining cards (e.g., water arrow) [DONE 1/5/22]
+BUG: scroll to player [fixed 1/5/22]
+BUG: discard used cards if partially complete action cancelled [fixed 1/4/22]
 BUG: cannot move beyond first row of map cards [done 1/2/2022]
 Refactor parent/child layout and touch interaction using "local" coordinates. No more renderrect and recurseoffsets garbage [12/31/2022]
 Implement zoom in the scroll view [done 12/31/2022]
