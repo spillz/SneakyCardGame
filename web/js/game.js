@@ -132,7 +132,7 @@ class Game extends App {
     }
     missionComplete() {
         this.clear_state();
-        this.stats.next.active=true;
+        this.stats.next.disable=false;
         this.stats.popup();
         this.hand.can_draw=false;
         this.stats.missions += 1;
@@ -141,7 +141,7 @@ class Game extends App {
     }
     missionFailed() {
         this.clear_state();
-        this.stats.next.active=false;
+        this.stats.next.disable=true;
         this.stats.popup();
         this.hand.can_draw=false;
         this.eventdeck.can_draw=false;
