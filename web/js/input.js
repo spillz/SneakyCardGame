@@ -46,6 +46,7 @@ class Touch {
 class InputHandler {
     grabbed = null;
     mouseTouchEmulation = true;
+    mouseev = null;
     constructor(app) {
         this.app = app;
         this.canvas = app.canvas;
@@ -131,6 +132,7 @@ class InputHandler {
     process_mouse(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
         //t.identifier, t.clientX, t.clientY
+        this.mouseev = ev;
         ev.preventDefault();
         if(this.mouseTouchEmulation) {
             let mapping = {'mouse_up':'touch_up','mouse_down':'touch_down','mouse_move':'touch_move','mouse_cancel':'touch_cancel'}
@@ -154,10 +156,15 @@ class InputHandler {
     }
     process_wheel(ev, name) {
         // Use the event's data to call out to the appropriate gesture handlers
+        if(this.mouseev==null) return;
         if(this.grabbed != null) {
-            return this.grabbed.emit(name, ev);
+            let pos0 = [this.mouseev.clientX, this.mouseev.clientY];
+            let pos = [...this.grabbed.iterParents()].reverse().reduce((prev,cur)=>cur.to_local(prev), pos0);
+            let t = new Touch({pos:pos, state:name, nativeObject:ev});
+            return this.grabbed.emit(name, t);
         } else {
-            this.app.emit(name, ev, true);
+            let t = new Touch({pos:this.app.to_local([this.mouseev.clientX, this.mouseev.clientY]), state:name, nativeObject:ev});
+            this.app.emit(name, t, true);
         }
         ev.preventDefault();
     }

@@ -1,23 +1,4 @@
 
-//NON-FUNCTIONAL EXPERIMENTAL AUTOBIND CODE A LA KIVY
-function evalFunc(event, srcOb, value, destOb) {
-
-}
-
-function bindString(string, baseObject) {
-    const re = /(w+)\.(w+)/g;
-    let app = App.get();
-    for(let prop of string.matchAll(re)) {
-        let ob = app.findById(prop[0]);
-        ob.bind(prop[1], evalFunc);
-        let pr = app.findById(prop[1]);
-
-    }
-}
-//END OF AUTO BIND CODE
-
-var b = bindString;
-
 class App {
     //App is the main object class for a kivy-like UI application
     //to run in the browser. 
@@ -941,7 +922,7 @@ class ScrollView extends Widget {
         let app = App.get();
         if(this.collide(r)) {
             let tl = touch.local(this);
-            if(touch.nativeEvent==null || touch.nativeEvent.touches.length==1 || touch.nativeEvent.touches.length==2) {
+            if(touch.nativeEvent==null || touch.nativeEvent.touches.length==1) { // || touch.nativeEvent.touches.length==2
                 if(this.oldTouch!=null && tl.identifier==this.oldTouch[2]) {
                     if(this.scrollW) {
                         this.setScrollX(this.scrollX + (this.oldTouch[0] - tl.x));
@@ -961,8 +942,18 @@ class ScrollView extends Widget {
 //                let tav = [(t0.clientX+t1.clientX)/2, (t0.clientY+t1.clientY)/2];
                 let d = dist([t0.clientX, t0.clientY], [t1.clientX, t1.clientY]);
                 if(this._lastDist != null) {
-                    let sX = this.scrollX+this.w/this.zoom/2;
-                    let sY = this.scrollY+this.h/this.zoom/2;
+
+                    let pos0 = [t0.clientX, t0.clientY];
+                    let pos1 = [t1.clientX, t1.clientY];
+                    let pos0l = [...this.iterParents()].reverse().reduce((prev,cur)=>cur.to_local(prev), pos0);
+                    let pos1l = [...this.iterParents()].reverse().reduce((prev,cur)=>cur.to_local(prev), pos1);
+                    let posctr = [(pos0l[0]+pos1l[0])/2, (pos0l[1]+pos1l[1])/2];
+
+                    let sX = posctr[0];// - this.w/this.zoom/2;
+                    let sY = posctr[1];// - this.h/this.zoom/2;
+
+//                    let sX =  this.scrollX + this.w/this.zoom/2;
+//                    let sY = this.scrollY + this.h/this.zoom/2;
                     let zoom = this.zoom * d/this._lastDist;
                     let minZoom = Math.min(this.w/this.children[0].w, this.h/this.children[0].h)
                     this.zoom = Math.max(zoom, minZoom);
@@ -1004,10 +995,12 @@ class ScrollView extends Widget {
             this.oldMouse = [mouse.clientX, mouse.clientY];
         }
     }
-    on_wheel(event, wheel) {
+    on_wheel(event, touch) {
         let app = App.get();
-        let sX = this.scrollX+this.w/this.zoom/2;
-        let sY = this.scrollY+this.h/this.zoom/2;
+        let tl = touch.local(this);
+        let sX = tl.x;
+        let sY = tl.y;
+        let wheel = touch.nativeObject;
         let zoom = this.zoom / (1 + wheel.deltaY/app.h);
         let minZoom = Math.min(this.w/this.children[0].w, this.h/this.children[0].h)
         this.zoom = Math.max(zoom, minZoom);
