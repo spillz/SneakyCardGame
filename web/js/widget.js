@@ -1032,15 +1032,23 @@ class ScrollView extends Widget {
 class ModalView extends Widget {
     closeOnTouchOutside = true;
     popup() {
-        let app = App.get();
-        this.parent = app;
-        app.addModal(this);
+        if(this.parent==null) {
+            let app = App.get();
+            this.parent = app;
+            app.addModal(this);
+            return true;    
+        }
+        return false;
     }
     close(exitVal=0) {
-        this.emit('closed',exitVal);
-        let app = App.get();
-        this.parent = null;
-        app.removeModal(this);
+        if(this.parent!=null) {
+            this.emit('closed',exitVal);
+            let app = App.get();
+            this.parent = null;
+            app.removeModal(this);
+            return true;
+        }
+        return false;
     }
     on_touch_down(event, touch) {
         if(this.closeOnTouchOutside && !this.collide(touch.rect)) {

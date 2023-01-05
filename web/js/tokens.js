@@ -131,6 +131,7 @@ class GuardToken extends Token {
 	on_state(event, data) {
 		let app = App.get();
 		if(this.state != 'dozing') {
+			//TODO: Tracking the stats this way we need to be careful we don't change the state from same value to same value
 			var stats = app.stats;
 			if(this.state == 'dead') {
 				stats.kills++;
@@ -240,7 +241,7 @@ class ObjectiveToken extends TargetToken {
 	on_picked(obj, value) {
 		if(this.picked) {
 			var app = App.get();
-			app.level_complete();
+			app.missionComplete();
 		}
 	}
 	draw() {

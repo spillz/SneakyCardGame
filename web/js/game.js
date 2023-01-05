@@ -59,12 +59,31 @@ class Game extends App {
 
         this.setupNewGame();
     }
+    clear_state(self) {
+        if(this.cardselector!=null) {
+            this.cardselector.close();
+            this.cardselector = null;
+        }
+        if(this.hand.action_selector!=null) {
+            this.hand.action_selector.close();
+            this.hand.action_selector = null;
+        }
+        this.hand.cancel_action()
+        this.board.map_choices=[]
+    }
     setupNewGame() {
+        this.clear_state();
+        this.stats.next.disable=true;
+        this.stats.title.text = 'MISSION IN PROGRESS';
+        this.skilldeck.select_draw(2,4);
+
         this.mission = new ContactMission({mission_level:this.stats.missions+1});
         this.board.children = this.mission.setup_map(this);
+        this.eventdiscard.children = [];
         this.eventdeck.children = this.mission.setup_events(this);
         this.eventdeck.can_draw = true;
 
+        this.playerdiscard.children = [];
         this.playerdeck.children = shuffle(this.playercards);
         this.playertraits.children = shuffle(this.traitcards);
         this.loot1.children = shuffle(this.lootcards);
@@ -81,8 +100,54 @@ class Game extends App {
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
         this.board.scroll_to_player();
     }
-    setupMission() {
+    setupNextLevel() {
+        this.clear_state();
+        this.stats.next.disable=true;
+        this.stats.title.text = 'MISSION IN PROGRESS';
+        this.skilldeck.select_draw(2,4);
 
+        this.mission = new ContactMission({mission_level:this.stats.missions+1});
+        this.board.children = this.mission.setup_map(this);
+        this.eventdiscard.children = [];
+        this.eventdeck.children = this.mission.setup_events(this);
+        this.eventdeck.can_draw = true;
+
+        let playercards = [...this.playerdiscard.children, ...this.playerdeck, ...this.hand]
+        this.playerdiscard.children = [];
+        this.hand.children = [];
+        this.playerdeck.children = shuffle(playercards);
+        this.playertraits.children = shuffle(this.traitcards);
+        this.loot1.children = shuffle(this.lootcards);
+        this.marketdeck.children = shuffle(this.marketcards);
+
+        let player = new PlayerToken([0,0]);
+
+        let guards = [...this.board.iter_spawns()].map(s => new GuardToken(s));
+        let targets = [...this.board.iter_targets()];
+        let objective = new ObjectiveToken(targets.slice(-1)[0]);
+        targets = targets.slice(0,-1).map(t => new TargetToken(t));
+        let markets = [...this.board.iter_markets()].slice(0,-1).map(t => new MarketToken(t));
+
+        this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
+        this.board.scroll_to_player();
+
+    }
+    missionComplete() {
+        this.clear_state();
+        this.stats.next.active=true;
+        this.stats.popup();
+        this.hand.can_draw=false;
+        this.stats.missions += 1;
+        this.eventdeck.can_draw=false;
+        this.stats.title.text = 'MISSION COMPLETED';
+    }
+    missionFailed() {
+        this.clear_state();
+        this.stats.next.active=false;
+        this.stats.popup();
+        this.hand.can_draw=false;
+        this.eventdeck.can_draw=false;
+        this.stats.title.text = 'MISSION FAILED';
     }
     updateWindowSize() {
         this.prefDimW = 4*this.map_card_grid_size[0]; //Preferred width in tile units (not pixels)

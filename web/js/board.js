@@ -130,11 +130,12 @@ class Board extends GridLayout {
 	on_tokens(event, data) {
 		let app = App.get();
 		this.active_player_token = this.tokens.find(t => t instanceof PlayerToken);
-		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof Token)), ...this.tokens];
+		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof Token)&&!(t instanceof MapChoice)), ...this.map_choices, ...this.tokens];
 	}
 	on_map_choices(event, data) {
 		let app = App.get();
-		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof MapChoice)), ...this.map_choices];
+		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof Token)&&!(t instanceof MapChoice)), ...this.map_choices, ...this.tokens];
+//		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof MapChoice)), ...this.map_choices];
 	}
 	scroll_to_player() {
 		if(this.active_player_token==null) return;
@@ -161,15 +162,25 @@ class Board extends GridLayout {
 			if(1 <= this.dist(t.map_pos, p.map_pos) && this.dist(t.map_pos, p.map_pos) <= 10 
 			&& !['U',...this.building_types].includes(this.get(p.map_pos))) {
 				if(!(this.has_types_between(t.map_pos, p.map_pos, this.building_types))) {
-					t.map_pos = p.map_pos;
-					t.state = 'alert';
+					t.map_pos = [...p.map_pos];
+					if(t.state!='alert') {
+						t.state = 'alert';
+					}
 					return ;
 				}
 			}
 		}
 		//alert guards
 		for(let t of this.iter_tokens('G')) {
-			if(arrEq(t.map_pos,p.map_pos) || ['unconscious', 'dead'].includes(t.state) || t.frozen) continue;
+			if(arrEq(t.map_pos,p.map_pos)) {
+				if(t.state=='dozing') {
+					t.state = 'alert';
+				}
+				else {
+					continue;
+				}
+			}
+			if(['unconscious', 'dead'].includes(t.state) || t.frozen) continue;
 			var closest = [100, null];
 			for(let t0 of this.iter_tokens('G')) {
 				if(['alert', 'dozing'].includes(t0.state)) continue;
@@ -192,7 +203,7 @@ class Board extends GridLayout {
 			let d,t0;
 			[d,t0] = closest;
 			if(t0 !== null && !arrEq(t.map_pos, t0.map_pos) && t.state != 'alert') {
-				t.map_pos = t0.map_pos;
+				t.map_pos = [...t0.map_pos];
 				t.state = 'alert';
 				return ;
 			}
@@ -221,7 +232,7 @@ class Board extends GridLayout {
 		let offsets = [[-0.25, -0.25], [0.25, 0.25], [-0.25, 0.25], [0.25, -0.25],[0,0.25],[0.25,0],[0,-0.25],[-0.25,0]];
 		for(let c in clashes) {
 			for(let i=0;i<Math.min(clashes[c].length,offsets.length);i++) {
-				clashes[c][i].off = offsets[i];
+				clashes[c][i].off = [...offsets[i]];
 			}
 		}
 		this.scroll_to_player();

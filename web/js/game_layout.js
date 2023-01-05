@@ -858,6 +858,13 @@ class EventDeck extends CardSplay {
 			return;
 		}
 		if(this.children.length == 0) {
+			if(app.hand.children.length==0 && app.activecardsplay.children.length==0) {
+				app.missionFailed();
+			}
+			return;
+		}
+		if(app.board.active_player_clashing()) {
+			app.missionFailed()
 			return;
 		}
 		// if(app.clear_and_check_end_game()) {
@@ -909,7 +916,7 @@ class Stats extends ModalView {
 			hints: {x:0, y:0, w:1, h:1},
 			orientation: 'vertical',
 			children: [
-				new Label(null, {text: 'GAME OVER', hints: {w:1,h:0.2}}),
+				new Label(null, {id: 'title', text: 'GAME OVER', hints: {w:1,h:0.2}}),
 				new BoxLayout(null, {orientation:'vertical', hints: {w:1,h:0.8}, 
 					children: [
 						new Label(null, {id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
@@ -926,6 +933,8 @@ class Stats extends ModalView {
 							]})
 				]})
 			]}));
+		this.next = this.findById('next');
+		this.title = this.findById('title');
 	}
 	restartGame() {
 		this.reset();
