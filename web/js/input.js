@@ -94,7 +94,6 @@ class InputHandler {
     }
     // touchstart handler
     process_touch(ev, name) {
-        // Use the event's data to call out to the appropriate gesture handlers
         if(this.grabbed != null) {
             for(let to of ev.changedTouches) { 
                 let pos0 = [to.clientX, to.clientY];
@@ -116,22 +115,8 @@ class InputHandler {
             history.replaceState(null, document.title, location.pathname);
             this.app.emit('back_button', ev)
         }
-
-        //       history.replaceState(null, document.title, location.pathname);
-        //       history.replaceState(null, document.title, location.pathname+"#!/backbutton");
-        //         setTimeout(function(){
-        //         this.process_back(ev, 'back_button');
-        //         //location.replace("https://ryanseddon.com/");
-        //       },);
-        //     }
-        //   }, false);
-          
-
-
     }
     process_mouse(ev, name) {
-        // Use the event's data to call out to the appropriate gesture handlers
-        //t.identifier, t.clientX, t.clientY
         this.mouseev = ev;
         ev.preventDefault();
         if(this.mouseTouchEmulation) {
