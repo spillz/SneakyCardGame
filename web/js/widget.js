@@ -938,29 +938,20 @@ class ScrollView extends Widget {
             if(touch.nativeEvent.touches.length==2) {
                 let t0 = touch.nativeEvent.touches[0];
                 let t1 = touch.nativeEvent.touches[1];
-//need to convert to local coords
-//                let tav = [(t0.clientX+t1.clientX)/2, (t0.clientY+t1.clientY)/2];
                 let d = dist([t0.clientX, t0.clientY], [t1.clientX, t1.clientY]);
                 if(this._lastDist != null) {
-
                     let pos0 = [t0.clientX, t0.clientY];
                     let pos1 = [t1.clientX, t1.clientY];
                     let pos0l = [...this.iterParents()].reverse().reduce((prev,cur)=>cur.to_local(prev), pos0);
                     let pos1l = [...this.iterParents()].reverse().reduce((prev,cur)=>cur.to_local(prev), pos1);
                     let posctr = [(pos0l[0]+pos1l[0])/2, (pos0l[1]+pos1l[1])/2];
-
-                    let sX = posctr[0];// - this.w/this.zoom/2;
-                    let sY = posctr[1];// - this.h/this.zoom/2;
-
-//                    let sX =  this.scrollX + this.w/this.zoom/2;
-//                    let sY = this.scrollY + this.h/this.zoom/2;
+                    let loc = this.to_local(posctr);
                     let zoom = this.zoom * d/this._lastDist;
                     let minZoom = Math.min(this.w/this.children[0].w, this.h/this.children[0].h)
                     this.zoom = Math.max(zoom, minZoom);
-//                    let tav_post = this.to_local(tav);
-                    let tla = touch.local(this);
-                    this.setScrollX(sX-this.w/this.zoom/2);
-                    this.setScrollY(sY-this.h/this.zoom/2);
+                    let moc = this.to_local(posctr);
+                    this.setScrollX(this.scrollX + loc[0] - moc[0]);
+                    this.setScrollY(this.scrollY + loc[1] - moc[1]);
                 }
                 this._lastDist = d;
             }
@@ -997,15 +988,35 @@ class ScrollView extends Widget {
     }
     on_wheel(event, touch) {
         let app = App.get();
-        let tl = touch.local(this);
-        let sX = tl.x;
-        let sY = tl.y;
+        let sx = this.scrollX;// - this.w/this.zoom/2;
+        let sy = this.scrollY;// - this.h/this.zoom/2;
+
+        let loc = touch.local(this);
+        let lx = loc.x;
+        let ly = loc.y;
+
+        let w=this.w;
+        let h=this.h;
+
+        let z0 = this.zoom;
         let wheel = touch.nativeObject;
         let zoom = this.zoom / (1 + wheel.deltaY/app.h);
         let minZoom = Math.min(this.w/this.children[0].w, this.h/this.children[0].h)
         this.zoom = Math.max(zoom, minZoom);
-        this.setScrollX(sX-this.w/this.zoom/2);
-        this.setScrollY(sY-this.h/this.zoom/2);
+        let z1 = this.zoom;
+
+        let moc = touch.local(this);
+        let mx = moc.x;
+        let my = moc.y;
+
+        this.setScrollX(sx+lx-mx);
+        this.setScrollY(sy+ly-my);
+
+        // this.setScrollX(lx-(w/z1)*(lx-sx)/(w/z0));
+        // this.setScrollY(ly-(h/z1)*(ly-sy)/(h/z0));
+
+        // this.setScrollX(sX + this.center_x/this.zoom); //-this.w/this.zoom/2
+        // this.setScrollY(sY + this.center_y/this.zoom); //-this.h/this.zoom/2
         // if(this.scrollW) {
         //     this.scrollX += (wheel.deltaX)/app.tileSize;
         //     this.scrollX = Math.max(0, Math.min(this.scrollX, this.children[0].w-this.w))
