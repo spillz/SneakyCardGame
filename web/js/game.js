@@ -51,7 +51,7 @@ class Game extends App {
         this.action_selector = null;
         this.stats = new Stats();
 
-        this.playercards = make_player_cards(this);
+        this.playercards = [...make_player_cards(this), ...repeatInstantiate([TreasureCard],3)];
         this.traitcards = make_trait_cards(this);
         this.lootcards = make_loot_cards(this);
         this.marketcards = make_market_cards(this);
@@ -111,7 +111,7 @@ class Game extends App {
         this.eventdeck.children = this.mission.setup_events(this);
         this.eventdeck.can_draw = true;
 
-        let playercards = [...this.playerdiscard.children, ...this.playerdeck, ...this.hand]
+        let playercards = [...this.playerdiscard.children, ...this.playerdeck.children, ...this.hand.children]
         this.playerdiscard.children = [];
         this.hand.children = [];
         this.playerdeck.children = shuffle(playercards);
@@ -128,7 +128,6 @@ class Game extends App {
         let markets = [...this.board.iter_markets()].slice(0,-1).map(t => new MarketToken(t));
 
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
-
     }
     missionComplete() {
         this.clear_state();
