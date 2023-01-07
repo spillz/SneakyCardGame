@@ -1,14 +1,17 @@
-Zoom: center on mouse/touch pos [partial fixed -- need to math out logic]
+Sneak card action (slip through the light)
+Fix Screen Layout (max screen real estate, prevent card overlaps and make sure cards have readable headers)
+Fix the core stats (contacts, possibly kills are inaccurate)
+Fix the placeholder player token icon and improve the guard tokens
+Fix market action sometimes not triggering with Treasure card
+
+Zoom: center on mouse/touch pos [zoom when centered a little funky]
 Mousewheel: Ctrl+ to zoom, shift+ to horiz scroll, unmod to vert scroll
 Catch page unload
-Fix the placeholder player token icon
 Load/save game in progress
-Mission menu and stats screen
-Stealth card action (slip through the light)
+Improve the mission menu and stats screen. More info etc.
 More detailed card text [partial fixed]
 Strip rect arg from all widget constructors and put in properties instead
 TextEntry widget using DOM Input
-Fix Screen Layout (use a fixed size card and larger map card)
 Centering card splay
 Tutorial
 Map cards start face down and are revealed (at least in some missions)
