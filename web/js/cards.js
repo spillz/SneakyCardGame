@@ -1144,10 +1144,10 @@ class DecoyAction extends PlayerAction {
 class MarketAction extends PlayerAction {
 	base_allowance = 1;
 	activate(message, props) {
-		var playarea = App.get();
-		var board = playarea.board;
+		var app = App.get();
+		var board = app.board;
 		if(message == 'card_action_end') {
-			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
+			app.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 			return ;
 		}
 		if(message == 'can_stack') {
@@ -1156,15 +1156,15 @@ class MarketAction extends PlayerAction {
 		if(message == 'map_choice_selected') {
 			board.alert_nearby_guards(this.base_noise);
 			var obj = props['touch_object'];
-			var market = board.iter_tokens('M').filter(t=>arrEq(t.map_pos,obj.map_pos));
+			var market = [...board.iter_tokens('M')].filter(t=>arrEq(t.map_pos,obj.map_pos));
 			if(market.length > 0) {
 				this.spent = this.value_allowance();
 				this.market_pos = obj.map_pos;
-				playarea.marketdeck.select_draw(1, 4, this.spent);
+				app.marketdeck.select_draw(1, 4, this.spent);
 			}
 			else {
 				board.active_player_token.map_pos = obj.map_pos;
-				playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
+				app.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 				return ;
 			}
 		}
@@ -1172,24 +1172,24 @@ class MarketAction extends PlayerAction {
 			this.spent = 0;
 			this.market_pos = null;
 		}
-		var p = board.active_player_token;
+		let p = board.active_player_token;
 		board.map_choices = [];
 		if(!(board.active_player_clashing())) {
 			if(this.market_pos !== null) {
-				var move_choices = [...board.iter_types_in_range(this.market_pos, board.path_types, 1).filter(m => dist(this.market_pos, m) >= 1)]
-				var target_choices = set(move_choices);
+				let move_choices = [...board.iter_types_in_range(this.market_pos, board.path_types, 1)].filter(m => dist(this.market_pos, m) >= 1);
+				let target_choices = [...Set(move_choices)];
 				board.map_choices = target_choices.map(t => board.make_choice(t, this, set_choice_type(t, p.map_pos, board, 3)));
 			}
-			else if(!__in__(board [board.active_player_token.map_pos], board.building_types)) {
-				target_choices = [...board.iter_markets().filter(t=>dist(p.map_pos,t)==1)];
+			else if(board.building_types.includes(board.get(board.active_player_token.map_pos))) {
+				let target_choices = [...board.iter_markets()].filter(t=>dist(p.map_pos,t)==1);
 				board.map_choices = target_choices.map(t => board.make_choice(t, this, set_choice_type(t, p.map_pos, board, 3)));
 			}
 		}
 		if(board.map_choices.length < 1 && this.spent != 0) {
-			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
+			app.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Buy ${this.rounded_remain()}: Select a market card to buy.`;
+			app.playerprompt.text = `Buy ${this.rounded_remain()}: Select a market card to buy.`;
 		}
 	}
 }
@@ -1324,9 +1324,9 @@ class SkillCard extends PlayerCard {
 
 class TreasureCard extends LootCard {
     name = 'TREASURE';
-    text = 'BUY 1+: Spend 1 crown in the market';
+    text = 'BUY 1[+1]: Spend 1 crown in the market';
 	get_actions() {
-		return {'BUY 1+': new MarketAction(this, {base_allowance: 1, value_per_card: 1, exhaust_on_use: this})}
+		return {'BUY 1[+1]': new MarketAction(this, {base_allowance: 1, value_per_card: 1, exhaust_on_use: this})}
 	}
 }
 
