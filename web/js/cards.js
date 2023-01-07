@@ -1177,10 +1177,10 @@ class MarketAction extends PlayerAction {
 		if(!(board.active_player_clashing())) {
 			if(this.market_pos !== null) {
 				let move_choices = [...board.iter_types_in_range(this.market_pos, board.path_types, 1)].filter(m => dist(this.market_pos, m) >= 1);
-				let target_choices = [...Set(move_choices)];
+				let target_choices = [...new Set(move_choices)];
 				board.map_choices = target_choices.map(t => board.make_choice(t, this, set_choice_type(t, p.map_pos, board, 3)));
 			}
-			else if(board.building_types.includes(board.get(board.active_player_token.map_pos))) {
+			else if(!board.building_types.includes(board.get(board.active_player_token.map_pos))) {
 				let target_choices = [...board.iter_markets()].filter(t=>dist(p.map_pos,t)==1);
 				board.map_choices = target_choices.map(t => board.make_choice(t, this, set_choice_type(t, p.map_pos, board, 3)));
 			}
