@@ -849,7 +849,7 @@ class KnockoutAction extends PlayerAction {
 			this.fight = 1;
 			this.spent = 0;
 		}
-		if(!(board.active_player_clashing())) {
+		if(!(board.active_player_clashing()) && this.spent==0) {
 			if(this.alert) {
 				var guard_choices = board.tokens.filter(t=>t instanceof board.token_types['G'] && ['dozing', 'alert'].includes(t.state));
 			}
