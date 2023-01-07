@@ -213,5 +213,6 @@ class Game extends App {
             this.hand.rect = [0, H-ch, Math.min(W,cw*6),ch];
             this.sv.rect = [0, H-2*ch-this.scroll_size[1], ...this.scroll_size];
         }
+        this.board.scroll_to_player();
     }
 }

@@ -873,12 +873,14 @@ class ScrollView extends Widget {
         this.scrollY = 0;
     }
     on_scrollX(event, value) {
+        if(this.children.length==0) return;
         this._needsLayout = true;
         this._scrollX = this.children[0].w*this.zoom<this.w ? 
                         (this.children[0].w-this.w/this.zoom)/2 : 
                         Math.min(Math.max(0, value),this.children[0].w-this.w/this.zoom);
     }
     on_scrollY(event, value) {
+        if(this.children.length==0) return;
         this._needsLayout = true;
         this._scrollY = this.children[0].h*this.zoom<this.h ? 
                         (this.children[0].h-this.h/this.zoom)/2 : 
