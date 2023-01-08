@@ -148,6 +148,7 @@ class MapCard extends Widget {
 	cardLevel = 1;
 	building_types = ['B','B0'];
 	faceUp = true;
+	outlineColor = colorString([0.3,0.3,0.3]);
 	constructor(rect, properties=null) {
 		super(rect);
 		this.processTouches=true;
@@ -297,6 +298,12 @@ class MapCard extends Widget {
             app.ctx.rect(x, y, size[0]/5, size[1]/5);
             app.ctx.fill();    
         }
+		if(this.outlineColor!=null) {
+			app.ctx.beginPath();
+			app.ctx.rect(this.x, this.y, this.w, this.h);
+			app.ctx.strokeStyle = this.outlineColor;
+			app.ctx.stroke();
+		}
     }
 }
 
@@ -616,11 +623,18 @@ class PlayerAction {
 }
 
 class MoveAction extends PlayerAction {
+	cloaked = false;
+	constructor(card, props) {
+		super(card, {});
+		for(let p in props) this[p] = props[p];
+	}
 	activate(message, props ={}) {
 		var playarea = App.get();
 		var board = playarea.board;
 		if(message == 'card_action_end') {
-			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
+			if(this.cloaked) board.active_player_token.state = 'normal';
+			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), 
+				this.exhaust_on_use, this.tap_on_use);
 			return ;
 		}
 		if(message == 'can_stack') {
@@ -633,6 +647,7 @@ class MoveAction extends PlayerAction {
 			board.active_player_token.map_pos = obj.map_pos;
 		}
 		else if(message == 'card_action_selected') {
+			if(this.cloaked) board.active_player_token.state = 'cloaked';
 			this.spent = 0;
 		}
 		var moves_left = this.value_allowance() - this.spent;
@@ -645,6 +660,7 @@ class MoveAction extends PlayerAction {
 		board.map_choices = spots.filter(p=>pp[0]!=p[0]||pp[1]!=p[1])
 				.map(p=>board.make_choice(p, this, set_choice_type(p, pp, board)));
 		if(board.map_choices.length < 1 && this.spent > 0) {
+			if(this.cloaked) board.active_player_token.state = 'normal';
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
@@ -1420,7 +1436,7 @@ class BasicSneak extends StartPlayerCard {
     name = 'BASIC SNEAK';
     text = 'Sneak 1[+1]';
 	get_actions() {
-		return {'SNEAK 1[+1]': new MoveAction(this, {base_allowance: 1, value_per_card: 1, base_noise: 0, noise_per_stack: 0})}
+		return {'SNEAK 1[+1]': new MoveAction(this, {base_allowance: 1, value_per_card: 1, base_noise: 0, noise_per_stack: 0, cloaked:true})}
 	}
 }
 

@@ -39,10 +39,10 @@ class Game extends App {
 
         this.sv.addChild(this.playarea);
         this.playarea.addChild(this.board);
-        for(let w of [this.activecardsplay, this.playertraits, this.playerdeck, this.playerdiscard,
+        for(let w of [this.playertraits, this.playerdiscard, this.playerdeck,
                     this.loot1, this.loot2, this.loot3, this.skilldeck, this.exhausted,
-                    this.marketdeck, this.eventdeck, this.eventdiscard, this.hand,
-                    this.sv, this.playerprompt]) {
+                    this.marketdeck, this.eventdiscard, this.eventdeck, this.hand,
+                    this.sv, this.playerprompt, this.activecardsplay]) {
             this.baseWidget.addChild(w);
         }
 
@@ -99,7 +99,7 @@ class Game extends App {
 
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
     }
-    setupNextLevel() {
+    setupNextMission() {
         this.clear_state();
         this.stats.next.disable=true;
         this.stats.title.text = 'MISSION IN PROGRESS';
@@ -158,7 +158,7 @@ class Game extends App {
  
         let W = this.dimW;
         let H = this.dimH;
-        this.hz_cards = f(W/4); //how many cards we need to fit horizontally in a vertical orientation screen
+        this.hz_cards = f(W/5); //how many cards we need to fit horizontally in a vertical orientation screen
         this.vt_cards = f(H/4.2); //how many cards we need to fit vertically in a horizontal orientation screen
         let cgx = this.map_card_grid_size[0];
         let cgy = this.map_card_grid_size[1];
@@ -180,38 +180,40 @@ class Game extends App {
         //Layout the widgets
         if(W>H) { //Wide display
             //TODO: Update all of the names root->this, card_size->cx,cy, height->H, width->W
-            this.playerprompt.rect = [cw*6/5, 0, W-2*cw*6/5, ch/5];
-            this.activecardsplay.rect = [0, H-ch, f(cw*6/5), ch];
-            this.playertraits.rect = [0, H-2*ch, f(cw*6/5), ch];
-            this.playerdeck.rect = [0, ch, f(cw*6/5), ch];
-            this.playerdiscard.rect = [0, 0, f(cw*6/5), ch];
+            this.playerprompt.rect = [0, 0, W, ch/5];
+            this.activecardsplay.rect = [W-cw*6/5, H-ch, f(cw*6/5), ch];
+            this.playertraits.rect = [0, H-ch, f(cw*6/5), ch];
+            this.playerdeck.rect = [0, H-2*ch, f(cw*6/5), ch];
+            this.playerdiscard.rect = [0, H-3*ch, f(cw*6/5), ch];
             this.loot1.rect = [W+cw, H-ch, f(cw*6/5), ch];
             this.loot2.rect = [W+cw, H-2*ch, f(cw*6/5), ch];
             this.loot3.rect = [W+cw, H-3*ch, f(cw*6/5), ch];
             this.skilldeck.rect = [W+cw, H-4*ch, f(cw*6/5), ch];
             this.exhausted.rect = [W+cw, H-4*ch, f(cw*6/5), ch];
-            this.marketdeck.rect = [W - f(cw*6/5), H-ch, f(cw*6/5), ch];
-            this.eventdeck.rect = [W - cw*6/5, ch, f(cw*6/5), ch];
-            this.eventdiscard.rect = [W - f(cw*6/5), 0, f(cw*6/5), ch];
-            this.hand.rect = [f(W-cw*6)/2, H-ch, Math.min(W,cw*6),ch];
+            this.marketdeck.rect = [W + 2*cw, H-ch, f(cw*6/5), ch];
+            this.eventdeck.rect = [0, ch/5, f(cw*6/5), ch];
+            this.eventdiscard.rect = [0, 6*ch/5, f(cw*6/5), ch];
+            this.hand.rect = [Math.max(6*cw/5, (W-cw*6)/2), H-ch, Math.min(W-12*cw/5,cw*6),ch];
             this.sv.rect = [f(cw*6/5), H-ch-this.scroll_size[1], ...this.scroll_size];
         } else { //Tall display
             this.playerprompt.rect = [0, 0, W, ch/5];
-            this.activecardsplay.rect = [f(cw*6/5), H-2*ch, f(cw*6/5), ch];
+            this.activecardsplay.rect = [W-6*cw/5, H-2*ch, f(cw*6/5), ch];
             this.playertraits.rect = [0, H-2*ch, f(cw*6/5), ch];
-            this.playerdeck.rect = [W-f(cw*6/5), H - 2*ch, f(cw*6/5), ch];
-            this.playerdiscard.rect = [W-2*f(cw*6/5), H - 2*ch, f(cw*6/5), ch];
-            this.loot1.rect = [W, H-ch, f(cw*6/5), ch];
-            this.loot2.rect = [W, H-2*ch, f(cw*6/5), ch];
-            this.loot3.rect = [W, H-3*ch, f(cw*6/5), ch];
-            this.skilldeck.rect = [W, H-2*ch, f(cw*6/5), ch];
-            this.exhausted.rect = [W, H-2*ch, f(cw*6/5), ch];
-            this.marketdeck.rect = [0, ch/5, f(cw*6/5), ch];
-            this.eventdeck.rect = [W - cw*6/5, ch/5, f(cw*6/5), ch];
-            this.eventdiscard.rect = [W - 2*f(cw*6/5), ch/5, f(cw*6/5), ch];
+            this.playerdeck.rect = [W-f(cw*6/5), ch/5, f(cw*6/5), ch];
+            this.playerdiscard.rect = [W+cw, ch/5, f(cw*6/5), ch];
+            this.loot1.rect = [W+cw, H-ch, f(cw*6/5), ch];
+            this.loot2.rect = [W+cw, H-2*ch, f(cw*6/5), ch];
+            this.loot3.rect = [W+cw, H-3*ch, f(cw*6/5), ch];
+            this.skilldeck.rect = [W+cw, H-2*ch, f(cw*6/5), ch];
+            this.exhausted.rect = [W+cw, H-2*ch, f(cw*6/5), ch];
+            this.marketdeck.rect = [-2*cw, ch/5, f(cw*6/5), ch];
+            this.eventdeck.rect = [0, ch/5, f(cw*6/5), ch];
+            this.eventdiscard.rect = [cw*6/5, ch/5, f(cw*6/5), ch];
             this.hand.rect = [0, H-ch, Math.min(W,cw*6),ch];
             this.sv.rect = [0, H-2*ch-this.scroll_size[1], ...this.scroll_size];
         }
+        //TODO: Not ideal place to put this but it serves as an initializer for some of the board state
+		this.board.token_update();
         this.board.scroll_to_player();
     }
 }

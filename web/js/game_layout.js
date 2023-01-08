@@ -43,6 +43,7 @@ class CardSelector extends ModalView {
     shownCard = null; 
     shownCardShift = 0; // #proportion of card width or height to shift when card is selected
 	hints = {center_x:0.5, center_y:0.5} //, w:0.8, h:0.8};
+	prompt = 'Available market cards';
     constructor(cards, properties) { 
 		let app = App.get();
         super(new Rect([0, 0, Math.max(cards.length,4)*app.card_size[0], 1.4*app.card_size[1]]));
@@ -53,7 +54,7 @@ class CardSelector extends ModalView {
 				id: 'label',
 				hints: {center_x:0.5, y:0, w:1, h:0.2/1.4},
 				text: this.numToPick==0? 
-							'Available cards' :
+							this.prompt :
 							(this.numToPick==1? 'You may choose a card': `You may choose up to ${this.numToPick} cards`)
 			}),
 			new CardSplay(null, {
@@ -123,6 +124,7 @@ class CardSplay extends Widget {
 	canDraw = false;
 	shownCard = null;
 	shownCardShift = 0;
+	faceUp = false;
 	selected = [];
 	multiSelect = false;
 	cardSpreadScale = 0.5;
@@ -239,7 +241,7 @@ class CardSplay extends Widget {
 		App.get().inputHandler.ungrab();
 		App.get().removeTimer(this._clockev);
 		console.log('closeup',event,timer,closeup_card, this)
-		let closeup = new CardSplayCloseup(closeup_card, this.children, {hints: {center_x:0.5, center_y:0.5, w:0.8, h:0.8}});
+		let closeup = new CardSplayCloseup(closeup_card, this.children, !this.faceUp, {hints: {center_x:0.5, center_y:0.5, w:0.8, h:0.8}});
 		closeup.popup();
 		this._clockev = null;
 	}
@@ -374,15 +376,16 @@ class ButLabel extends Label {
 
 class CardSplayCloseup extends ModalView {
 	cards = [];
-	constructor(closeup_card=null, cards=[], props) {
+	constructor(closeup_card=null, cards=[], sort=true, props={}) {
 		super(new Rect());
 		this.updateProperties(props);
+		if(sort) cards = cards.sort((a,b)=>a.name>b.name?1:(a.name==b.name?0:-1));
 		if(closeup_card == null) {
 			closeup_card = cards[0];
 		}
 		let r = new Rect();
 		let app=App.get();
-		this.scroll_view = new ScrollView(r, {scrollX:false});
+		this.scroll_view = new ScrollView(r, {scrollX:false, hints:{center_x:0.33/2, center_y:0.5, w:0.33, h:1}});
 		this.scroll_view.bind('touch_down', (e,o,t)=>this.on_touch_down_sv(e,o,t));
 		this.addChild(this.scroll_view);
 
@@ -404,29 +407,32 @@ class CardSplayCloseup extends ModalView {
 	}
 	layoutChildren() {
 		let app = App.get();
-		this.x = 0;
-		this.y = 0;
-		this.w = app.dimW;
-		this.h = app.dimH;
+		// this.x = 0;
+		// this.y = 0;
+		// this.w = app.dimW;
+		// this.h = app.dimH;
 
 		let aspect = app.card_size[0]/app.card_size[1];
+		let ch = this.grid_layout.children;
 		let h = this.h;
-		let w = 0.66*this.w;
-		var ph = w / aspect;
-		var pw = h * aspect;
+		let w = this.w*0.67;
+		let ph = w / aspect;
+		let pw = h * aspect;
 		if (w>pw) {
 			w = pw;
 		} else {
 			h = ph;
 		}
-		let ch = this.grid_layout.children;
-		this.closeup_card.rect = new Rect([this.w*0.34+(0.66*this.w-w)/2, (this.h-h)/2, w, h]);
-		this.scroll_view.rect = new Rect([0, 0, this.w*0.34, this.h]);
-		this.grid_layout.rect = new Rect([0, 0, this.w*0.34, 
-						this.w*0.34/this.grid_layout.numX/aspect*Math.ceil(ch.length/this.grid_layout.numX)]);
+
+//		this.closeup_card.hints = {center_x:0.67, center_y:0.5, w:w, h:h};
+		this.closeup_card.rect = new Rect([this.x+this.w*0.34+(0.66*this.w-w)/2, this.y+(this.h-h)/2, w, h]);
+		this.scroll_view.rect = new Rect([this.x, this.y, this.w*0.34, this.h]);
+		this.grid_layout.rect = new Rect([this.x, this.y, this.w*0.34, 
+		 				this.w*0.34/this.grid_layout.numX/aspect*Math.ceil(ch.length/this.grid_layout.numX)]);
 		super.layoutChildren();
 	}
 	set_closeup(closeup_card) {
+		let app=App.get();
 		if(this.closeup_card != null) {
 			this.removeChild(this.closeup_card);
 		}
@@ -435,6 +441,7 @@ class CardSplayCloseup extends ModalView {
 		}
 		this.closeup_card = new closeup_card.constructor();
 		this.closeup_card.faceUp = true;
+
 		this.addChild(this.closeup_card);
 		this._needsLayout = true;
 	}
@@ -871,6 +878,7 @@ class EventDeck extends CardSplay {
 		if(!(this.can_draw)) {
 			return;
 		}
+		app.hand.cancel_action();
 		if(this.children.length == 0) {
 			if(app.hand.children.length==0 && app.activecardsplay.children.length==0) {
 				app.missionFailed();
@@ -931,7 +939,7 @@ class Stats extends ModalView {
 			orientation: 'vertical',
 			children: [
 				new Label(null, {id: 'title', text: 'GAME OVER', hints: {w:1,h:0.2}}),
-				new BoxLayout(null, {orientation:'vertical', hints: {w:1,h:0.8}, 
+				new BoxLayout(null, {orientation:'vertical', hints: {w:1,h:0.8},
 					children: [
 						new Label(null, {id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
 						new Label(null, {id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
@@ -953,6 +961,11 @@ class Stats extends ModalView {
 	restartGame() {
 		this.reset();
 		App.get().setupNewGame();
+		this.close();
+	}
+	nextMission() {
+		App.get().setupNextMission();
+		this.close();
 	}
 	reset(totals=true) {
 		this.kills = 0;
@@ -969,30 +982,6 @@ class Stats extends ModalView {
 			this.t_rounds = 0;
 			this.t_showing = false;
 		}		
-	}
-	on_touch_up(event, touch) {
-		let app = App.get();
-		if(touch.grabbed == this) {
-			touch.ungrab(this.restart);
-			if(this.restart.collide(touch.rect)) {
-				app.restart_game();
-				this.reset();
-				app.menu_showing = false;
-				return true;
-			}
-			if(this.py_next.collide(touch.rect)) {
-				app.next_level();
-				this.reset(false);
-				app.menu_showing = false;
-				return true;
-			}
-			if(this.quit.collide(touch.rect)) {
-				touch.ungrab(this.quit);
-				App.get().stop();
-				return true;
-			}
-			return true;
-		}
 	}
 }
 

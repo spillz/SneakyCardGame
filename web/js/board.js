@@ -154,28 +154,36 @@ class Board extends GridLayout {
 		this.token_update();
 	}
 	token_update() {
-		//TODO: This seems very complicated. can it be simplified?
+		//TODO: This seems very complicated. can it be simplified? e.g., by moving logic to the individual tokens?
 		let p = this.active_player_token;
 		for(let t of this.iter_tokens('G')) {
+			//Alert any dozing guards in player's space 
 			if(arrEq(t.map_pos,p.map_pos) && t.state=='dozing' && !t.frozen) {
 				t.state = 'alert';
 			}
+			//Move any alert guards into players space if they are adjacent
+			if(!this.building_types.includes(this.get(p.map_pos)) && dist(t.map_pos,p.map_pos)==1 && t.state=='alert' && !t.frozen && p.state != 'cloaked') {
+				t.map_pos = p.map_pos;
+				return;
+			}
 		}
 		//move guards that can see player to the player
-		for(let t of this.iter_tokens('G')) {
-			if(arrEq(t.map_pos, p.map_pos) || ['dead', 'unconscious'].includes(t.state) || t.frozen) continue; 
-			if(1 <= this.dist(t.map_pos, p.map_pos) && this.dist(t.map_pos, p.map_pos) <= 10 
-			&& !['U',...this.building_types].includes(this.get(p.map_pos))) {
-				if(!(this.has_types_between(t.map_pos, p.map_pos, this.building_types))) {
-					t.map_pos = [...p.map_pos];
-					if(t.state!='alert') {
-						t.state = 'alert';
+		if(p.state!='cloaked') {
+			for(let t of this.iter_tokens('G')) {
+				if(arrEq(t.map_pos, p.map_pos) || ['dead', 'unconscious'].includes(t.state) || t.frozen) continue; 
+				if(1 <= this.dist(t.map_pos, p.map_pos) && this.dist(t.map_pos, p.map_pos) <= 10 
+				&& !['U',...this.building_types].includes(this.get(p.map_pos))) {
+					if(!(this.has_types_between(t.map_pos, p.map_pos, this.building_types))) {
+						t.map_pos = [...p.map_pos];
+						if(t.state!='alert') {
+							t.state = 'alert';
+						}
+						return;
 					}
-					return ;
 				}
 			}
 		}
-		//alert guards
+		//alert guards that can see "downed" guards
 		for(let t of this.iter_tokens('G')) {
 			if(arrEq(t.map_pos,p.map_pos) || ['unconscious', 'dead'].includes(t.state) || t.frozen) continue;
 			var closest = [100, null];
@@ -205,6 +213,7 @@ class Board extends GridLayout {
 				return ;
 			}
 		}
+		//Identify any tokens occupying the same space so that we can shift them on the space slightly
 		var clashes = {}
 		for(var t0 of this.tokens) {
 			for(var t1 of this.tokens) {
@@ -223,6 +232,7 @@ class Board extends GridLayout {
 				}
 			}
 		}
+		//shift the clashing tokens
 		for(var t of this.tokens) {
 			if(!(t.map_pos.toString() in clashes)) t.off = [0, 0];
 		}

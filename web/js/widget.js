@@ -214,7 +214,7 @@ class App {
 
 class Widget extends Rect {
     bgColor = "black";
-    outlineColor = "gray";
+    outlineColor = null;
     _animation = null;
     hints = {};
     constructor(rect, properties=null) {
@@ -232,7 +232,8 @@ class Widget extends Rect {
         return new Proxy(this, {
             set(target, name, value) {
                 if(['x','y','w','h','children','rect'].includes[name] || name[0]=='_') return Reflect.set(...arguments);
-                target[name] = value;
+                Reflect.set(...arguments);
+//                target[name] = value;
                 target.emit(name, value);
                 return true;
             }
@@ -470,8 +471,10 @@ class Widget extends Rect {
         app.ctx.fillStyle = this.bgColor;
         app.ctx.fill();
         app.ctx.lineWidth = 1.0/app.tileSize;
-        app.ctx.strokeStyle = this.outlineColor;
-        app.ctx.stroke();
+        if(this.outlineColor!=null) {
+            app.ctx.strokeStyle = this.outlineColor;
+            app.ctx.stroke();    
+        }
     }
     update(millis) {
         if(this._deferredProps!=null) this.deferredProperties();

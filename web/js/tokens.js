@@ -19,14 +19,21 @@ class Token extends Widget {
 		} else {
 			this.rect = [this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1];
 		}
-//		this.rect = new Rect([this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1], 1, 1]);
 	}
 	on_map_pos(event, data) {
+		if(this.parent==null) return;
 		App.get().board.token_update();
 	}
 }
 
 class PlayerToken extends Token {
+	state = 'normal';
+	constructor(map_pos) {
+		super(map_pos);
+	}
+	on_state(event, data) {
+		if(this.parent!=null) App.get().board.token_update();
+	}
 	draw() {
 		let app = App.get();
 		let r = this.rect;
@@ -38,27 +45,22 @@ class PlayerToken extends Token {
 		app.ctx.closePath();
 		app.ctx.fill();
 
-		// Color:
-        //     rgb: 0.5,0.5,0.5
-        // Ellipse:
-        //     pos: self.x+(self.width)//10,self.y+(self.height)//10
-        //     size: root.width*4//5, root.height*4//5
-        // Color:
-        //     rgb: 0,0,0
-        // Ellipse:
-        //     pos: self.x+(self.width)//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
-        //     size: root.width*3//10, root.height*3//10
-        //     angle_start: 90
-        //     angle_end: 270
-        // Ellipse:
-        //     pos: self.x+(self.width)*2//3-root.width*3//40,self.y+(self.height)//2-root.height*3//40
-        //     size: root.width*3//10, root.height*3//10
-        //     angle_start: 90
-        //     angle_end: 270
-        // Line:
-        //     width: 1+root.height//30
-        //     points: self.x+(self.width)*2//5,self.y+(self.height)//3,self.x+(self.width)*3//5,self.y+(self.height)//3
-
+		//Draw eyes
+		app.ctx.fillStyle = colorString([0,0,0]);
+		app.ctx.strokeStyle = app.ctx.fillStyle;
+		app.ctx.beginPath();
+		app.ctx.ellipse(r.center_x - r.w/6 + 3*r.w/40, r.center_y - 2*r.h/40, r.w*4/40, r.h*4/40, 0, rads(0), rads(180));
+		app.ctx.closePath();
+		app.ctx.fill();
+		app.ctx.beginPath();
+		app.ctx.ellipse(r.center_x + r.w/6 + 3*r.w/40, r.center_y - 2*r.h/40, r.w*4/40, r.h*4/40, 0, rads(0), rads(180));
+		app.ctx.closePath();
+		app.ctx.fill();
+		//mouth
+		app.ctx.beginPath();
+		app.ctx.moveTo(r.x+r.w*2/5 + 3*r.w/40, r.y+2*r.h/3);
+		app.ctx.lineTo(r.x+r.w*3/5 + 3*r.w/40, r.y+2*r.h/3);
+		app.ctx.stroke();
 	}
 
 }
@@ -72,20 +74,36 @@ class TargetToken extends Token {
 		let app = App.get();
 		let ctx = app.ctx;
 		let color = colorString([0.1,0.3,0.8]);
+		let color2 = colorString([0.4,0.5,0.9]);
 		let r = this.rect;
 		var x = r.x + (r.w / 5);
 		var y = r.y + (r.h / 5);
 		var w = 3*r.w/5;
 		var h = 3*r.h/5;
 		ctx.beginPath();
-		ctx.moveTo(x + w/2, y + h);
-		ctx.lineTo(x, y + h - 2*h/3);
-		ctx.lineTo(x + w/4, y);
-		ctx.lineTo(x + 3*w/4, y);
-		ctx.lineTo(x + w, y + h - 2*h/3);
+		ctx.moveTo(x + w/2, y + h); //bottom center
+		ctx.lineTo(x, y + h - 2*h/3); //left
+		ctx.lineTo(x + w/4, y); //top left
+		ctx.lineTo(x + 3*w/4, y); //top right
+		ctx.lineTo(x + w, y + h - 2*h/3); //right
 		ctx.closePath();
 		ctx.fillStyle = color;
+		ctx.strokeStyle = color2;
 		ctx.fill();	
+		ctx.stroke();	
+		ctx.beginPath();
+		ctx.moveTo(x, y + h - 2*h/3); //horiz line across middle
+		ctx.lineTo(x + w, y + h - 2*h/3);
+		ctx.moveTo(x + w/4, y); //line top left diag
+		ctx.lineTo(x + w/8, y + h - 2*h/3);
+		ctx.moveTo(x + 3*w/4, y); //line top right diag
+		ctx.lineTo(x + 7*w/8, y + h - 2*h/3);
+		ctx.moveTo(x + w/4, y); //line bottom left diag
+		ctx.lineTo(x + w/2, y + h);
+		ctx.moveTo(x + 3*w/4, y); //line bottom right diag
+		ctx.lineTo(x + w/2, y + h);
+		ctx.stroke();	
+
 	}
 }
 
@@ -163,22 +181,22 @@ class GuardToken extends Token {
 		app.ctx.strokeStyle = app.ctx.fillStyle;
 		if(['dozing','alert'].includes(this.state)) {
 			app.ctx.beginPath();
-			app.ctx.ellipse(r.center_x - r.w/6, r.center_y, r.w*3/40, r.h*3/40, 
+			app.ctx.ellipse(r.center_x - r.w/6, r.center_y, r.w*4/40, r.h*4/40, 
 							0, (this.state == 'dozing' ? rads(180) : rads(200)), (this.state == 'dozing' ? rads(360) : rads(380)) );
 			app.ctx.closePath();
 			app.ctx.fill();
 			app.ctx.beginPath();
-			app.ctx.ellipse(r.center_x + r.w/6, r.center_y, r.w*3/40, r.h*3/40, 
+			app.ctx.ellipse(r.center_x + r.w/6, r.center_y, r.w*4/40, r.h*4/40, 
 							0, (this.state == 'dozing' ? rads(180) : rads(160)), (this.state == 'dozing' ? rads(360) : rads(340)) );
 			app.ctx.closePath();
 			app.ctx.fill();
 		} 
 		else if(this.state == 'dead') {
 				//dead eyes
-				var eyeleft = r.center_x - r.w/6 - r.h*3/40;
-				var eyeright = r.center_x - r.w/6 + r.h*3/40;
-				var eyetop = r.center_y - r.h*3/40;
-				var eyebottom = r.center_y + r.h*3/40;
+				var eyeleft = r.center_x - r.w/6 - r.h*4/40;
+				var eyeright = r.center_x - r.w/6 + r.h*4/40;
+				var eyetop = r.center_y - r.h*4/40;
+				var eyebottom = r.center_y + r.h*4/40;
 				app.ctx.lineWidth = r.w/40;
 				app.ctx.beginPath();
 				app.ctx.moveTo(eyeleft, eyebottom);
@@ -187,10 +205,10 @@ class GuardToken extends Token {
 				app.ctx.lineTo(eyeright, eyebottom);
 				app.ctx.stroke()
 				
-				var eyeleft = r.center_x + r.w/6 - r.h*3/40;
-				var eyeright = r.center_x + r.w/6 + r.h*3/40;
-				var eyetop = r.center_y - r.h*3/40;
-				var eyebottom = r.center_y + r.h*3/40;
+				var eyeleft = r.center_x + r.w/6 - r.h*4/40;
+				var eyeright = r.center_x + r.w/6 + r.h*4/40;
+				var eyetop = r.center_y - r.h*4/40;
+				var eyebottom = r.center_y + r.h*4/40;
 				app.ctx.lineWidth = r.w/40;
 				app.ctx.beginPath();
 				app.ctx.moveTo(eyeleft, eyebottom);
@@ -201,8 +219,8 @@ class GuardToken extends Token {
 		}
 		else {
 				//KO eyes
-				var eyeleft = r.x + r.w / 3 - this.w*3/40;
-				var eyeright = r.x + r.w / 3 + this.w*3/40;
+				var eyeleft = r.x + r.w / 3 - this.w*4/40;
+				var eyeright = r.x + r.w / 3 + this.w*4/40;
 				var eyemiddle = r.center_y;
 				app.ctx.lineWidth = r.w/40;
 				app.ctx.beginPath();
@@ -210,8 +228,8 @@ class GuardToken extends Token {
 				app.ctx.lineTo(eyeright, eyemiddle);
 				app.ctx.stroke()
 
-				var eyeleft = r.x + r.w*2/3 - this.w*3/40;
-				var eyeright = r.x + r.w*2/3 + this.w*3/40;
+				var eyeleft = r.x + r.w*2/3 - this.w*4/40;
+				var eyeright = r.x + r.w*2/3 + this.w*4/40;
 				var eyemiddle = r.center_y;
 				app.ctx.beginPath();
 				app.ctx.moveTo(eyeleft, eyemiddle);
@@ -232,6 +250,14 @@ class GuardToken extends Token {
 			app.ctx.lineTo(r.x+r.w*3/5, r.y+2*r.h/3);
 			app.ctx.stroke();
 		}
+		//Draw helmet
+		app.ctx.fillStyle = colorString([0.3,0.3,0.3])
+		app.ctx.beginPath();
+		let angles = this.state!='alert'? [rads(180), rads(340)]:[rads(190), rads(350)];
+		app.ctx.ellipse(r.center_x, r.center_y-1*r.h/40, 17*r.w/40, 17*r.h/40, 0, ...angles);
+		app.ctx.closePath();
+		app.ctx.fill();
+
 	}
 }
 
