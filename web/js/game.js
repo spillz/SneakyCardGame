@@ -35,7 +35,7 @@ class Game extends App {
         this.playarea = new Widget([0,0,this.map_card_size[0]*this.map_size[0], 
             this.map_card_size[1]*this.map_size[1]]);
         this.playerprompt = new PlayerPrompt(r, { fontSize: 0.5,
-                text: 'Select a card from your hand to play, or tap the event card to end your turn'});
+                text: 'Tap the event deck to begin.'});
 
         this.sv.addChild(this.playarea);
         this.playarea.addChild(this.board);
@@ -51,7 +51,7 @@ class Game extends App {
         this.action_selector = null;
         this.stats = new Stats();
 
-        this.playercards = [...make_player_cards(this), ...repeatInstantiate([TreasureCard],3)];
+        this.playercards = [...make_player_cards(this)];
         this.traitcards = make_trait_cards(this);
         this.lootcards = make_loot_cards(this);
         this.marketcards = make_market_cards(this);
@@ -77,10 +77,10 @@ class Game extends App {
         this.stats.title.text = 'MISSION IN PROGRESS';
         this.skilldeck.select_draw(2,4);
 
-        this.mission = new ContactMission({mission_level:this.stats.missions+1});
-        this.board.children = this.mission.setup_map(this);
+        this.stats.mission = new ContactMission({mission_level:this.stats.missions+1});
+        this.board.children = this.stats.mission.setup_map(this);
         this.eventdiscard.children = [];
-        this.eventdeck.children = this.mission.setup_events(this);
+        this.eventdeck.children = this.stats.mission.setup_events(this);
         this.eventdeck.can_draw = true;
 
         this.playerdiscard.children = [];
@@ -98,6 +98,7 @@ class Game extends App {
         let markets = [...this.board.iter_markets()].slice(0,-1).map(t => new MarketToken(t));
 
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
+        this.playerprompt.text = 'Tap the event deck to begin';
     }
     setupNextMission() {
         this.clear_state();
@@ -105,10 +106,10 @@ class Game extends App {
         this.stats.title.text = 'MISSION IN PROGRESS';
         this.skilldeck.select_draw(2,4);
 
-        this.mission = new ContactMission({mission_level:this.stats.missions+1});
-        this.board.children = this.mission.setup_map(this);
+        this.stats.mission = new ContactMission({mission_level:this.stats.missions+1});
+        this.board.children = this.stats.mission.setup_map(this);
         this.eventdiscard.children = [];
-        this.eventdeck.children = this.mission.setup_events(this);
+        this.eventdeck.children = this.stats.mission.setup_events(this);
         this.eventdeck.can_draw = true;
 
         let playercards = [...this.playerdiscard.children, ...this.playerdeck.children, ...this.hand.children]
@@ -128,6 +129,7 @@ class Game extends App {
         let markets = [...this.board.iter_markets()].slice(0,-1).map(t => new MarketToken(t));
 
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
+        this.playerprompt.text = 'Tap the event deck to begin';
     }
     missionComplete() {
         this.clear_state();

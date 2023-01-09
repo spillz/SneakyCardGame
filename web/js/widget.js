@@ -170,14 +170,14 @@ class App {
     }
     applyHints(c) {
         let hints = c.hints;
-        if('w' in hints) c.w = hints['w']*this.dimW;
-        if('h' in hints) c.h = hints['h']*this.dimH;
-        if('x' in hints) c.x = hints['x']*this.dimW;
-        if('y' in hints) c.y = hints['y']*this.dimH;
-        if('center_x' in hints) c.center_x = hints['center_x']*this.dimW;
-        if('center_y' in hints) c.center_y = hints['center_y']*this.dimH;
-        if('right' in hints) c.right = hints['right']*this.dimW;
-        if('bottom' in hints) c.bottom = hints['bottom']*this.dimH;
+        if('w' in hints && hints['w']!=null) c.w = hints['w']*this.dimW;
+        if('h' in hints && hints['h']!=null) c.h = hints['h']*this.dimH;
+        if('x' in hints && hints['x']!=null) c.x = hints['x']*this.dimW;
+        if('y' in hints && hints['y']!=null) c.y = hints['y']*this.dimH;
+        if('center_x' in hints && hints['center_x']!=null) c.center_x = hints['center_x']*this.dimW;
+        if('center_y' in hints && hints['center_y']!=null) c.center_y = hints['center_y']*this.dimH;
+        if('right' in hints && hints['right']!=null) c.right = hints['right']*this.dimW;
+        if('bottom' in hints && hints['bottom']!=null) c.bottom = hints['bottom']*this.dimH;
     }
     updateWindowSize() {
         this.w = window.innerHeight;
@@ -212,8 +212,10 @@ class App {
 }
 
 
+const hints_default = {x:0, y:0, w:1, h:1};
+
 class Widget extends Rect {
-    bgColor = "black";
+    bgColor = null;
     outlineColor = null;
     _animation = null;
     hints = {};
@@ -439,14 +441,15 @@ class Widget extends Rect {
     }
     applyHints(c) {
         let hints = c.hints;
-        if('w' in hints) c.w = hints['w']*this.w;
-        if('h' in hints) c.h = hints['h']*this.h;        
-        if('x' in hints) c.x = this.x + hints['x']*this.w;
-        if('y' in hints) c.y = this.y + hints['y']*this.h;
-        if('center_x' in hints) c.center_x = this.x + hints['center_x']*this.w;
-        if('center_y' in hints) c.center_y = this.y + hints['center_y']*this.h;
-        if('right' in hints) c.right = this.x + hints['right']*this.w;
-        if('bottom' in hints) c.bottom = this.y + hints['bottom']*this.h;
+        if('w' in hints && hints['w']!=null) c.w = hints['w']*this.w;
+        if('h' in hints && hints['h']!=null) c.h = hints['h']*this.h;
+        if('x' in hints && hints['x']!=null) c.x = this.x+hints['x']*this.w;
+        if('y' in hints && hints['y']!=null) c.y = this.y+hints['y']*this.h;
+        //TODO: fix this
+        if('center_x' in hints && hints['center_x']!=null) c.center_x = this.x+hints['center_x']*this.w;
+        if('center_y' in hints && hints['center_y']!=null) c.center_y = this.y+hints['center_y']*this.h;
+        if('right' in hints && hints['right']!=null) c.right = this.x+hints['right']*this.w;
+        if('bottom' in hints && hints['bottom']!=null) c.bottom = this.y+hints['bottom']*this.h;
     }
     layoutChildren() { //The default widget has children but does not apply a layout a la kivy FloatLayout
         this._needsLayout = false;
@@ -468,10 +471,12 @@ class Widget extends Rect {
         let app = App.get();
         app.ctx.beginPath();
         app.ctx.rect(r[0], r[1], r[2], r[3]);
-        app.ctx.fillStyle = this.bgColor;
-        app.ctx.fill();
-        app.ctx.lineWidth = 1.0/app.tileSize;
+        if(this.bgColor!=null) {
+            app.ctx.fillStyle = this.bgColor;
+            app.ctx.fill();    
+        }
         if(this.outlineColor!=null) {
+            app.ctx.lineWidth = 1.0/app.tileSize;
             app.ctx.strokeStyle = this.outlineColor;
             app.ctx.stroke();    
         }
@@ -550,6 +555,14 @@ class Label extends Widget {
         // this.color = "white";
         this.updateProperties(properties)
         }
+    layoutChildren() {
+        let app = App.get()
+        super.layoutChildren();
+        if(this.fontSize!=null && 'h' in this.hints && this.hints['h']==null) {
+            this[3] = this.wrap? sizeWrappedText(app.ctx, this.text, this.fontSize, this.align=="center", this.rect, this.color) :
+                sizeText(app.ctx, this.text, this.fontSize, this.align=="center", this.rect, this.color) 
+        }
+    }
     draw() {
         super.draw();
         let r = this.rect;
@@ -650,14 +663,14 @@ class BoxLayout extends Widget {
         if(w==null) w=this.w;
         if(h==null) h=this.h;
         let hints = c.hints;
-        if('w' in hints) c.w = hints['w']*w;
-        if('h' in hints) c.h = hints['h']*h;        
-        if('x' in hints) c.x = this.x + hints['x']*w;
-        if('y' in hints) c.y = this.y + hints['y']*h;
-        if('center_x' in hints) c.center_x = this.x + hints['center_x']*w;
-        if('center_y' in hints) c.center_y = this.y + hints['center_y']*h;
-        if('right' in hints) c.right = this.x + hints['right']*w;
-        if('bottom' in hints) c.bottom = this.y + hints['bottom']*h;
+        if('w' in hints && hints['w']!=null) c.w = hints['w']*w;
+        if('h' in hints && hints['h']!=null) c.h = hints['h']*h;        
+        if('x' in hints && hints['x']!=null) c.x = this.x + hints['x']*w;
+        if('y' in hints && hints['y']!=null) c.y = this.y + hints['y']*h;
+        if('center_x' in hints && hints['center_x']!=null) c.center_x = this.x + hints['center_x']*w;
+        if('center_y' in hints && hints['center_y']!=null) c.center_y = this.y + hints['center_y']*h;
+        if('right' in hints && hints['right']!=null) c.right = this.x + hints['right']*w;
+        if('bottom' in hints && hints['bottom']!=null) c.bottom = this.y + hints['bottom']*h;
     }
 
     layoutChildren() {
@@ -671,7 +684,6 @@ class BoxLayout extends Widget {
             for(let c of this.children) {
                 this.applyHints(c,w,h);
                 if('h' in c.hints) {
-                    c.h = h*c.hints['h'];
                     fixedh += c.h;
                     num--;
                 }
@@ -688,6 +700,10 @@ class BoxLayout extends Widget {
                 c.layoutChildren();
                 y+=this.spacingY+c.h;
             }
+            //TODO: should this be a separate property to control? e.g., expandToChildren
+            if(num == 0 && 'h' in this.hints && this['h']==null) { //height determined by children
+                this[3] = y+this.paddingY;
+            }
             return;
         }
         if(this.orientation=='horizontal') {
@@ -698,7 +714,6 @@ class BoxLayout extends Widget {
             for(let c of this.children) {
                 this.applyHints(c,w,h);
                 if('w' in c.hints) {
-                    c.w = w*c.hints['w'];
                     fixedw += c.w;
                     num--;
                 }
@@ -714,6 +729,9 @@ class BoxLayout extends Widget {
                 if(!('h' in c.hints)) c.h=ch;
                 c.layoutChildren();
                 x+=this.spacingX+c.w;
+            }
+            if(num == 0 && 'w' in this.hints && this['w']==null) { //width determined by children
+                this.rect[2] = x+this.paddingX;
             }
         }
     }
@@ -809,6 +827,7 @@ class ScrollView extends Widget {
     _scrollY = 0;
     scrollX = 0;
     scrollY = 0;
+    uiZoom = true;
     zoom = 1;
     constructor(rect, properties) {
         super(rect);
@@ -839,6 +858,8 @@ class ScrollView extends Widget {
         this._needsLayout = false;
         this.children[0].x = 0;
         this.children[0].y = 0;
+        if(!this.scrollW) this.children[0].w = this.w;
+        if(!this.scrollH) this.children[0].h = this.h;
         for(let c of this.children) {
             c.layoutChildren();
         }
@@ -858,14 +879,15 @@ class ScrollView extends Widget {
     }
     applyHints(c) {
         let hints = c.hints;
-        if('w' in hints) c.w = hints['w']*this.w;
-        if('h' in hints) c.h = hints['h']*this.h;        
-        if('x' in hints) c.x = hints['x']*this.w;
-        if('y' in hints) c.y = hints['y']*this.h;
-        if('center_x' in hints) c.center_x = hints['center_x']*this.w;
-        if('center_y' in hints) c.center_y = hints['center_y']*this.h;
-        if('right' in hints) c.right = hints['right']*this.w;
-        if('bottom' in hints) c.bottom = hints['bottom']*this.h;
+        if('w' in hints && hints['w']!=null) c.w = hints['w']*this.w;
+        if('h' in hints && hints['h']!=null) c.h = hints['h']*this.h;        
+        if('x' in hints && hints['x']!=null) c.x = this.x+hints['x']*this.w;
+        if('y' in hints && hints['y']!=null) c.y = this.y+hints['y']*this.h;
+        //TODO: fix this
+        if('center_x' in hints && hints['center_x']!=null) c.center_x = hints['center_x']*this.w;
+        if('center_y' in hints && hints['center_y']!=null) c.center_y = hints['center_y']*this.h;
+        if('right' in hints && hints['right']!=null) c.right = hints['right']*this.w;
+        if('bottom' in hints && hints['bottom']!=null) c.bottom = hints['bottom']*this.h;
     }
     on_scrollW(event, value) {
         this._needsLayout = true;
@@ -921,7 +943,9 @@ class ScrollView extends Widget {
         let app = App.get();
         if(this.collide(r)) {
             let tl = touch.local(this);
+            //Pan
             if(touch.nativeEvent==null || touch.nativeEvent.touches.length==1) { // || touch.nativeEvent.touches.length==2
+                //TODO: If two touches, average them together to make less glitchy
                 if(this.oldTouch!=null && tl.identifier==this.oldTouch[2]) {
                     if(this.scrollW) {
                         this.scrollX = (this._scrollX + (this.oldTouch[0] - tl.x));
@@ -934,7 +958,9 @@ class ScrollView extends Widget {
                     this.oldTouch = [tl.x, tl.y, tl.identifier];    
                 }
             } 
-            if(touch.nativeEvent!=null && touch.nativeEvent.touches.length==2) {
+            //Zoom
+            if(this.uiZoom && touch.nativeEvent!=null && touch.nativeEvent.touches.length==2) {
+                //TODO: still too touch trying to zoom and stay locked at corners and sides (partly because of centering when full zoomed out)
                 let t0 = touch.nativeEvent.touches[0];
                 let t1 = touch.nativeEvent.touches[1];
                 let d = dist([t0.clientX, t0.clientY], [t1.clientX, t1.clientY]);
@@ -1011,6 +1037,8 @@ class ScrollView extends Widget {
 
 class ModalView extends Widget {
     closeOnTouchOutside = true;
+    bgColor = 'slate';
+    outlineColor = 'gray'
     popup() {
         if(this.parent==null) {
             let app = App.get();

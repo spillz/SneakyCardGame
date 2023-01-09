@@ -104,6 +104,10 @@ function screenshake(app){
     app.shakeY = Math.round(Math.sin(shakeAngle)*app.shakeAmount);
 }
 
+function sizeText(ctx, text, size, centered, rect, color) {
+    return 2*size;
+}
+
 function drawText(ctx, text, size, centered, rect, color){
     if(size<1) {
         ctx.save();
@@ -127,6 +131,51 @@ function drawText(ctx, text, size, centered, rect, color){
         textX += (rect.w-ctx.measureText(text).width)/2;
     }
     ctx.fillText(text, textX, textY);
+}
+
+function sizeWrappedText(ctx, text, size, centered, rect, color){
+    if(size<1) {
+        ctx.save();
+        ctx.scale(0.01,0.01);
+        ctx.fillStyle = color;
+        ctx.font = Math.ceil(size*100) + "px monospace";
+
+        let h = 0;
+        while(text!="") {
+            let x = rect.x;
+            let rowsNeeded = 0.01*ctx.measureText(text).width / rect.w;
+            let maxletters = Math.floor(text.length/rowsNeeded);
+            let substr = text.substring(0,maxletters);
+            let lastIndex = substr.lastIndexOf(" ");
+            if(lastIndex<0 || substr.length==text.length) {
+                lastIndex = substr.length;
+            }
+            substr = substr.substring(0, lastIndex);
+            text = text.substring(lastIndex+1);
+            h += size;
+        }    
+        ctx.restore();
+        return h+size;
+    }
+    ctx.fillStyle = color;
+    ctx.font = size + "px monospace";
+
+    let h = 0;
+    while(text!="") {
+        let x = rect.x;
+        let rowsNeeded = ctx.measureText(text).width / rect.w;
+        let maxletters = Math.floor(text.length/rowsNeeded);
+        let substr = text.substring(0,maxletters);
+        let lastIndex = substr.lastIndexOf(" ");
+        if(lastIndex<0 || substr.length==text.length) {
+            lastIndex = substr.length;
+        }
+        substr = substr.substring(0, lastIndex);
+        text = text.substring(lastIndex+1);
+
+        h += size;
+    }
+    return h+size;
 }
 
 function drawWrappedText(ctx, text, size, centered, rect, color){
@@ -324,6 +373,9 @@ class Rect extends Array {
     }
     shrinkBorders(value) {
         return new Rect([this.x+value, this.y+value, this.w-value*2, this.h-value*2]);
+    }
+    scaleBorders(scale) {
+        return new Rect([this.x+this.w*(1-scale)/2, this.y+this.h*(1-scale)/2, this.w*scale, this.h*scale]);
     }
     mult(scalar) {
         return new Rect([

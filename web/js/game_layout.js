@@ -477,25 +477,62 @@ class PlayerDiscard extends CardSplay {
 	}
 }
 
-class PlayerPrompt extends Label {
-	on_touch_down(event, touch) {
-		if(this.collide(touch.rect)) {
-			touch.grab(this);
-			return true;
-		}
-		return super.on_touch_down(event, touch);
+class Hamburger extends Button {
+	color = null;
+	colorHighlight = null;
+	constructor(rect, props) {
+		super(rect);
+		this.updateProperties(props);
 	}
-	on_touch_up(event, touch) {
-		let app=App.get()
-		if(touch.grabbed == this) {
-			touch.ungrab()
-			if(this.collide(touch.rect)) {
-				if(app.stats.parent==null) app.stats.popup();
-				return true;
-			}
+	draw() {
+		let lineColor = this._touching? this.colorHighlight: this.color;
+		if(lineColor!=null) {
+			let r = this.rect.scaleBorders(0.6);
+			let ctx = App.get().ctx;
+			ctx.strokeStyle = lineColor;
+			ctx.lineWidth = this.h/10;
+			ctx.beginPath();
+			ctx.moveTo(r.x,r.y);
+			ctx.lineTo(r.right,r.y);
+			ctx.moveTo(r.x,r.center_y);
+			ctx.lineTo(r.right,r.center_y);
+			ctx.moveTo(r.x,r.bottom);
+			ctx.lineTo(r.right,r.bottom);
+			ctx.stroke();
 		}
-		return super.on_touch_up(event, touch);
 	}
+}
+
+class PlayerPrompt extends BoxLayout {
+	text = '';
+	id = 'prompt';
+	orientation = 'horizontal';
+	constructor(rect, props) {
+		super(rect);
+		this.updateProperties(props);
+		this.children = [
+			new Label(null, {text:(prompt)=>prompt.text}),
+			new Hamburger(null, {w:1, h:1, color:'gray', colorHighlight:'lightGray', hints:{w:null, h:null}, on_press: (e,o,v)=>App.get().stats.popup()}),
+		]
+	}
+	// on_touch_down(event, touch) {
+	// 	if(this.collide(touch.rect)) {
+	// 		touch.grab(this);
+	// 		return true;
+	// 	}
+	// 	return super.on_touch_down(event, touch);
+	// }
+	// on_touch_up(event, touch) {
+	// 	let app=App.get()
+	// 	if(touch.grabbed == this) {
+	// 		touch.ungrab()
+	// 		if(this.collide(touch.rect)) {
+	// 			if(app.stats.parent==null) app.stats.popup();
+	// 			return true;
+	// 		}
+	// 	}
+	// 	return super.on_touch_up(event, touch);
+	// }
 }
 
 class PlayerDeck extends CardSplay {
@@ -520,14 +557,14 @@ class PlayerDeck extends CardSplay {
 	}
 	draw_cards(n) {
 		var sh = n - this.children.length;
-		var cards = this.children.slice(-n-1, -1);
+		var cards = this.children.slice(-n);
 		let app = App.get();
 		this.move_to(cards, app.hand);
 		if(sh > 0) {
 			var discards = app.playerdiscard.children.slice();
 			discards = shuffle(discards);
 			app.playerdiscard.move_to(discards, this);
-			var cards = this.children.slice(-sh-1, -1);
+			var cards = this.children.slice(-sh);
 			this.move_to(cards, app.hand);
 		}
 	}
@@ -917,6 +954,8 @@ class EventDiscard extends CardSplay {
 	}
 }
 
+const hints_fixedH = {h:null};
+
 class Stats extends ModalView {
 	kills = 0;
 	knockouts = 0;
@@ -930,24 +969,26 @@ class Stats extends ModalView {
 	t_contacts = 0;
 	t_loot = 0;
 	t_rounds = 0;
-	hints = {x:0.1, y:0.1, w:0.8, h:0.8};
-	id = 'stats'
+	bgColor = colorString([0,0,0.2]);
+	id = 'stats';
 	constructor() {
-		super(null, {});
+		super(null, {hints:{x:0.1,y:0.1,w:0.8,h:0.8}});
 		this.addChild(new BoxLayout(null, {
 			hints: {x:0, y:0, w:1, h:1},
 			orientation: 'vertical',
 			children: [
-				new Label(null, {id: 'title', text: 'GAME OVER', hints: {w:1,h:0.2}}),
-				new BoxLayout(null, {orientation:'vertical', hints: {w:1,h:0.8},
+				new Label(null, {id: 'title', text: 'GAME OVER', h:1.5, hints: {h:null}, font_size:0.75}),
+				new ScrollView(null, {id:'mission_container', scrollW:false}),
+				new BoxLayout(null, {orientation:'vertical', h:8.5, hints:{h:null},
 					children: [
-						new Label(null, {id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
-						new Label(null, {id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
-						new Label(null, {id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
-						new Label(null, {id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
-						new Label(null, {id:'rounds', text: (stats)=>`Rounds: ${stats.rounds} / ${stats.t_rounds}`}),
-						new Label(null, {id:'missions', text: (stats)=>`Missions: ${stats.missions}`}),
-						new BoxLayout(null, {orientation:'horizontal', hints: {w:1,h:1/6}, paddingX:0.1, spacingX:0.1, 
+						new Label(null, {align:'left', h:1.5, hints: {h:null}, text: 'Stats'}),
+						new Label(null, {align:'left', h:1, hints: {h:null}, id:'missions', text: (stats)=>`Missions complete: ${stats.missions}`}),
+						new Label(null, {align:'left', h:1, hints: {h:null}, id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
+						new Label(null, {align:'left', h:1, hints: {h:null}, id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
+						new Label(null, {align:'left', h:1, hints: {h:null}, id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
+						new Label(null, {align:'left', h:1, hints: {h:null}, id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
+						new Label(null, {align:'left', h:1, hints: {h:null}, id:'rounds', text: (stats)=>`Rounds: ${stats.rounds} / ${stats.t_rounds}`}),
+						new BoxLayout(null, {orientation:'horizontal', h:1, hints: {h:null}, paddingX:0.1, spacingX:0.1, 
 							children: [
 								new Button(null, {text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
 								new Button(null, {text:'RESTART', id:'restart', on_press:(ev,ob,press)=>this.restartGame()}),
@@ -957,6 +998,9 @@ class Stats extends ModalView {
 			]}));
 		this.next = this.findById('next');
 		this.title = this.findById('title');
+	}
+	on_mission(event, touch) {
+		this.findById('mission_container').children = [this.mission];
 	}
 	restartGame() {
 		this.reset();

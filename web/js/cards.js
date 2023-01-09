@@ -570,15 +570,16 @@ class AlertEvent extends EventCard {
 
 class MoveEvent extends EventCard {
     name = 'MOVE';
-    text = "The nearest guard moves to a waypoint closer to the player";
+    text = "The nearest guard moves to a waypoint closer to the player. If already at the closest waypoint, guard moves to the player if they are standing on a lit tile.";
 	activate(board) {
 		this.board = board;
-		var guard = this.board.nearest_guard(this.board.active_player_token.map_pos);
+		let p = this.board.active_player_token;
+		var guard = this.board.nearest_guard(p.map_pos);
 		if(guard === null) {
 			return true;
 		}
-        let inc_player = ['U','B'].includes(this.board [this.board.active_player_token.map_pos]);
-		var new_pos = this.board.guard_nearest_move(guard.map_pos, this.board.active_player_token.map_pos, inc_player);
+        let inc_player = !['U','B'].includes(this.board.get(p.map_pos));
+		var new_pos = this.board.guard_nearest_move(guard.map_pos, p.map_pos, inc_player);
 		guard.map_pos = new_pos;
 	}
 }
@@ -1227,7 +1228,7 @@ class TraitCard extends Card {
 }
 
 class MoveTrait extends TraitCard {
-	name = 'MOVE';
+	name = 'RESOLUTE';
 	text = 'Once per round: play hand card as MOVE 1[+1].';
 	get_actions_for_card(card, playarea) {
 		if(this.tapped || this.exhausted) {
@@ -1240,8 +1241,8 @@ class MoveTrait extends TraitCard {
 }
 
 class FightTrait extends TraitCard {
-	name = 'FIGHT';
-	text = 'Once per round: play hand card as FIGHT 0.5[+0.5].';
+	name = 'FIGHTER';
+	text = 'Once per round: play hand card as ATTACK 0.5[+0.5]. Alerts all guards on block at end of fight.';
 	get_actions_for_card(card, playarea) {
 		if(this.tapped || this.exhausted) {
 			return {};
@@ -1409,7 +1410,7 @@ class Hypnotize extends MarketCard {
 }
 
 class BasicMove extends StartPlayerCard {
-    name = 'BASIC MOVE';
+    name = 'SWIFT';
     text = 'Move 1.5[+1.5]';
 	get_actions() {
 		return {'MOVE 1.5[+1.5]': new MoveAction(this, {base_allowance: 1.5, value_per_card: 1.5})}
@@ -1417,15 +1418,15 @@ class BasicMove extends StartPlayerCard {
 }
 
 class BasicAttack extends StartPlayerCard {
-    name = 'BASIC ATTACK';
-    text = 'Attack 1[+1]';
+    name = 'FIGHT';
+    text = 'Attack 1[+1]. Alert all guards on block at end of fight.';
 	get_actions() {
 		return {'ATTACK 1[+1]': new FightAction(this, {base_allowance: 1, value_per_card: 1})}
 	}
 }
 
 class BasicClimb extends StartPlayerCard {
-    name = 'BASIC CLIMB';
+    name = 'CLIMB';
     text = 'Climb 1';
 	get_actions() {
 		return {'CLIMB 1': new ClimbAction(this)}
@@ -1433,7 +1434,7 @@ class BasicClimb extends StartPlayerCard {
 }
 
 class BasicSneak extends StartPlayerCard {
-    name = 'BASIC SNEAK';
+    name = 'SNEAK';
     text = 'Sneak 1[+1]';
 	get_actions() {
 		return {'SNEAK 1[+1]': new MoveAction(this, {base_allowance: 1, value_per_card: 1, base_noise: 0, noise_per_stack: 0, cloaked:true})}
@@ -1441,7 +1442,7 @@ class BasicSneak extends StartPlayerCard {
 }
 
 class BasicKnockout extends StartPlayerCard {
-    name = 'BASIC KNOCKOUT';
+    name = 'BLUDGEON';
     text = 'Knockout 1';
 	get_actions() {
 		return {'KNOCKOUT 1': new KnockoutAction(this)}
@@ -1449,8 +1450,8 @@ class BasicKnockout extends StartPlayerCard {
 }
 
 class BasicArrow extends StartPlayerCard {
-    name = 'BASIC ARROW';
-    text = 'Arrow Range 3[+2]';
+    name = 'ARROW';
+    text = 'Arrow Range 3[+2]. Exhausts after use.';
 	get_actions() {
 		return {'SHOOT ARROW 3[+2]': new ArrowAction(this, {base_allowance: 3, value_per_card: 2, exhaust_on_use: this})}
 	}
@@ -1465,7 +1466,7 @@ class BasicLockpick extends StartPlayerCard {
 }
 
 class EfficientMove extends SkillCard {
-    name = 'MOVE';
+    name = 'ELUSIVE';
     text = 'Move 2[+2]';
 	get_actions() {
 		return {'MOVE 2[+2]': new MoveAction(this, {base_allowance: 2, value_per_card: 2})}
@@ -1474,7 +1475,7 @@ class EfficientMove extends SkillCard {
 
 class EfficientAttack extends SkillCard {
     name = 'ATTACK';
-    text = 'Attack 2[+1]';
+    text = 'Attack 2[+1]. Alert all guards on block at end of fight.';
 	get_actions() {
 		return {'ATTACK 2[+1]': new FightAction(this, {base_allowance: 2})}
 	}
@@ -1498,14 +1499,14 @@ class EfficientSneak extends SkillCard {
 
 class EfficientKnockout extends SkillCard {
     name = 'KNOCKOUT';
-    text = 'Knockout 1';
+    text = 'Knockout enemy in range 1. Move into the opponents space if above them.';
 	get_actions() {
 		return {'KNOCKOUT 1': new KnockoutAction(this)}
 	}
 }
 
 class EfficientArrow extends SkillCard {
-    name = 'ARROW';
+    name = 'STEELHEAD ARROW';
     text = 'Arrow Range 5[+2]';
 	get_actions() {
 		return {'SHOOT ARROW 5[+2]': new ArrowAction(this, {base_allowance: 5, value_per_card: 2, exhaust_on_use: this})}
@@ -1520,10 +1521,22 @@ class EfficientLockpick extends SkillCard {
 	}
 }
 
-class Mission extends Card {
+class Mission extends BoxLayout {
 	mission_level = 1;
+	title = '';
+	text = '';
+	id = 'mission';
 	constructor(props) {
         super();
+		this.children = [
+			new BoxLayout(null, {hints:{h:null},
+				children: [
+					new Label(null, {align:'left', hints:{h:null}, text:(mission)=>mission!=null?mission.title:'', fontSize:0.75}),
+					new Label(null, {align:'left', hints:{h:null}, text:(mission)=>mission!=null?mission.text:'', fontSize: 0.5})
+				]})
+		]
+	}
+	updateProps() {
 		for(var k in props) {
 			this[k] = props[k];
 		}
@@ -1607,9 +1620,8 @@ function make_market_cards() {
 }
 
 function make_player_cards() {
-	return [...repeatInstantiate([BasicMove, BasicAttack, BasicClimb, BasicSneak, 
-		BasicKnockout, BasicArrow, BasicLockpick], 2), ...repeatInstantiate([
-		DecoyArrow, RopeArrow, GasArrow, SmokeBomb, DimmerArrow])];
+	return [...repeatInstantiate([BasicMove],4), ...repeatInstantiate([BasicAttack, BasicClimb, BasicSneak, 
+		BasicKnockout, BasicKnockout, BasicArrow], 1)];
 }
 
 function make_trait_cards() {

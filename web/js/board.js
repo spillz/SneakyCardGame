@@ -160,6 +160,7 @@ class Board extends GridLayout {
 			//Alert any dozing guards in player's space 
 			if(arrEq(t.map_pos,p.map_pos) && t.state=='dozing' && !t.frozen) {
 				t.state = 'alert';
+				return;
 			}
 			//Move any alert guards into players space if they are adjacent
 			if(!this.building_types.includes(this.get(p.map_pos)) && dist(t.map_pos,p.map_pos)==1 && t.state=='alert' && !t.frozen && p.state != 'cloaked') {
@@ -168,11 +169,10 @@ class Board extends GridLayout {
 			}
 		}
 		//move guards that can see player to the player
-		if(p.state!='cloaked') {
+		if(p.state!='cloaked' && !['U',...this.building_types].includes(this.get(p.map_pos))) {
 			for(let t of this.iter_tokens('G')) {
 				if(arrEq(t.map_pos, p.map_pos) || ['dead', 'unconscious'].includes(t.state) || t.frozen) continue; 
-				if(1 <= this.dist(t.map_pos, p.map_pos) && this.dist(t.map_pos, p.map_pos) <= 10 
-				&& !['U',...this.building_types].includes(this.get(p.map_pos))) {
+				if(1 <= this.dist(t.map_pos, p.map_pos) && this.dist(t.map_pos, p.map_pos) <= 10) {
 					if(!(this.has_types_between(t.map_pos, p.map_pos, this.building_types))) {
 						t.map_pos = [...p.map_pos];
 						if(t.state!='alert') {
