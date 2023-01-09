@@ -570,7 +570,7 @@ class AlertEvent extends EventCard {
 
 class MoveEvent extends EventCard {
     name = 'MOVE';
-    text = "The nearest guard moves to a waypoint closer to the player. If already at the closest waypoint, guard moves to the player if they are standing on a lit tile.";
+    text = "The nearest guard moves to a waypoint closer to the player. If already at the closest waypoint, guard moves to player standing on a lit tile.";
 	activate(board) {
 		this.board = board;
 		let p = this.board.active_player_token;
@@ -715,6 +715,7 @@ class GlideAction extends PlayerAction {
 }
 
 class FightAction extends PlayerAction {
+	can_loot = true;
 	activate(message, props ={}) {
 		var playarea = App.get();
 		var board = playarea.board;
@@ -738,6 +739,9 @@ class FightAction extends PlayerAction {
 						g.state = 'alert';
 					}
 				}
+			}
+			if(this.can_loot && !board.active_player_clashing()) {
+				playarea.loot1.select_draw(1, 1);
 			}
 		}
 		else if(message == 'card_action_selected') {
@@ -1551,7 +1555,7 @@ class Mission extends BoxLayout {
 
 class ContactMission extends Mission {
 	title = 'Contact Mission';
-	text = 'Get to your contact locked inside the building marked with a gold star.';
+	text = 'Your contact is locked inside the building marked with a gold star. Get to her!';
 	setup_events() {
 		var events = make_event_cards();
 		shuffle(events);
@@ -1610,8 +1614,18 @@ function make_skill_cards() {
 		EfficientSneak, EfficientKnockout, EfficientArrow, EfficientLockpick], 3)];
 }
 
-function make_loot_cards() {
-	return [...repeatInstantiate([TreasureCard, SkeletonKey], 3)];
+function make_loot_cards(level=1) {
+	switch(level) {
+		case 1:
+			return [...repeatInstantiate([TreasureCard, SkeletonKey], 8)];
+			break;
+		case 2:
+			return [...repeatInstantiate([TreasureCard, TreasureCard, SkeletonKey], 5)];
+			break;
+		case 3:
+			return [...repeatInstantiate([TreasureCard, TreasureCard, GasArrow, RopeArrow, DimmerArrow, DecoyArrow, 
+				SmokeBomb, Lure], 3)];
+	}
 }
 
 function make_market_cards() {

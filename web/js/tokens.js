@@ -21,8 +21,7 @@ class Token extends Widget {
 		}
 	}
 	on_map_pos(event, data) {
-		if(this.parent==null) return;
-		App.get().board.token_update();
+		if(this.parent!=null) App.get().board.token_update();
 	}
 }
 
@@ -164,6 +163,7 @@ class GuardToken extends Token {
 				stats.t_contacts++;
 			}
 		}
+		app.board.token_update();
 	}
 
 	draw() {
@@ -257,6 +257,7 @@ class GuardToken extends Token {
 		app.ctx.ellipse(r.center_x, r.center_y-1*r.h/40, 17*r.w/40, 17*r.h/40, 0, ...angles);
 		app.ctx.closePath();
 		app.ctx.fill();
+		app.ctx.stroke();
 
 	}
 }

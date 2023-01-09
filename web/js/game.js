@@ -51,11 +51,13 @@ class Game extends App {
         this.action_selector = null;
         this.stats = new Stats();
 
-        this.playercards = [...make_player_cards(this)];
-        this.traitcards = make_trait_cards(this);
-        this.lootcards = make_loot_cards(this);
-        this.marketcards = make_market_cards(this);
-        this.skillcards = make_skill_cards(this);
+        this.playercards = [...make_player_cards()];
+        this.traitcards = make_trait_cards();
+        this.lootcards1 = make_loot_cards(1);
+        this.lootcards2 = make_loot_cards(2);
+        this.lootcards3 = make_loot_cards(3);
+        this.marketcards = make_market_cards();
+        this.skillcards = make_skill_cards();
 
         this.setupNewGame();
     }
@@ -86,7 +88,9 @@ class Game extends App {
         this.playerdiscard.children = [];
         this.playerdeck.children = shuffle(this.playercards);
         this.playertraits.children = shuffle(this.traitcards);
-        this.loot1.children = shuffle(this.lootcards);
+        this.loot1.children = shuffle(this.lootcards1);
+        this.loot2.children = shuffle(this.lootcards2);
+        this.loot3.children = shuffle(this.lootcards3);
         this.marketdeck.children = shuffle(this.marketcards);
 
         let player = new PlayerToken([0,0]);
@@ -117,7 +121,9 @@ class Game extends App {
         this.hand.children = [];
         this.playerdeck.children = shuffle(playercards);
         this.playertraits.children = shuffle(this.traitcards);
-        this.loot1.children = shuffle(this.lootcards);
+        this.loot1.children = shuffle(this.lootcards1);
+        this.loot2.children = shuffle(this.lootcards2);
+        this.loot3.children = shuffle(this.lootcards3);
         this.marketdeck.children = shuffle(this.marketcards);
 
         let player = new PlayerToken([0,0]);

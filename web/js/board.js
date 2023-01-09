@@ -191,7 +191,7 @@ class Board extends GridLayout {
 				if(['alert', 'dozing'].includes(t0.state)) continue;
 				if(arrEq(t0.map_pos, p.map_pos)) continue;
 				let d = this.dist(t.map_pos, t0.map_pos);
-				if((1 < d && d <= 10) && !['U', ...this.building_types].includes(this.get(t0.map_pos))) {
+				if((1 <= d && d <= 10) && !['U', ...this.building_types].includes(this.get(t0.map_pos))) {
 					if(!(this.has_types_between(t.map_pos, t0.map_pos, this.building_types))) {
 						if(d < closest [0]) {
 							closest = [d, t0];
