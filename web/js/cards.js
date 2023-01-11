@@ -1530,14 +1530,12 @@ class Mission extends BoxLayout {
 	title = '';
 	text = '';
 	id = 'mission';
+	hints = {h:null};
 	constructor(props) {
         super();
 		this.children = [
-			new BoxLayout(null, {hints:{h:null},
-				children: [
-					new Label(null, {align:'left', hints:{h:null}, text:(mission)=>mission!=null?mission.title:'', fontSize:0.75}),
-					new Label(null, {align:'left', hints:{h:null}, text:(mission)=>mission!=null?mission.text:'', fontSize: 0.5})
-				]})
+			new Label(null, {align:'left', hints:{h:null}, text:(mission)=>mission!=null?mission.title:'', fontSize:0.75}),
+			new Label(null, {align:'left', wrap:true, hints:{h:null}, text:(mission)=>mission!=null?mission.text:'', fontSize: 0.5})
 		]
 	}
 	updateProps() {
@@ -1555,7 +1553,7 @@ class Mission extends BoxLayout {
 
 class ContactMission extends Mission {
 	title = 'Contact Mission';
-	text = 'Your contact is locked inside the building marked with a gold star. Get to her!';
+	text = 'Your contact is locked inside the building marked with a gold star. Seek them out!';
 	setup_events() {
 		var events = make_event_cards();
 		shuffle(events);

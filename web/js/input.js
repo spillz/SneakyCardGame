@@ -47,6 +47,7 @@ class InputHandler {
     grabbed = null;
     mouseTouchEmulation = true;
     mouseev = null;
+    keyStates = {};
     constructor(app) {
         this.app = app;
         this.canvas = app.canvas;
@@ -65,21 +66,17 @@ class InputHandler {
         // onmouseover	The event occurs when the pointer is moved onto an element, or onto one of its children
         // onmouseup	The event occurs when a user releases a mouse button over an element
 
-//        document.addEventListener('onclick', function(ev){that.process_click(ev);}, true);
-//        document.addEventListener('oncontextmenu', function(ev){that.process_contextmenu(ev);}, true);
-//        document.addEventListener('ondblclick', function(ev){that.process_dblclick(ev);}, true);
-//        document.addEventListener('onmouseenter', function(ev){that.process_mouseenter(ev);}, true);
-//        document.addEventListener('onmouseleave', function(ev){that.process_mouseleave(ev);}, true);
+        document.addEventListener('keydown', function(ev){that.process_key(ev, 'key_down');}, true);
+        document.addEventListener('keyup', function(ev){that.process_key(ev, 'key_up');}, true);
         canvas.addEventListener('mousedown', function(ev){that.process_mouse(ev, 'mouse_down');}, true);
         canvas.addEventListener('mousemove', function(ev){that.process_mouse(ev, 'mouse_move');}, true);
         canvas.addEventListener('mouseout', function(ev){that.process_mouse(ev, 'mouse_cancel');}, true);
         canvas.addEventListener('mouseup', function(ev){that.process_mouse(ev, 'mouse_up');}, true);
-//        document.addEventListener('onmouseover', function(ev){that.process_mouseover(ev);}, true);
         canvas.addEventListener('touchstart', function(ev){that.process_touch(ev, 'touch_down');}, false);
         canvas.addEventListener('touchmove', function(ev){that.process_touch(ev, 'touch_move');}, false);
         canvas.addEventListener('touchcancel', function(ev){that.process_touch(ev, 'touch_cancel');}, false);
         canvas.addEventListener('touchend', function(ev){that.process_touch(ev, 'touch_up');}, false);
-        canvas.addEventListener('wheel', function(ev){that.process_wheel(ev, 'wheel');}, false);
+        canvas.addEventListener('wheel', function(ev){that.process_wheel(ev, 'wheel');}, true);
 
         window.history.replaceState(null, document.title, location.pathname+"#!/backbutton");
         window.history.pushState(null, document.title, location.pathname);
@@ -92,7 +89,19 @@ class InputHandler {
     ungrab() {
         this.grabbed = null;
     }
-    // touchstart handler
+    isKeyUp(key) {
+        return (key in this.keyStates) && this.keyStates[key];
+    }
+    isKeyDown(key) {
+        return (key in this.keyStates) && this.keyStates[key];
+    }
+    process_key(ev, name) {
+        if(name=='key_up') this.keyStates[ev.key] = false;
+        else if(name=='key_down') this.keyStates[ev.key] = true;
+        //TODO: We emit only to the top level app, since we don't have a focus concept (yet)
+        //for it to make sense to emit to specific widgets
+        this.app.emit(name, {states:this.keyStates, event:ev});
+    }
     process_touch(ev, name) {
         if(this.grabbed != null) {
             for(let to of ev.changedTouches) { 
@@ -104,7 +113,7 @@ class InputHandler {
         } else {
             for(let to of ev.changedTouches) { 
                 let t = new Touch({pos:this.app.to_local([to.clientX, to.clientY]), state:name, nativeObject:to, nativeEvent:ev});
-                this.app.emit(name, t, true);
+                this.app.childEmit(name, t, true);
             }
         }
         ev.preventDefault();
@@ -113,7 +122,7 @@ class InputHandler {
         console.log(ev, name);
         if(location.hash === "#!/backbutton") {
             history.replaceState(null, document.title, location.pathname);
-            this.app.emit('back_button', ev)
+            this.app.childEmit('back_button', ev)
         }
     }
     process_mouse(ev, name) {
@@ -129,13 +138,13 @@ class InputHandler {
                 this.grabbed.emit(mapping[name], t);
             } else {
                 let t = new Touch({pos:this.app.to_local([ev.clientX, ev.clientY]), state:mapping[name], nativeObject:ev});
-                this.app.emit(mapping[name], t, true);
+                this.app.childEmit(mapping[name], t, true);
             }
         } else {
             if(this.grabbed != null) {
                 this.grabbed.emit(name, ev);
             } else {
-                this.app.emit(name, ev, true);
+                this.app.childEmit(name, ev, true);
             }
         }
     }
@@ -149,7 +158,7 @@ class InputHandler {
             return this.grabbed.emit(name, t);
         } else {
             let t = new Touch({pos:this.app.to_local([this.mouseev.clientX, this.mouseev.clientY]), state:name, nativeObject:ev});
-            this.app.emit(name, t, true);
+            this.app.childEmit(name, t, true);
         }
         ev.preventDefault();
     }

@@ -135,7 +135,6 @@ class Board extends GridLayout {
 	on_map_choices(event, data) {
 		let app = App.get();
 		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof Token)&&!(t instanceof MapChoice)), ...this.map_choices, ...this.tokens];
-//		app.playarea.children = [...app.playarea.children.filter(t=>!(t instanceof MapChoice)), ...this.map_choices];
 	}
 	scroll_to_player() {
 		if(this.active_player_token==null) return;
@@ -152,6 +151,14 @@ class Board extends GridLayout {
 	}
 	on_token_state(token, st) {
 		this.token_update();
+	}
+	on_touch_down(event, touch) {
+		let app=App.get();
+		if(app.debugMode && app.inputHandler.isKeyDown("Control") && this.collide(touch.rect)) {
+			this.active_player_token.map_pos = [Math.floor(touch.x),Math.floor(touch.y)]
+			return true;
+		}
+		super.on_touch_down(event, touch);	
 	}
 	token_update() {
 		//TODO: This seems very complicated. can it be simplified? e.g., by moving logic to the individual tokens?

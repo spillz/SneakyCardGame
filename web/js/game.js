@@ -10,6 +10,8 @@ class Game extends App {
     scroll_size = [10,10];
     map_scale = 1;
     map_card_size = [5,7];
+    orientation = 'horizontal';
+    debugMode = true;
     constructor() {
         super();
     }
@@ -43,7 +45,7 @@ class Game extends App {
                     this.loot1, this.loot2, this.loot3, this.skilldeck, this.exhausted,
                     this.marketdeck, this.eventdiscard, this.eventdeck, this.hand,
                     this.sv, this.playerprompt, this.activecardsplay]) {
-            this.baseWidget.addChild(w);
+            this._baseWidget.addChild(w);
         }
 
         this.instructions = null;
@@ -203,6 +205,7 @@ class Game extends App {
             this.eventdiscard.rect = [0, 6*ch/5, f(cw*6/5), ch];
             this.hand.rect = [Math.max(6*cw/5, (W-cw*6)/2), H-ch, Math.min(W-12*cw/5,cw*6),ch];
             this.sv.rect = [f(cw*6/5), H-ch-this.scroll_size[1], ...this.scroll_size];
+            this.orientation = 'horizontal';
         } else { //Tall display
             this.playerprompt.rect = [0, 0, W, ch/5];
             this.activecardsplay.rect = [W-6*cw/5, H-2*ch, f(cw*6/5), ch];
@@ -219,6 +222,7 @@ class Game extends App {
             this.eventdiscard.rect = [cw*6/5, ch/5, f(cw*6/5), ch];
             this.hand.rect = [0, H-ch, Math.min(W,cw*6),ch];
             this.sv.rect = [0, H-2*ch-this.scroll_size[1], ...this.scroll_size];
+            this.orientation = 'vertical';
         }
         //TODO: Not ideal place to put this but it serves as an initializer for some of the board state
 		this.board.token_update();

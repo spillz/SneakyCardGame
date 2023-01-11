@@ -8,6 +8,7 @@ class Deck extends Widget { //represents a deck/tableau of splayed cards
 
     layoutChildren() {
         //ASSUMPTION: The cards are already sized equally and will fit within the deck
+		if(this._layoutNotify) this.emit('layout', null);
 		this._needsLayout = false;
         if(this.children.length==0) return;
         let c = this.children[0];
@@ -144,9 +145,7 @@ class CardSplay extends Widget {
 		this._updatedChildren = true;
 	}
 	layoutChildren() {
-		if('id' in this && this.id=='cards') {
-			console.log('cards',this);
-		}
+        if(this._layoutNotify) this.emit('layout', null);
 		this._needsLayout = false;
 		let app = App.get();
 		var cardw = app.card_size[0];
@@ -240,10 +239,21 @@ class CardSplay extends Widget {
 		}
 		App.get().inputHandler.ungrab();
 		App.get().removeTimer(this._clockev);
-		console.log('closeup',event,timer,closeup_card, this)
 		let closeup = new CardSplayCloseup(closeup_card, this.children, !this.faceUp, {hints: {center_x:0.5, center_y:0.5, w:0.8, h:0.8}});
+		closeup.bind('closed', (event, obj, value)=>this.debug_closeup(event, obj, value))
 		closeup.popup();
 		this._clockev = null;
+	}
+	debug_closeup(ev, obj, value) {
+		let app=App.get();
+		if(value=='debug_select' && obj.closeup_card!=null && obj.closeup_card instanceof PlayerCard) {
+			let card = this.children.find(c=>c.name==obj.closeup_card.name)
+			this.move_to([card], app.hand);
+		}
+		if(value=='debug_select' && obj.closeup_card!=null && obj.closeup_card instanceof EventCard) {
+			let card = this.children.find(c=>c.name==obj.closeup_card.name)
+			this.move_to([card], app.eventdeck);
+		}
 	}
 	on_touch_down(event, touch) {
 		for(var c of this.children.slice().reverse()) {
@@ -406,6 +416,7 @@ class CardSplayCloseup extends ModalView {
 		}
 	}
 	layoutChildren() {
+		super.layoutChildren();
 		let app = App.get();
 		// this.x = 0;
 		// this.y = 0;
@@ -429,7 +440,6 @@ class CardSplayCloseup extends ModalView {
 		this.scroll_view.rect = new Rect([this.x, this.y, this.w*0.34, this.h]);
 		this.grid_layout.rect = new Rect([this.x, this.y, this.w*0.34, 
 		 				this.w*0.34/this.grid_layout.numX/aspect*Math.ceil(ch.length/this.grid_layout.numX)]);
-		super.layoutChildren();
 	}
 	set_closeup(closeup_card) {
 		let app=App.get();
@@ -467,6 +477,14 @@ class CardSplayCloseup extends ModalView {
 			this.close();
 			return true;
 		}
+	}
+	on_touch_down(event, touch) {
+		let app=App.get();
+		if(app.debugMode && app.inputHandler.isKeyDown("Control") && this.closeup_card.collide(touch.rect)) {
+			this.close('debug_select');
+			return true;
+		}
+		super.on_touch_down(event, touch);
 	}
 }
 
@@ -507,32 +525,19 @@ class PlayerPrompt extends BoxLayout {
 	text = '';
 	id = 'prompt';
 	orientation = 'horizontal';
+	_layoutNotify = true;
 	constructor(rect, props) {
 		super(rect);
 		this.updateProperties(props);
 		this.children = [
-			new Label(null, {text:(prompt)=>prompt.text}),
-			new Hamburger(null, {w:1, h:1, color:'gray', colorHighlight:'lightGray', hints:{w:null, h:null}, on_press: (e,o,v)=>App.get().stats.popup()}),
+			new Label(null, {text:(prompt)=>prompt.text, wrap:true}),
+			new Hamburger(null, {color:'gray', colorHighlight:'lightGray', hints:{w:null}, on_press: (e,o,v)=>App.get().stats.popup()}),
 		]
+
 	}
-	// on_touch_down(event, touch) {
-	// 	if(this.collide(touch.rect)) {
-	// 		touch.grab(this);
-	// 		return true;
-	// 	}
-	// 	return super.on_touch_down(event, touch);
-	// }
-	// on_touch_up(event, touch) {
-	// 	let app=App.get()
-	// 	if(touch.grabbed == this) {
-	// 		touch.ungrab()
-	// 		if(this.collide(touch.rect)) {
-	// 			if(app.stats.parent==null) app.stats.popup();
-	// 			return true;
-	// 		}
-	// 	}
-	// 	return super.on_touch_up(event, touch);
-	// }
+	on_layout(event, data) {
+		this.children[1].w = this.h;
+	}
 }
 
 class PlayerDeck extends CardSplay {
@@ -970,34 +975,60 @@ class Stats extends ModalView {
 	t_loot = 0;
 	t_rounds = 0;
 	bgColor = colorString([0,0,0.2]);
+	hints = {x:0.1, y:0.2, w:0.8, h:0.6};
 	id = 'stats';
 	constructor() {
-		super(null, {hints:{x:0.1,y:0.1,w:0.8,h:0.8}});
+		super(null);
 		this.addChild(new BoxLayout(null, {
-			hints: {x:0, y:0, w:1, h:1},
-			orientation: 'vertical',
-			children: [
-				new Label(null, {id: 'title', text: 'GAME OVER', h:1.5, hints: {h:null}, font_size:0.75}),
-				new ScrollView(null, {id:'mission_container', scrollW:false}),
-				new BoxLayout(null, {orientation:'vertical', h:8.5, hints:{h:null},
-					children: [
-						new Label(null, {align:'left', h:1.5, hints: {h:null}, text: 'Stats'}),
-						new Label(null, {align:'left', h:1, hints: {h:null}, id:'missions', text: (stats)=>`Missions complete: ${stats.missions}`}),
-						new Label(null, {align:'left', h:1, hints: {h:null}, id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
-						new Label(null, {align:'left', h:1, hints: {h:null}, id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
-						new Label(null, {align:'left', h:1, hints: {h:null}, id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
-						new Label(null, {align:'left', h:1, hints: {h:null}, id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
-						new Label(null, {align:'left', h:1, hints: {h:null}, id:'rounds', text: (stats)=>`Rounds: ${stats.rounds} / ${stats.t_rounds}`}),
-						new BoxLayout(null, {orientation:'horizontal', h:1, hints: {h:null}, paddingX:0.1, spacingX:0.1, 
-							children: [
-								new Button(null, {text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
-								new Button(null, {text:'RESTART', id:'restart', on_press:(ev,ob,press)=>this.restartGame()}),
-								new Button(null, {text:'NEXT', id:'next', disable:true}),
-							]})
+			children:[new ScrollView(null, {scrollW: false, uiZoom: false,
+				children: [new BoxLayout(null, { hints:{h:null},
+					children:[
+					new Label(null, {id: 'title', text: 'GAME OVER', h:1.5, hints: {h:null}, font_size:0.75}),
+					new BoxLayout(null, {id:'mission_container', h:0, hints:{h:null}}),
+					new Label(null, {align:'left', h:1.5, hints: {h:null}, text: 'Stats'}),
+					new Label(null, {align:'left', h:1, hints: {h:null}, id:'missions', text: (stats)=>`Missions complete: ${stats.missions}`}),
+					new Label(null, {align:'left', h:1, hints: {h:null}, id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
+					new Label(null, {align:'left', h:1, hints: {h:null}, id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
+					new Label(null, {align:'left', h:1, hints: {h:null}, id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
+					new Label(null, {align:'left', h:1, hints: {h:null}, id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
+					new Label(null, {align:'left', h:1, hints: {h:null}, id:'rounds', text: (stats)=>`Rounds: ${stats.rounds} / ${stats.t_rounds}`}),
+					]}),
+				]}),
+			new BoxLayout(null, {id:'butbox', h:1, hints: {h:null}, paddingX:0.1, spacingX:0.1, orientation:'horizontal',
+				children: [
+					new Button(null, {text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
+					new Button(null, {text:'RESTART', id:'restart', on_press:(ev,ob,press)=>this.restartGame()}),
+					new Button(null, {text:'NEXT', id:'next', disable:true}),
 				]})
 			]}));
+		// this.addChild(new BoxLayout(null, {
+		// 	hints: {x:0, y:0, w:1, h:1},
+		// 	orientation: 'vertical',
+		// 	children: [
+		// 		new Label(null, {id: 'title', text: 'GAME OVER', h:1.5, hints: {h:null}, font_size:0.75}),
+		// 		new ScrollView(null, {id:'mission_container', scrollW:false}),
+		// 		new BoxLayout(null, {orientation:'vertical', h:8.5, hints:{h:null},
+		// 			children: [
+		// 				new Label(null, {align:'left', h:1.5, hints: {h:null}, text: 'Stats'}),
+		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'missions', text: (stats)=>`Missions complete: ${stats.missions}`}),
+		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
+		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
+		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
+		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
+		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'rounds', text: (stats)=>`Rounds: ${stats.rounds} / ${stats.t_rounds}`}),
+		// 				new BoxLayout(null, {id:'butbox', h:1, hints: {h:null}, paddingX:0.1, spacingX:0.1, orientation:'horizontal',
+		// 					children: [
+		// 						new Button(null, {text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
+		// 						new Button(null, {text:'RESTART', id:'restart', on_press:(ev,ob,press)=>this.restartGame()}),
+		// 						new Button(null, {text:'NEXT', id:'next', disable:true}),
+		// 					]})
+		// 		]})
+		// 	]}));
 		this.next = this.findById('next');
 		this.title = this.findById('title');
+	}
+	draw() {
+		super.draw();
 	}
 	on_mission(event, touch) {
 		this.findById('mission_container').children = [this.mission];
