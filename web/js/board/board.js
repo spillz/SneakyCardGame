@@ -179,7 +179,7 @@ class Board extends GridLayout {
 		if(p.state!='cloaked' && !['U',...this.building_types].includes(this.get(p.map_pos))) {
 			for(let t of this.iter_tokens('G')) {
 				if(arrEq(t.map_pos, p.map_pos) || ['dead', 'unconscious'].includes(t.state) || t.frozen) continue; 
-				if(1 <= this.dist(t.map_pos, p.map_pos) && this.dist(t.map_pos, p.map_pos) <= 10) {
+				if(1 <= adist(t.map_pos, p.map_pos) && adist(t.map_pos, p.map_pos) <= 10) {
 					if(!(this.has_types_between(t.map_pos, p.map_pos, this.building_types))) {
 						t.map_pos = [...p.map_pos];
 						if(t.state!='alert') {
@@ -197,7 +197,7 @@ class Board extends GridLayout {
 			for(let t0 of this.iter_tokens('G')) {
 				if(['alert', 'dozing'].includes(t0.state)) continue;
 				if(arrEq(t0.map_pos, p.map_pos)) continue;
-				let d = this.dist(t.map_pos, t0.map_pos);
+				let d = adist(t.map_pos, t0.map_pos);
 				if((1 <= d && d <= 10) && !['U', ...this.building_types].includes(this.get(t0.map_pos))) {
 					if(!(this.has_types_between(t.map_pos, t0.map_pos, this.building_types))) {
 						if(d < closest [0]) {
@@ -513,26 +513,26 @@ class Board extends GridLayout {
 	}
 	nearest_guard(map_pos, max_range=null, states=['dozing','alert']) {
 		var gts = [...this.tokens].filter(t=> t instanceof GuardToken && states.includes(t.state));
-		var dists = gts.map(t => this.dist(map_pos, t.map_pos));
+		var dists = gts.map(t => adist(map_pos, t.map_pos));
 		var min_dist = Math.min(...dists);
 		if(max_range !== null && min_dist > max_range) return null;
 		return gts [dists.indexOf(min_dist)];
 	}
 	nearest_waypoint(map_pos, max_range=null) {
 		var wps = [...this.iter_waypoints()];
-		var dists = wps.map(t => this.dist(map_pos, t.map_pos));
+		var dists = wps.map(t => adist(map_pos, t.map_pos));
 		var min_dist = Math.min(dists);
 		if(max_range != null && min_dist > max_range) return null;
 		return wps [dists.indexOf(min_dist)];
 	}
 	guard_nearest_move(guard_pos, player_pos, include_player=true, max_dist=1000) {
-		var g_to_p_dist = this.dist(player_pos, guard_pos);
+		var g_to_p_dist = adist(player_pos, guard_pos);
 		var wps = [...this.iter_waypoints()];
 		var candidates = [];
 		var smallest_dist = max_dist;
 		for(var wp of wps) {
-			var p_to_wp_dist = this.dist(wp, player_pos);
-			var g_to_wp_dist = this.dist(wp, guard_pos);
+			var p_to_wp_dist = adist(wp, player_pos);
+			var g_to_wp_dist = adist(wp, guard_pos);
 			if((p_to_wp_dist < g_to_p_dist || !(include_player)) && p_to_wp_dist <= smallest_dist) {
 				var smallest_dist = p_to_wp_dist;
 				candidates.push(wp);
@@ -544,11 +544,6 @@ class Board extends GridLayout {
 	}
 	walkable_dist(map_pos1, map_pos2) {
 		// pass;
-	}
-	adist(map_pos1, map_pos2) {
-		var d0 = Math.abs(map_pos1 [0] - map_pos2 [0]);
-		var d1 = Math.abs(map_pos1 [1] - map_pos2 [1]);
-		return Math.max(d0, d1) + 0.5 * Math.min(d0, d1);
 	}
 	walkable_spots(map_pos, dist, spots) {
 		//todo: this is very clunky
@@ -564,7 +559,7 @@ class Board extends GridLayout {
 		}
 		for(var pos of this.iter_in_range(map_pos, 1.5)) {
 			if(this.get(map_pos) in walk_costs) {
-				var cur_dist = spots[map_pos.toString()] + walk_costs[this.get(pos)] * this.dist(pos, map_pos);
+				var cur_dist = spots[map_pos.toString()] + walk_costs[this.get(pos)] * adist(pos, map_pos);
 				if((pos.toString() in spots) && cur_dist >= spots[pos.toString()]) {
 					continue;
 				}
@@ -585,7 +580,7 @@ class Board extends GridLayout {
 		var p = this.active_player_token;
 		for(var g of this.iter_tokens('G')) {
 			if(g.state == 'dozing') {
-				if(this.dist(g.map_pos, p.map_pos) <= radius) {
+				if(adist(g.map_pos, p.map_pos) <= radius) {
 					g.state = 'alert';
 				}
 			}

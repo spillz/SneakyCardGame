@@ -12,7 +12,7 @@ class Token extends Widget {
 	update_rect(msg, obj, data) {
 		let app=App.get();
 		let anim = new WidgetAnimation();
-		let d = app.board.dist([this.x,this.y],[this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1]])
+		let d = adist([this.x,this.y],[this.map_pos[0]+this.off[0], this.map_pos[1]+this.off[1]])
 		if(d>0) {
 			anim.add({x: this.map_pos[0]+this.off[0], y: this.map_pos[1]+this.off[1]}, 50+50*d);
 			anim.start(this);	
