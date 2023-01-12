@@ -1636,13 +1636,13 @@ function make_loot_cards(level=1) {
 			break;
 		case 3:
 			return [...repeatInstantiate([TreasureCard, TreasureCard, GasArrow, RopeArrow, DimmerArrow, DecoyArrow, 
-				SmokeBomb, Lure], 3)];
+				SmokeBomb], 3)];
 	}
 }
 
 function make_market_cards() {
 	return [...repeatInstantiate([GasArrow, RopeArrow, DimmerArrow, DecoyArrow, 
-		SmokeBomb, Lure], 3)];
+		SmokeBomb], 3)];
 }
 
 function make_player_cards() {
