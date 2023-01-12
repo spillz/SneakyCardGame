@@ -26,7 +26,7 @@ class Mission extends BoxLayout {
 
 class ContactMission extends Mission {
 	title = 'Contact Mission';
-	text = 'Your contact is locked inside the building marked with a gold star. Seek them out!';
+	text = 'Your contact is locked inside the building marked with a gold star. Seek them out! You fail if you are caught by a guard or the event deck is empty at the end of your turn.';
 	setup_events() {
 		var events = make_event_cards();
 		shuffle(events);

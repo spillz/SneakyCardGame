@@ -62,6 +62,7 @@ class Game extends App {
         this.skillcards = make_skill_cards();
 
         this.setupNewGame();
+        this.stats.popup();
     }
     clear_state(self) {
         if(this.cardselector!=null) {

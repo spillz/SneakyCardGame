@@ -903,8 +903,8 @@ class EventDeck extends CardSplay {
 		card.activate(app.board);
 		app.playerdeck.draw_hand();
 		app.board.token_update();
-		app.stats.rounds++;
-		app.stats.t_rounds++;
+		app.stats.turns++;
+		app.stats.t_turns++;
 	}
 }
 
@@ -923,14 +923,14 @@ class Stats extends ModalView {
 	knockouts = 0;
 	contacts = 0;
 	loot = 0;
-	rounds = 0;
+	turns = 0;
 	missions = 0;
 	showing = false;
 	t_kills = 0;
 	t_knockouts = 0;
 	t_contacts = 0;
 	t_loot = 0;
-	t_rounds = 0;
+	t_turns = 0;
 	bgColor = colorString([0,0,0.2]);
 	hints = {x:0.1, y:0.2, w:0.8, h:0.6};
 	id = 'stats';
@@ -948,7 +948,7 @@ class Stats extends ModalView {
 					new Label(null, {align:'left', h:1, hints: {h:null}, id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
 					new Label(null, {align:'left', h:1, hints: {h:null}, id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
 					new Label(null, {align:'left', h:1, hints: {h:null}, id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
-					new Label(null, {align:'left', h:1, hints: {h:null}, id:'rounds', text: (stats)=>`Rounds: ${stats.rounds} / ${stats.t_rounds}`}),
+					new Label(null, {align:'left', h:1, hints: {h:null}, id:'turns', text: (stats)=>`Turns: ${stats.turns} / ${stats.t_turns}`}),
 					]}),
 				]}),
 			new BoxLayout(null, {id:'butbox', h:1, hints: {h:null}, paddingX:0.1, spacingX:0.1, orientation:'horizontal',
@@ -972,7 +972,7 @@ class Stats extends ModalView {
 		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
 		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
 		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
-		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'rounds', text: (stats)=>`Rounds: ${stats.rounds} / ${stats.t_rounds}`}),
+		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'turns', text: (stats)=>`Turns: ${stats.turns} / ${stats.t_turns}`}),
 		// 				new BoxLayout(null, {id:'butbox', h:1, hints: {h:null}, paddingX:0.1, spacingX:0.1, orientation:'horizontal',
 		// 					children: [
 		// 						new Button(null, {text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
@@ -1004,14 +1004,14 @@ class Stats extends ModalView {
 		this.knockouts = 0;
 		this.contacts = 0;
 		this.loot = 0;
-		this.rounds = 0;
+		this.turns = 0;
 		this.showing = false;
 		if(totals) {
 			this.t_kills = 0;
 			this.t_knockouts = 0;
 			this.t_contacts = 0;
 			this.t_loot = 0;
-			this.t_rounds = 0;
+			this.t_turns = 0;
 			this.t_showing = false;
 		}		
 	}
