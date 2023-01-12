@@ -169,6 +169,7 @@ class GuardToken extends Token {
 	draw() {
 		let app=App.get();
 		let r = this.rect;
+		let lw = app.ctx.lineWidth;
 
 		//Draw head
 		app.ctx.fillStyle = ['dozing','alert'].includes(this.state)? colorString([0.75,0,0]) : colorString([0.5,0.1,0.1]);
@@ -258,6 +259,8 @@ class GuardToken extends Token {
 		app.ctx.closePath();
 		app.ctx.fill();
 		app.ctx.stroke();
+
+		app.ctx.lineWidth = lw;
 
 	}
 }

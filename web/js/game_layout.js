@@ -38,7 +38,7 @@ class Deck extends Widget { //represents a deck/tableau of splayed cards
 }
 
 class CardSelector extends ModalView {
-    orientation = 'down'; //splay down, up, right, or left
+    orientation = 'vertical'; //splay down, up, right, or left
 	selected = [];
 	numToPick = 1;
     shownCard = null; 
@@ -75,6 +75,9 @@ class CardSelector extends ModalView {
 		this._label = this.findById('label');
 		this._cards = this.findById('cards');
     }
+	layoutChildren() {
+		super.layoutChildren();
+	}
 	get cards() {
 		return this._cards.children;
 	}
@@ -508,6 +511,7 @@ class Hamburger extends Button {
 			let r = this.rect.scaleBorders(0.6);
 			let ctx = App.get().ctx;
 			ctx.strokeStyle = lineColor;
+			let lw = ctx.lineWidth;
 			ctx.lineWidth = this.h/10;
 			ctx.beginPath();
 			ctx.moveTo(r.x,r.y);
@@ -517,6 +521,7 @@ class Hamburger extends Button {
 			ctx.moveTo(r.x,r.bottom);
 			ctx.lineTo(r.right,r.bottom);
 			ctx.stroke();
+			ctx.lineWidth = lw;
 		}
 	}
 }
@@ -998,7 +1003,7 @@ class Stats extends ModalView {
 				children: [
 					new Button(null, {text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
 					new Button(null, {text:'RESTART', id:'restart', on_press:(ev,ob,press)=>this.restartGame()}),
-					new Button(null, {text:'NEXT', id:'next', disable:true}),
+					new Button(null, {text:'NEXT', id:'next', on_press:()=>this.nextMission(), disable:true}),
 				]})
 			]}));
 		// this.addChild(new BoxLayout(null, {

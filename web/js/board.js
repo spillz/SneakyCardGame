@@ -47,30 +47,30 @@ class MapChoice extends BoxLayout {
 		let w = 3*r.w/5;
 		let h = 3*r.h/5;
 		ctx.strokeStyle = colors[this.choice_type];
-		ctx.lineWidth = 2.0/app.tileSize;
+//		ctx.lineWidth = 2.0/app.tileSize;
 
 		ctx.beginPath();
-		ctx.moveTo(r.x + r.w / 10, r.y);
+		ctx.moveTo(r.x + r.w/5, r.y);
 		ctx.lineTo(r.x, r.y);
-		ctx.lineTo(r.x, r.y + r.h/10);
+		ctx.lineTo(r.x, r.y + r.h/5);
 		// ctx.stroke();
 
 		// ctx.beginPath();
-		ctx.moveTo(r.right - r.w / 10, r.y);
+		ctx.moveTo(r.right - r.w/5, r.y);
 		ctx.lineTo(r.right, r.y);
-		ctx.lineTo(r.right, r.y + r.h/10);
+		ctx.lineTo(r.right, r.y + r.h/5);
 		// ctx.stroke();
 
 		// ctx.beginPath();
-		ctx.moveTo(r.x + r.w / 10, r.bottom);
+		ctx.moveTo(r.x + r.w/5, r.bottom);
 		ctx.lineTo(r.x, r.bottom);
-		ctx.lineTo(r.x, r.bottom - r.h/10);
+		ctx.lineTo(r.x, r.bottom - r.h/5);
 		// ctx.stroke();
 
 		// ctx.beginPath();
-		ctx.moveTo(r.right - r.w / 10, r.bottom);
+		ctx.moveTo(r.right - r.w/5, r.bottom);
 		ctx.lineTo(r.right, r.bottom);
-		ctx.lineTo(r.right, r.bottom - r.h/10);
+		ctx.lineTo(r.right, r.bottom - r.h/5);
 		ctx.stroke();
 
 	}
@@ -170,10 +170,10 @@ class Board extends GridLayout {
 				return;
 			}
 			//Move any alert guards into players space if they are adjacent
-			if(!this.building_types.includes(this.get(p.map_pos)) && dist(t.map_pos,p.map_pos)==1 && t.state=='alert' && !t.frozen && p.state != 'cloaked') {
-				t.map_pos = p.map_pos;
-				return;
-			}
+			// if(!this.building_types.includes(this.get(p.map_pos)) && dist(t.map_pos,p.map_pos)==1 && t.state=='alert' && !t.frozen && p.state != 'cloaked') {
+			// 	t.map_pos = p.map_pos;
+			// 	return;
+			// }
 		}
 		//move guards that can see player to the player
 		if(p.state!='cloaked' && !['U',...this.building_types].includes(this.get(p.map_pos))) {

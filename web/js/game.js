@@ -87,6 +87,8 @@ class Game extends App {
         this.eventdeck.children = this.stats.mission.setup_events(this);
         this.eventdeck.can_draw = true;
 
+        this.exhausted.children = [];
+        this.hand.children = [];
         this.playerdiscard.children = [];
         this.playerdeck.children = shuffle(this.playercards);
         this.playertraits.children = shuffle(this.traitcards);
@@ -105,6 +107,10 @@ class Game extends App {
 
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
         this.playerprompt.text = 'Tap the event deck to begin';
+
+        this.board.scroll_to_player();
+        this.board.token_update();
+
     }
     setupNextMission() {
         this.clear_state();
@@ -118,9 +124,10 @@ class Game extends App {
         this.eventdeck.children = this.stats.mission.setup_events(this);
         this.eventdeck.can_draw = true;
 
-        let playercards = [...this.playerdiscard.children, ...this.playerdeck.children, ...this.hand.children]
-        this.playerdiscard.children = [];
         this.hand.children = [];
+        this.exhausted.children = [];
+        this.playerdiscard.children = [];
+        let playercards = [...this.playerdiscard.children, ...this.playerdeck.children, ...this.hand.children]
         this.playerdeck.children = shuffle(playercards);
         this.playertraits.children = shuffle(this.traitcards);
         this.loot1.children = shuffle(this.lootcards1);
@@ -138,6 +145,9 @@ class Game extends App {
 
         this.board.tokens = [player, ...guards, ...targets, ...markets, objective];
         this.playerprompt.text = 'Tap the event deck to begin';
+
+        this.board.scroll_to_player();
+        this.board.token_update();
     }
     missionComplete() {
         this.clear_state();

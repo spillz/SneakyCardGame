@@ -236,13 +236,13 @@ class Widget extends Rect {
         let hints = c.hints;
         if('w' in hints && hints['w']!=null) c.w = hints['w']*this.w;
         if('h' in hints && hints['h']!=null) c.h = hints['h']*this.h;
-        if('x' in hints && hints['x']!=null) c.x = this.x+hints['x']*this.w;
-        if('y' in hints && hints['y']!=null) c.y = this.y+hints['y']*this.h;
+        if('x' in hints && hints['x']!=null) c.x = hints['x']*this.w;
+        if('y' in hints && hints['y']!=null) c.y = hints['y']*this.h;
         //TODO: fix this
-        if('center_x' in hints && hints['center_x']!=null) c.center_x = this.x+hints['center_x']*this.w;
-        if('center_y' in hints && hints['center_y']!=null) c.center_y = this.y+hints['center_y']*this.h;
-        if('right' in hints && hints['right']!=null) c.right = this.x+hints['right']*this.w;
-        if('bottom' in hints && hints['bottom']!=null) c.bottom = this.y+hints['bottom']*this.h;
+        if('center_x' in hints && hints['center_x']!=null) c.center_x = hints['center_x']*this.w;
+        if('center_y' in hints && hints['center_y']!=null) c.center_y = hints['center_y']*this.h;
+        if('right' in hints && hints['right']!=null) c.right = hints['right']*this.w;
+        if('bottom' in hints && hints['bottom']!=null) c.bottom = hints['bottom']*this.h;
     }
     layoutChildren() { //The default widget has children but does not apply a layout a la kivy FloatLayout
         if(this._layoutNotify) this.emit('layout', null);
@@ -270,9 +270,11 @@ class Widget extends Rect {
             app.ctx.fill();    
         }
         if(this.outlineColor!=null) {
-            app.ctx.lineWidth = 1.0/app.tileSize;
+            let lw = app.ctx.lineWidth;
+            app.ctx.lineWidth = 1.0/app.tileSize; //1 pixel line width
             app.ctx.strokeStyle = this.outlineColor;
             app.ctx.stroke();    
+            app.ctx.lineWidth = lw;
         }
     }
     update(millis) {
@@ -680,12 +682,12 @@ class BoxLayout extends Widget {
         let hints = c.hints;
         if('w' in hints && hints['w']!=null) c.w = hints['w']*w;
         if('h' in hints && hints['h']!=null) c.h = hints['h']*h;        
-        if('x' in hints && hints['x']!=null) c.x = this.x + hints['x']*w;
-        if('y' in hints && hints['y']!=null) c.y = this.y + hints['y']*h;
-        if('center_x' in hints && hints['center_x']!=null) c.center_x = this.x + hints['center_x']*w;
-        if('center_y' in hints && hints['center_y']!=null) c.center_y = this.y + hints['center_y']*h;
-        if('right' in hints && hints['right']!=null) c.right = this.x + hints['right']*w;
-        if('bottom' in hints && hints['bottom']!=null) c.bottom = this.y + hints['bottom']*h;
+        if('x' in hints && hints['x']!=null) c.x = this.x+hints['x']*w;
+        if('y' in hints && hints['y']!=null) c.y = this.y+hints['y']*h;
+        if('center_x' in hints && hints['center_x']!=null) c.center_x = this.x+hints['center_x']*w;
+        if('center_y' in hints && hints['center_y']!=null) c.center_y = this.y+hints['center_y']*h;
+        if('right' in hints && hints['right']!=null) c.right = this.x+hints['right']*w;
+        if('bottom' in hints && hints['bottom']!=null) c.bottom = this.y+hints['bottom']*h;
     }
 
     layoutChildren() {
@@ -712,7 +714,7 @@ class BoxLayout extends Widget {
             let x = this.x+this.paddingX;
             for(let c of this.children) {
                 c.y=y;
-                if(!('x' in c.hints)) c.x=x;
+                if(!('x' in c.hints) && !('center_x' in c.hints) && !('right' in c.hints)) c.x=x;
                 if(!('w' in c.hints)) c.w=cw;
                 if(!('h' in c.hints)) c.h=ch;
                 c.layoutChildren();
@@ -742,7 +744,7 @@ class BoxLayout extends Widget {
             let x = this.x+this.paddingX;
             for(let c of this.children) {
                 c.x=x;
-                if(!('y' in c.hints)) c.y=y;
+                if(!('y' in c.hints) && !('center_y' in c.hints) && !('bottom' in c.hints)) c.y=y;
                 if(!('w' in c.hints)) c.w=cw;
                 if(!('h' in c.hints)) c.h=ch;
                 c.layoutChildren();
@@ -907,7 +909,6 @@ class ScrollView extends Widget {
         if('h' in hints && hints['h']!=null) c.h = hints['h']*this.h;        
         if('x' in hints && hints['x']!=null) c.x = this.x+hints['x']*this.w;
         if('y' in hints && hints['y']!=null) c.y = this.y+hints['y']*this.h;
-        //TODO: fix this
         if('center_x' in hints && hints['center_x']!=null) c.center_x = hints['center_x']*this.w;
         if('center_y' in hints && hints['center_y']!=null) c.center_y = hints['center_y']*this.h;
         if('right' in hints && hints['right']!=null) c.right = hints['right']*this.w;
@@ -1076,8 +1077,6 @@ class ScrollView extends Widget {
         app.ctx.clip();
         app.ctx.translate(this.x-this._scrollX*this.zoom,
                         this.y-this._scrollY*this.zoom)
-        // app.ctx.translate((this.x-this.scrollX*this.zoom)*app.tileSize, 
-        //                   (this.y-this.scrollY*this.zoom)*app.tileSize);
         app.ctx.scale(this.zoom, this.zoom);
         this.children[0]._draw()
         app.ctx.restore();

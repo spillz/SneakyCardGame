@@ -160,9 +160,9 @@ class MapCard extends Widget {
 			super.draw();
 			return;
 		}
+		let lw = app.ctx.lineWidth;
         let rr = this.rect;
-		let size = [1 - 1.0/app.tileSize,1 - 1.0/app.tileSize];
-//        var size = [rr.w / this.w - 1, rr.h / this.h - 1];
+		let size = [1 - 1.0/40,1 - 1.0/40];
         let color0 = colorString([0,0,0]);
         for(var pos of this.map.iter_all()) {
 			var i,j;
@@ -179,13 +179,13 @@ class MapCard extends Widget {
             } 
             else {
 //				let s = size;
-                var s = [size[0] + 1.0/app.tileSize, size[1] + 1.0/app.tileSize];
+                var s = [size[0] + 1.0/40, size[1] + 1.0/40];
                 app.ctx.fillStyle = color;
                 app.ctx.fill();    
 				app.ctx.strokeStyle = color0;
-				app.ctx.lineWidth = 1.0/app.tileSize;
-				var cx = x + s [0] / 2;
-                var cy = y + s [1] / 2;
+				app.ctx.lineWidth = 1.0/40 //app.tileSize;
+				var cx = x + s [0]/2;
+                var cy = y + s [1]/2;
                 var adj = [...this.map.iter_types_in_range([i, j], this.building_types, 1)]
                 var tl=0,tr=0,bl=0,br=0;
 				if(this.building_types.includes(this.map.get([i+1,j]))) {
@@ -274,6 +274,7 @@ class MapCard extends Widget {
                 }
             }
         }
+//		app.ctx.lineWidth = 1.0/app.tileSize;
         app.ctx.fillStyle = colorString([0.8,0.8,0.2]);
         for(var [i, j] of this.lights) {
             var x = rr.x + ((i + 0.4) * rr.w) / this.w;
@@ -665,7 +666,7 @@ class MoveAction extends PlayerAction {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Move ${this.rounded_remain()}: Touch the highlighted board spaces to move across the map.`;
+			playarea.playerprompt.text = `Move ${this.rounded_remain()}: Touch the highlighted board spaces to move across the map. Add a handcard for [+${this.value_per_card}] move.`;
 		}
 	}
 }
@@ -709,7 +710,7 @@ class GlideAction extends PlayerAction {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Glide ${this.rounded_remain()}: Touch the highlighted board spaces to move building to building.`;
+			playarea.playerprompt.text = `Glide ${this.rounded_remain()}: Touch the highlighted board spaces to move building to building.  Add a handcard for [+${this.value_per_card}]`;
 		}
 	}
 }
@@ -758,7 +759,7 @@ class FightAction extends PlayerAction {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Fight ${this.rounded_remain()}: Select a highlighted guard to attack.`;
+			playarea.playerprompt.text = `Fight ${this.rounded_remain()}: Select a highlighted guard to attack.  Add a handcard for [+${this.value_per_card}]`;
 		}
 	}
 }
@@ -801,7 +802,7 @@ class SmokeBombAction extends PlayerAction {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Fight ${this.rounded_remain()}: Select a highlighted guard to attack.`;
+			playarea.playerprompt.text = `Smokebomb ${this.rounded_remain()}: Select a highlighted guard to attack.`;
 		}
 	}
 }
@@ -940,7 +941,7 @@ class ArrowAction extends PlayerAction {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Shoot arrow ${this.rounded_remain()}: Select a guard to shoot.`;
+			playarea.playerprompt.text = `Shoot arrow ${this.rounded_remain()}: Select a guard to shoot.  Add a handcard for [+${this.value_per_card}] range.`;
 		}
 	}
 }
@@ -986,7 +987,7 @@ class GasAction extends PlayerAction {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Shoot arrow ${this.rounded_remain()}: Select a space to shoot gas arrow.`;
+			playarea.playerprompt.text = `Shoot arrow ${this.rounded_remain()}: Select a space to shoot gas arrow.  Add a handcard for [+${this.value_per_card}] range.`;
 		}
 	}
 }
@@ -1029,7 +1030,7 @@ class DimmerAction extends PlayerAction {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Shoot dimmer arrow ${this.rounded_remain()}: Select a space to shoot gas arrow.`;
+			playarea.playerprompt.text = `Shoot dimmer arrow ${this.rounded_remain()}: Select a space to shoot gas arrow.  Add a handcard for [+${this.value_per_card}] range.`;
 		}
 	}
 }
@@ -1038,6 +1039,10 @@ class LockpickAction extends PlayerAction {
 	base_allowance = 1;
 	can_loot = true;
 	max_loot = 3;
+	constructor(card, props) {
+		super(card, {});
+		for(let p in props) this[p] = props[p];
+	}
 	activate(message, props ={}) {
 		var playarea = App.get();
 		var board = playarea.board;
@@ -1108,7 +1113,12 @@ class LockpickAction extends PlayerAction {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Lockpick ${this.rounded_remain()}: Select a guard to knockout.`;
+			if(this.lootpos!=null) {
+				playarea.playerprompt.text = `Select an exit.`;
+			}
+			else {
+				playarea.playerprompt.text = `Lockpick ${this.rounded_remain()}: Select a target to loot or a destination. Add a handcard for [+${this.value_per_card}] loot choice.`;
+			}
 		}
 	}
 }
@@ -1157,7 +1167,7 @@ class DecoyAction extends PlayerAction {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			playarea.playerprompt.text = `Shoot decoy ${this.rounded_remain()}: Select a tile to shoot the decoy to.`;
+			playarea.playerprompt.text = `Shoot decoy ${this.rounded_remain()}: Select a tile to shoot the decoy to. Add a handcard for [+${this.value_per_card}] range.`;
 		}
 	}
 }
@@ -1210,7 +1220,11 @@ class MarketAction extends PlayerAction {
 			app.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
-			app.playerprompt.text = `Buy ${this.rounded_remain()}: Select a market card to buy.`;
+			if(this.market_pos==null) {
+				app.playerprompt.text = `Buy ${this.rounded_remain()}: Select a market to enter.`;
+			} else {
+				app.playerprompt.text = 'Select an exit.'
+			}
 		}
 	}
 }
