@@ -431,7 +431,7 @@ class CityMap extends MapCard {
 		}
 		for(var l of lights) {
 			for(var pos of this.map.iter_types_in_range(l, ['U'], 2, ['B'])) {
-				var d = dist(pos, l);
+				var d = adist(pos, l);
 				this.map.set(pos,'L'+Math.floor(d).toString());
 			}
 		}
@@ -443,7 +443,7 @@ class CityMap extends MapCard {
 			var new_spawn = null;
 			var options = [...this.map.iter_types(this.pavement, [1, 1, this.map.w - 1, this.map.h - 1])];
 			shuffle(options);
-            new_spawn = options.find(pos => this.spawns.length==0 || Math.min(...this.spawns.map(p=>dist(p, pos)))>6-this.cardLevel);
+            new_spawn = options.find(pos => this.spawns.length==0 || Math.min(...this.spawns.map(p=>adist(p, pos)))>6-this.cardLevel);
 			if(new_spawn != null) this.spawns.push(new_spawn);
 			else break;
 		}
@@ -455,7 +455,7 @@ class CityMap extends MapCard {
 			var new_wp = null;
 			var options = [...this.map.iter_types(this.pavement, [1, 1, this.map.w - 1, this.map.h - 1])];
 			shuffle(options);
-            new_wp = options.find(pos => this.spawns.length+this.waypoints.length==0 || Math.min(...[...this.spawns,...this.waypoints].map(p=>dist(p, pos)))>3);
+            new_wp = options.find(pos => this.spawns.length+this.waypoints.length==0 || Math.min(...[...this.spawns,...this.waypoints].map(p=>adist(p, pos)))>3);
 			if(new_wp != null) this.waypoints.push(new_wp);
 			else break;
 		}
@@ -467,7 +467,7 @@ class CityMap extends MapCard {
 			var new_target = null;
 			var options = [...this.map.iter_types('B', [1, 1, this.map.w - 1, this.map.h - 1])];
 			shuffle(options);
-            new_target = options.find(pos => this.targets.length==0 || Math.min(...this.targets.map(p=>dist(p, pos)))>5);
+            new_target = options.find(pos => this.targets.length==0 || Math.min(...this.targets.map(p=>adist(p, pos)))>5);
 			if(new_target != null) this.targets.push(new_target);
             else break;
 		}
@@ -479,7 +479,7 @@ class CityMap extends MapCard {
 			var new_market = null;
 			var options = [...this.map.iter_types('B', [1, 1, this.map.w - 1, this.map.h - 1])];
 			shuffle(options);
-            new_market = options.find(pos => this.markets.length==0 || Math.min(...this.markets.map(p=>dist(p, pos)))>5);
+            new_market = options.find(pos => this.markets.length==0 || Math.min(...this.markets.map(p=>adist(p, pos)))>5);
 			if(new_market != null) this.markets.push(new_market);
             else break;
 		}

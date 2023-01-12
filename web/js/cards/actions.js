@@ -3,11 +3,11 @@ function stack_all_fn(card) {
 };
 
 function set_choice_type(pos1, pos2, board, dist_cap=2) {
-	if(dist(pos1, pos2) < dist_cap) {
+	if(adist(pos1, pos2) < dist_cap) {
 		var visible = false;
 		if(!['B', 'U'].includes(board.get(pos1))) {
 			visible = [...board.iter_tokens('G')].filter(g=>['alert','dozing'].includes(g.state) && !g.frozen && 
-						dist(g.map_pos, pos1)<=10 && !(board.has_types_between(g.map_pos, pos1, 'B'))).length>0;
+						adist(g.map_pos, pos1)<=10 && !(board.has_types_between(g.map_pos, pos1, 'B'))).length>0;
 		}
 		return visible? 'visible' : 'touch';
 	}
@@ -73,7 +73,7 @@ class MoveAction extends PlayerAction {
 		}
 		if(message == 'map_choice_selected') {
 			var obj = props ['touch_object'];
-			this.spent += dist(obj.map_pos, board.active_player_token.map_pos);
+			this.spent += adist(obj.map_pos, board.active_player_token.map_pos);
 			board.alert_nearby_guards(this.base_noise);
 			board.active_player_token.map_pos = obj.map_pos;
 		}
@@ -113,7 +113,7 @@ class GlideAction extends PlayerAction {
 		}
 		if(message == 'map_choice_selected') {
 			var obj = props ['touch_object'];
-			this.spent += dist(obj.map_pos, board.active_player_token.map_pos);
+			this.spent += adist(obj.map_pos, board.active_player_token.map_pos);
 			board.alert_nearby_guards(this.base_noise);
 			board.active_player_token.map_pos = obj.map_pos;
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
@@ -181,7 +181,7 @@ class FightAction extends PlayerAction {
 									filter(t =>  
 									['dozing', 'alert'].includes(t.state)
 									&& this.rounded_remain()>=1
-									&& dist(board.active_player_token.map_pos, t.map_pos) == 0);
+									&& adist(board.active_player_token.map_pos, t.map_pos) == 0);
 		let map_choices = guard_choices.map(t=>board.make_token_choice(t, this, 'touch'));
 		board.map_choices = map_choices;
 		if(board.map_choices.length < 1 && this.spent != 0) {
@@ -210,7 +210,7 @@ class SmokeBombAction extends PlayerAction {
 			let guard_choices = [...board.iter_tokens('G')].filter( t=>
 						['dozing', 'alert'].includes(t.state)
 						&& this.rounded_remain()>=1
-						&& dist(obj.map_pos, t.map_pos) == 0);
+						&& adist(obj.map_pos, t.map_pos) == 0);
 			guard_choices.map(g=>g.frozen=true);
 			this.spent++;
 			board.token_update();
@@ -223,7 +223,7 @@ class SmokeBombAction extends PlayerAction {
 		// let guard_choices = [...board.iter_tokens('G')].filter( 
 		// 	['dozing', 'alert'].includes(t.state)
 		// 	&& this.rounded_remain()>=1
-		// 	&& dist(board.active_player_token.map_pos, t.map_pos) == 0);
+		// 	&& adist(board.active_player_token.map_pos, t.map_pos) == 0);
 		// let map_choices = guard_choices.map(t=>board.make_token_choice(t, this, 'touch'));
 		let map_choices = [board.make_choice(board.active_player_token.map_pos, this, 'touch')];
 		board.map_choices = map_choices;
@@ -306,7 +306,7 @@ class KnockoutAction extends PlayerAction {
 			}
 			else {
 				var guard_choices = board.tokens.filter(t=>t instanceof board.token_types['G'] && ['dozing', 'alert'].includes(t.state) 
-								&& dist(board.active_player_token.map_pos, t.map_pos) <= 1);
+								&& adist(board.active_player_token.map_pos, t.map_pos) <= 1);
 			}
 			board.map_choices = guard_choices.map(t=>board.make_token_choice(t, this, 'touch'));
 		}
@@ -348,7 +348,7 @@ class ArrowAction extends PlayerAction {
 			board.alert_nearby_guards(this.base_noise);
 			var obj = props ['touch_object'];
 			obj.token.state = 'dead';
-			this.spent = dist(board.active_player_token.map_pos, obj.token.map_pos);
+			this.spent = adist(board.active_player_token.map_pos, obj.token.map_pos);
 			board.token_update();
 		}
 		else if(message == 'card_action_selected') {
@@ -357,8 +357,8 @@ class ArrowAction extends PlayerAction {
 		if(!(board.active_player_clashing())) {
 			let guard_choices = [...board.iter_tokens('G')].filter(t=>
 				['dozing', 'alert'].includes(t.state)
-				&& dist(board.active_player_token.map_pos, t.map_pos) <= this.rounded_remain()
-				&& dist(board.active_player_token.map_pos, t.map_pos) > 0
+				&& adist(board.active_player_token.map_pos, t.map_pos) <= this.rounded_remain()
+				&& adist(board.active_player_token.map_pos, t.map_pos) > 0
 				&& board.has_line_of_sight(t.map_pos, board.active_player_token.map_pos, ['B', 'B0']));
 			let map_choices = guard_choices.map(t=>board.make_token_choice(t, this, 'touch'));
 			board.map_choices = map_choices;
@@ -391,7 +391,7 @@ class GasAction extends PlayerAction {
 			let obj = props['touch_object'];
 			let guards_affected = [...board.iter_tokens('G')].filter(t=> 
 				['dozing', 'alert'].includes(t.state)
-				&& dist(obj.map_pos, t.map_pos) <= this.radius);
+				&& adist(obj.map_pos, t.map_pos) <= this.radius);
 			guards_affected.map(g=>g.state = 'unconscious');
 			board.token_update();
 			this.spent=this.value_allowance();
@@ -436,7 +436,7 @@ class DimmerAction extends PlayerAction {
 		if(message == 'map_choice_selected') {
 			board.alert_nearby_guards(this.base_noise);
 			var obj = props ['touch_object'];
-			this.spent = dist(board.active_player_token.map_pos, obj.map_pos);
+			this.spent = adist(board.active_player_token.map_pos, obj.map_pos);
 			board.hide_light(obj.map_pos);
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 			return ;
@@ -447,7 +447,7 @@ class DimmerAction extends PlayerAction {
 		if(!(board.active_player_clashing())) {
 			let pp = board.active_player_token.map_pos;
 			let map_choices = [...board.iter_lights()]
-							.filter(p=>dist(p,pp)<=this.value_allowance()
+							.filter(p=>adist(p,pp)<=this.value_allowance()
 							&& board.has_line_of_sight(p, pp, board.building_types))
 							.map(p=>board.make_choice(p, this, 'touch'));
 			board.map_choices = map_choices;
@@ -519,16 +519,16 @@ class LockpickAction extends PlayerAction {
 		if(!(board.active_player_clashing())) {
 			if(this.loot_pos !== null) {
 				let move_choices = [...board.iter_types_in_range(this.loot_pos, board.path_types, 1)]
-									.filter(m=>dist(this.loot_pos, m)>=1)
+									.filter(m=>adist(this.loot_pos, m)>=1)
 									.map(m=>board.make_choice(m, this, set_choice_type(m, p.map_pos, board, 3)));
 				board.map_choices = move_choices;
 			}
 			else if(!board.building_types.includes(board [board.active_player_token.map_pos])) {
-				let target_choices = [...board.iter_targets()].filter(t=>dist(p.map_pos,t)==1);
+				let target_choices = [...board.iter_targets()].filter(t=>adist(p.map_pos,t)==1);
 				let move_choices = [];
 				for(var b of board.iter_types_in_range(p.map_pos, 'B', 1)) {
 					for(var m of board.iter_types_in_range(b, board.path_types, 1)) {
-						if(dist(p.map_pos, m) >= 1) {
+						if(adist(p.map_pos, m) >= 1) {
 							move_choices.push(m);
 						}
 					}
@@ -567,7 +567,7 @@ class DecoyAction extends PlayerAction {
 		if(message == 'map_choice_selected') {
 			var obj = props ['touch_object'];
 			for(var t of board.tokens) {
-				if(t instanceof board.token_types['G'] && ['alert', 'dozing'].includes(t.state) && (0 < dist(t.map_pos, obj.map_pos) && dist(t.map_pos, obj.map_pos) <= 10)) {
+				if(t instanceof board.token_types['G'] && ['alert', 'dozing'].includes(t.state) && (0 < adist(t.map_pos, obj.map_pos) && adist(t.map_pos, obj.map_pos) <= 10)) {
 					if(!(board.has_types_between(t.map_pos, obj.map_pos, board.building_types))) {
 						t.map_pos = obj.map_pos;
 						if(t.state!='alert') t.state = 'alert';
@@ -575,7 +575,7 @@ class DecoyAction extends PlayerAction {
 					}
 				}
 			}
-			this.spent = dist(obj.map_pos, board.active_player_token.map_pos);
+			this.spent = adist(obj.map_pos, board.active_player_token.map_pos);
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 			return ;
 		}
@@ -636,12 +636,12 @@ class MarketAction extends PlayerAction {
 		board.map_choices = [];
 		if(!(board.active_player_clashing())) {
 			if(this.market_pos !== null) {
-				let move_choices = [...board.iter_types_in_range(this.market_pos, board.path_types, 1)].filter(m => dist(this.market_pos, m) >= 1);
+				let move_choices = [...board.iter_types_in_range(this.market_pos, board.path_types, 1)].filter(m => adist(this.market_pos, m) >= 1);
 				let target_choices = [...new Set(move_choices)];
 				board.map_choices = target_choices.map(t => board.make_choice(t, this, set_choice_type(t, p.map_pos, board, 3)));
 			}
 			else if(!board.building_types.includes(board.get(board.active_player_token.map_pos))) {
-				let target_choices = [...board.iter_markets()].filter(t=>dist(p.map_pos,t)==1);
+				let target_choices = [...board.iter_markets()].filter(t=>adist(p.map_pos,t)==1);
 				board.map_choices = target_choices.map(t => board.make_choice(t, this, set_choice_type(t, p.map_pos, board, 3)));
 			}
 		}

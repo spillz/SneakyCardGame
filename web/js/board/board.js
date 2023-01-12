@@ -170,7 +170,7 @@ class Board extends GridLayout {
 				return;
 			}
 			//Move any alert guards into players space if they are adjacent
-			// if(!this.building_types.includes(this.get(p.map_pos)) && dist(t.map_pos,p.map_pos)==1 && t.state=='alert' && !t.frozen && p.state != 'cloaked') {
+			// if(!this.building_types.includes(this.get(p.map_pos)) && adist(t.map_pos,p.map_pos)==1 && t.state=='alert' && !t.frozen && p.state != 'cloaked') {
 			// 	t.map_pos = p.map_pos;
 			// 	return;
 			// }
@@ -545,7 +545,7 @@ class Board extends GridLayout {
 	walkable_dist(map_pos1, map_pos2) {
 		// pass;
 	}
-	dist(map_pos1, map_pos2) {
+	adist(map_pos1, map_pos2) {
 		var d0 = Math.abs(map_pos1 [0] - map_pos2 [0]);
 		var d1 = Math.abs(map_pos1 [1] - map_pos2 [1]);
 		return Math.max(d0, d1) + 0.5 * Math.min(d0, d1);

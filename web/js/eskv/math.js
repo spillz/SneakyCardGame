@@ -8,12 +8,15 @@ function rads(degrees) {
     return degrees*Math.PI/180
 }
 
-function dist(pos1, pos2) { //TODO: Rename this to disambiguate from regular distance measure
+function dist(pos1, pos2) {
+    return new Vec2(pos1).dist(pos2);
+}
+
+function adist(pos1, pos2) { //TODO: Rename this to disambiguate from regular distance measure
 	var dx = Math.abs(pos1 [0] - pos2 [0]);
 	var dy = Math.abs(pos1 [1] - pos2 [1]);
 	return Math.max(dx, dy) + 0.5 * Math.min(dx, dy);
-};
-
+}
 
 class MathArray extends Array {
     constructor(...arr) {

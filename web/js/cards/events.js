@@ -15,7 +15,7 @@ class SpawnEvent extends EventCard {
 		var mind = 1000;
 		var bests = null;
 		for(var s of [...card.spawns, ...card.waypoints]) {
-			var d = dist(pos, s);
+			var d = adist(pos, s);
 			if(d < mind) {
 				var mind = d;
 				var bests = s;
