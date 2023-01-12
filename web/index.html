@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<title>Sneaky Card Game</title>
+<title>Slip: Light and Shadow</title>
 
 <style>
     body{
@@ -16,15 +16,30 @@
 </style>
 
 <canvas id="canvas"></canvas>
-<script src="js/util.js"></script>
-<script src="js/input.js"></script>
-<script src="js/sprites.js"></script>
-<script src="js/widget.js"></script>
+<script src="js/eskv/math.js"></script>
+<script src="js/eskv/timer.js"></script>
+<script src="js/eskv/random.js"></script>
+<script src="js/eskv/geometry.js"></script>
+<script src="js/eskv/text.js"></script>
+<script src="js/eskv/input.js"></script>
+<script src="js/eskv/sprites.js"></script>
+<script src="js/eskv/widgets.js"></script>
+<script src="js/eskv/app.js"></script>
+
 <script src="js/game_layout.js"></script>
-<script src="js/cards.js"></script>
-<script src="js/tokens.js"></script>
-<script src="js/board.js"></script>
 <script src="js/game.js"></script>
+
+<script src="js/cards/actions.js"></script>
+<script src="js/cards/events.js"></script>
+<script src="js/cards/map.js"></script>
+<script src="js/cards/missions.js"></script>
+<script src="js/cards/player.js"></script>
+<script src="js/cards/traits.js"></script>
+<script src="js/cards/decks.js"></script>
+
+<script src="js/board/board.js"></script>
+<script src="js/board/tokens.js"></script>
+
 <script>
 
     game = new Game();

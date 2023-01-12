@@ -243,7 +243,7 @@ class CardSplay extends Widget {
 		App.get().inputHandler.ungrab();
 		App.get().removeTimer(this._clockev);
 		let closeup = new CardSplayCloseup(closeup_card, this.children, !this.faceUp, {hints: {center_x:0.5, center_y:0.5, w:0.8, h:0.8}});
-		closeup.bind('closed', (event, obj, value)=>this.debug_closeup(event, obj, value))
+		closeup.bind('close', (event, obj, value)=>this.debug_closeup(event, obj, value))
 		closeup.popup();
 		this._clockev = null;
 	}
@@ -312,7 +312,6 @@ class Card extends Widget {
         if(this.faceUp) {
             //TODO: draw a card background, borders etc
             this.bgColor = this.selected ? this.selectedColor:this.bgColorUp;
-			// this.bgColor='black';
             super.draw();
             let r1 = new Rect(this);
             let r2 = new Rect(this);
@@ -322,7 +321,6 @@ class Card extends Widget {
             r2.h -= 2*r1.h;
 			r3.y += r1.h+r2.h;
 			r3.h = this.h/5;
-            //TODO: Get rid of the ugly scale transforms
 			let app=App.get();
             drawWrappedText(app.ctx, this.name, (this.h/12), true, r1, this.nameColor);
             drawWrappedText(app.ctx, this.text, (this.h/14), true, r2, this.textColor);
@@ -330,7 +328,6 @@ class Card extends Widget {
 				drawWrappedText(app.ctx, this.lowerText, (this.h/14), true, r3, this.lowerTextColor);
 			}  
         } else {
-//            super.draw();
 			this.bgColor = this.bgColorDown;
 			this.outlineColor = 'black';
 			super.draw();
@@ -339,52 +336,8 @@ class Card extends Widget {
 				let r1 = new Rect(this);
 				drawWrappedText(app.ctx, this.backText, (this.h/12), true, r1, this.backTextColor);
 			}
-			// let r = this;
-			// let app = App.get();
-			// app.ctx.beginPath();
-			// app.ctx.rect(r[0], r[1], r[2], r[3]);
-			// app.ctx.fillStyle = this.bgColor;
-			// app.ctx.fillStyle = this.outlineColor;
-			// app.ctx.fill();
-			// app.ctx.fill();
-				//TODO: draw card back
         }
     }
-
-    // on_touch_down(name, touch) {
-    //     if(this.collide(touch.rect)) {
-	// 		this.faceUp = !this.faceUp;
-	// 		return true;
-	// 	}
-    // }
-
-}
-
-class CardGrid extends Widget {
-//Display cards in a grid arrangement
-}
-
-
-class ButLabel extends Label {
-	pressed = BooleanProperty(false);
-	touching = BooleanProperty(false);
-	on_touch_down(event, touch) {
-		if(this.collide(touch.rect)) {
-			touch.grab(this);
-			this.touching = true;
-			return true;
-		}
-	}
-	on_touch_up(event, touch) {
-		if(touch.grabbed == this) {
-			touch.ungrab(self);
-			if(this.collide(touch.rect)) {
-				this.pressed = true;
-			}
-			this.touching = false;
-			return true;
-		}
-	}
 }
 
 class CardSplayCloseup extends ModalView {
@@ -700,7 +653,7 @@ class ActionSelector extends ModalView {
 		}
 		this.addChild(b);
 	}
-	on_closed(event, value) {
+	on_close(event, value) {
 		let hand = App.get().hand;
 		hand.action_selector = null;
 		if(hand.selected_action=='') {
@@ -825,7 +778,7 @@ class SkillDeck extends CardSplay {
 			this.removeChild(c);
 		}
 		let cardselector = new CardSelector(cards, {numToPick: num_to_pick});
-		cardselector.bind('closed', (e,c,p)=>this.card_picked(e,c,p));
+		cardselector.bind('close', (e,c,p)=>this.card_picked(e,c,p));
 		cardselector.popup();
 	}
 	card_picked(event, cs, exitVal) {
@@ -852,7 +805,7 @@ class LootDeck extends CardSplay {
 			this.removeChild(c);
 		}
 		let cardselector = new CardSelector(cards, {numToPick: num_to_pick});
-		cardselector.bind('closed', (e,c,p)=>this.card_picked(e,c,p));
+		cardselector.bind('close', (e,c,p)=>this.card_picked(e,c,p));
 		cardselector.popup();
 	}
 	card_picked(event,cs, pressed) {
@@ -879,7 +832,7 @@ class MarketDeck extends CardSplay {
 		let cards = this.children.slice(-num_offered);
 		this.children = this.children.slice(0, -num_offered);
 		let cardselector = new CardSelector(cards, {numToPick: num_to_pick});
-		cardselector.bind('closed', (e,c,p)=>this.card_picked(e,c,p));
+		cardselector.bind('close', (e,c,p)=>this.card_picked(e,c,p));
 		cardselector.popup();
 //		console.log(cards);
 	}

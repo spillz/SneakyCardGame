@@ -1,7 +1,46 @@
-
-
-
 const hints_default = {x:0, y:0, w:1, h:1};
+
+class WidgetAnimation {
+    stack = [];
+    widget = null;
+    props = {}
+    elapsed = 0;
+    constructor() {
+
+    }
+    add(props, duration=1000) { 
+        this.stack.push([props, duration]);
+    }
+    update(millis) { //todo: props can be of the form {prop1: 1, prop2: 2, ...} or {prop1: [1,func1], prop2: [2,func2]}
+        let targetProps = this.stack[0][0];
+        let duration = this.stack[0][1];
+        if(this.elapsed==0) {
+            this.initProps = {};
+            for(let p in targetProps) {
+                this.initProps[p] = this.widget[p];
+            }
+        }
+        let skip = Math.max(this.elapsed+millis-duration,0);
+        this.elapsed = this.elapsed+millis-skip;
+        let wgt = duration==0? 1:this.elapsed/duration;
+        for(let p in this.initProps) {
+            this.widget[p] = (1-wgt)*this.initProps[p] + wgt*targetProps[p];
+        }
+        if(skip>=1) {
+            this.stack = this.stack.slice(1);
+            this.elapsed = skip;
+            if(this.stack.length==0) this.cancel();
+        }
+    }
+    start(widget) {
+        this.widget = widget;
+        widget._animation = this;
+    }
+    cancel() {
+        this.widget._animation = null;
+    }
+}
+
 
 class Widget extends Rect {
     bgColor = null;
@@ -282,268 +321,6 @@ class Widget extends Rect {
         if(this._animation!=null) this._animation.update(millis);
         if(this._needsLayout) this.layoutChildren();
         for(let c of this.children) c.update(millis);
-    }
-}
-
-class App extends Widget {
-    //App is the main object class for a kivy-like UI application
-    //to run in the browser. 
-    //Currently it is setup in a singleton model allowing one app
-    //per html page.
-    //The App maintains the HTML5 Canvas and drawing Context
-    //It manages the update loop in update method
-    //User interaction is handled in the inputHandler instance
-    //and it will automatically bubble input events through
-    //the widget heirarchy.
-    //Every app has a baseWidget and an array of modalWidgets.
-    //Global events can be propagated to baseWidget and modalWidgets
-    //via the emit method (it will be up to child widgets to
-    //emit thos events to tehir own children -- see on_touch_up
-    //and on_touch_down implementations).
-    //The modalWidgets are drawn over the top of the baseWidget
-    //Use App.get() to access the running app instance. The
-    //widgets added toh app will also access the running
-    //app instance 
-    static appInstance = null;
-    constructor() {
-        if(App.appInstance!=null) return appInstance; //singleton
-        super();
-        // widget container
-        this._baseWidget = new Widget(null, {hints:{x:0, y:0, w:1, h:1}});
-        this._baseWidget.parent = this;
-        // modal widgets
-        this._modalWidgets = [];
-
-
-        App.appInstance = this;
-        this.pixelSize = 1;
-        this.fillScreen = false;
-        this.w =-1;
-        this.dimW = this.prefDimW = 32;
-        this.h =-1;
-        this.dimH = this.prefDimH = 16;
-        this.tileSize = this.getTileScale()*this.pixelSize;
-        this.canvasName = "canvas";
-        this.id = 'app';
-
-        this.offsetX = 0;
-        this.offsetY = 0;
-        this.shakeX = 0;                 
-        this.shakeY = 0;      
-        this._needsLayout = false;
-
-        // timer container
-        this.timer_tick = null;
-        this.timers = [];
-
-    }
-    addTimer(duration, callback) {
-        let t = new Timer(duration, 0, callback);
-        this.timers.push(t);
-        return t;
-    }
-    removeTimer(timer) {
-        this.timers = this.timers.filter(t=>t!=timer);
-    }
-    addModal(modal) {
-        this._modalWidgets.push(modal);
-        this._needsLayout = true;
-    }
-    removeModal(modal) {
-        this._modalWidgets = this._modalWidgets.filter(m => m!=modal);
-    }
-    static get() { //singleton
-        if(!App.appInstance) App.appInstance = new App();
-        return App.appInstance;
-    }
-    start() {
-        let that = this;
-        window.onresize = (() => that.updateWindowSize());
-        this.setupCanvas();
-        this.inputHandler = new InputHandler(this);
-        this.updateWindowSize();
-
-        window.onload = () => this._start();
-    }
-    _start() {
-        this.update();    
-    }
-    childEmit(event, data, topModalOnly=false) { //TODO: Need to suppress some events for a modal view(e.g., touches)
-        if(topModalOnly && this._modalWidgets.length>0) {
-            return this._modalWidgets[this._modalWidgets.length-1].emit(event, data);
-        } else {
-            if(this._baseWidget.emit(event, data)) return true;
-            for(let mw of this._modalWidgets) {
-                if(mw.emit(event, data)) return true;
-            }
-            return false;
-        }
-    }
-    *iter(recursive=true, inView=true) {
-        yield this;
-        yield *this._baseWidget.iter(...arguments);
-        for(let mw of this._modalWidgets) {
-            yield *mw.iter(...arguments);
-        }
-    }
-    findById(id) {
-        for(let w of this.iter(true, false)) {
-            if('id' in w && w.id==id) return w;
-        }
-        return null;
-    }
-    update() {
-        let millis = 15;
-        let n_timer_tick = Date.now();
-        if(this.timer_tick!=null){
-            millis = Math.min(n_timer_tick - this.timer_tick, 30); //maximum of 30 ms refresh
-        }
-        for(let t of this.timers) {
-            t.tick(millis);
-        }
-        if(this._needsLayout) this.layoutChildren();
-
-        this._baseWidget.update(millis);
-        for(let mw of this._modalWidgets) mw.update(millis);
-
-        this.draw(millis);
-
-        window.requestAnimationFrame(() => this.update());
-        this.timer_tick = n_timer_tick;
-    }
-    draw(millis){
-        this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
-        this.shakeX = 0;
-        this.shakeY = 0;
-        this.shakeAmount = 0;
-        screenshake(this);
-
-        this.ctx.save();
-        this.ctx.translate(this.offsetX + this.shakeX, this.offsetY + this.shakeY);
-        this.ctx.scale(this.tileSize, this.tileSize);
-
-        this._baseWidget._draw(millis);
-        for(let mw of this._modalWidgets) mw._draw(millis);
-        this.ctx.restore();
-    }
-    to_local(pos) {
-        return [(pos[0]-this.offsetX-this.shakeX)/this.tileSize, (pos[1]-this.offsetY-this.shakeY)/this.tileSize];
-//        return pos;
-    }
-    setupCanvas(){
-        this.canvas = document.querySelector(this.canvasName);
-
-        this.canvas.width = window.innerWidth; //this.tileSize*(this.dimW);
-        this.canvas.height = window.innerHeight; //this.tileSize*(this.dimH);
-        this.canvas.style.width = this.canvas.width + 'px';
-        this.canvas.style.height = this.canvas.height + 'px';
-
-        this.ctx = this.canvas.getContext("2d");
-        this.ctx.imageSmoothingEnabled = false;
-
-        this.offsetX = Math.floor((window.innerWidth - this.tileSize*this.dimW)/2);
-        this.offsetY =  Math.floor((window.innerHeight - this.tileSize*this.dimH)/2);
-    }
-    getTileScale() {
-        let sh = this.h;
-        let sw = this.w;
-        let scale;
-        scale = Math.min(sh/(this.prefDimH)/this.pixelSize,sw/(this.prefDimW)/this.pixelSize);
-        if(!this.fillScreen) { //pixel perfect scaling
-            scale = Math.floor(scale);
-        }    
-        return scale*this.pixelSize;
-    }
-    fitMaptoTileSize(scale) {
-        let sh = window.innerHeight;
-        let sw = window.innerWidth;
-        this.dimH = Math.floor(sh/scale);
-        this.dimW = Math.floor(sw/scale);    
-    }
-    applyHints(c) {
-        let hints = c.hints;
-        if('w' in hints && hints['w']!=null) c.w = hints['w']*this.dimW;
-        if('h' in hints && hints['h']!=null) c.h = hints['h']*this.dimH;
-        if('x' in hints && hints['x']!=null) c.x = hints['x']*this.dimW;
-        if('y' in hints && hints['y']!=null) c.y = hints['y']*this.dimH;
-        if('center_x' in hints && hints['center_x']!=null) c.center_x = hints['center_x']*this.dimW;
-        if('center_y' in hints && hints['center_y']!=null) c.center_y = hints['center_y']*this.dimH;
-        if('right' in hints && hints['right']!=null) c.right = hints['right']*this.dimW;
-        if('bottom' in hints && hints['bottom']!=null) c.bottom = hints['bottom']*this.dimH;
-    }
-    updateWindowSize() {
-        this.x = 0;
-        this.y = 0;
-        this.w = window.innerHeight;
-        this.h = window.innerWidth;
-        this.tileSize = this.getTileScale();
-        this.fitMaptoTileSize(this.tileSize);
-        this.setupCanvas();
-        screen.orientation.unlock();
-
-        this._needsLayout = true;
-    }
-    layoutChildren() {
-        //Key concept: 
-        //As a general rule, each widget (and the app) controls the placement of its child widgets.
-        //Whenever the layout properties (x,y,w,h etc) of any widget (or the app itself) have changed, 
-        //all layout properites of the children of that widget will be updated at the next update call. 
-        //Each widget has an internal _needsLayout boolean that tracks whether the layoutChildren should 
-        //be called in that widget's update routine. That flag gets cleared once the layoutChildren of the 
-        //child has been called to prevent multiple unecessary calls.
-
-        // The layout in the app will respect hints but otherwise assume the widgets will control their
-        // size and postioning
-        if(this._layoutNotify) this.emit('layout', null);
-        this._needsLayout = false;
-        this.applyHints(this._baseWidget);
-        this._baseWidget.layoutChildren();
-        for(let mw of this._modalWidgets) {
-            this.applyHints(mw);
-            mw.layoutChildren();
-        }
-    }
-}
-
-
-class WidgetAnimation {
-    stack = [];
-    widget = null;
-    props = {}
-    elapsed = 0;
-    constructor() {
-
-    }
-    add(props, duration=1000) { 
-        this.stack.push([props, duration]);
-    }
-    update(millis) { //todo: props can be of the form {prop1: 1, prop2: 2, ...} or {prop1: [1,func1], prop2: [2,func2]}
-        let targetProps = this.stack[0][0];
-        let duration = this.stack[0][1];
-        if(this.elapsed==0) {
-            this.initProps = {};
-            for(let p in targetProps) {
-                this.initProps[p] = this.widget[p];
-            }
-        }
-        let skip = Math.max(this.elapsed+millis-duration,0);
-        this.elapsed = this.elapsed+millis-skip;
-        let wgt = duration==0? 1:this.elapsed/duration;
-        for(let p in this.initProps) {
-            this.widget[p] = (1-wgt)*this.initProps[p] + wgt*targetProps[p];
-        }
-        if(skip>=1) {
-            this.stack = this.stack.slice(1);
-            this.elapsed = skip;
-            if(this.stack.length==0) this.cancel();
-        }
-    }
-    start(widget) {
-        this.widget = widget;
-        widget._animation = this;
-    }
-    cancel() {
-        this.widget._animation = null;
     }
 }
 
@@ -1102,7 +879,7 @@ class ModalView extends BoxLayout {
     }
     close(exitVal=0) {
         if(this.parent!=null) {
-            this.emit('closed',exitVal);
+            this.emit('close',exitVal);
             let app = App.get();
             this.parent = null;
             app.removeModal(this);
