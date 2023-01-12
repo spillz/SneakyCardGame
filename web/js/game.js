@@ -123,11 +123,11 @@ class Game extends App {
         this.eventdiscard.children = [];
         this.eventdeck.children = this.stats.mission.setup_events(this);
         this.eventdeck.can_draw = true;
-
-        this.hand.children = [];
         this.exhausted.children = [];
-        this.playerdiscard.children = [];
+
         let playercards = [...this.playerdiscard.children, ...this.playerdeck.children, ...this.hand.children]
+        this.hand.children = [];
+        this.playerdiscard.children = [];
         this.playerdeck.children = shuffle(playercards);
         this.playertraits.children = shuffle(this.traitcards);
         this.loot1.children = shuffle(this.lootcards1);
