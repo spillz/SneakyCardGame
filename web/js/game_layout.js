@@ -509,7 +509,7 @@ class PlayerDeck extends CardSplay {
 			var cards_to_draw = app.hand.hand_size;
 		}
 		else {
-			var cards_to_draw = (1 + app.hand.hand_size) - app.hand.children.length;
+			var cards_to_draw = Math.max(1 + app.hand.hand_size - app.hand.children.length,0);
 		}
 		this.draw_cards(cards_to_draw);
 		app.hand.can_draw = true;
@@ -519,6 +519,7 @@ class PlayerDeck extends CardSplay {
 		app.board.scroll_to_player();
 	}
 	draw_cards(n) {
+		if(n<=0) return;
 		var sh = n - this.children.length;
 		var cards = this.children.slice(-n);
 		let app = App.get();
@@ -880,9 +881,7 @@ class EventDeck extends CardSplay {
 		}
 		app.hand.cancel_action();
 		if(this.children.length == 0) {
-			if(app.hand.children.length==0 && app.activecardsplay.children.length==0) {
-				app.missionFailed();
-			}
+			app.missionFailed();
 			return;
 		}
 		if(app.board.active_player_clashing()) {
