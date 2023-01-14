@@ -1,8 +1,8 @@
 class Deck extends Widget { //represents a deck/tableau of splayed cards
     orientation = 'down'; //splay down, up, right, or left
 	processTouches = true;
-    constructor(rect, properties) { //TODO: add card spacing params
-        super(rect);
+    constructor(properties) { //TODO: add card spacing params
+        super();
         this.updateProperties(properties);
     }
 
@@ -47,25 +47,25 @@ class CardSelector extends ModalView {
 	prompt = 'Available market cards';
     constructor(cards, properties) { 
 		let app = App.get();
-        super(new Rect([0, 0, Math.max(cards.length,4)*app.card_size[0], 1.4*app.card_size[1]]));
+        super({rect:[0, 0, Math.max(cards.length,4)*app.card_size[0], 1.4*app.card_size[1]]});
 		cards.map(c=>c.faceUp=true);
         this.updateProperties(properties);
 		this.children = [
-			new Label(null, {
+			new Label({
 				id: 'label',
 				hints: {center_x:0.5, y:0, w:1, h:0.2/1.4},
 				text: this.numToPick==0? 
 							this.prompt :
 							(this.numToPick==1? 'You may choose a card': `You may choose up to ${this.numToPick} cards`)
 			}),
-			new CardSplay(null, {
+			new CardSplay({
 				id: 'cards',
 				hints: {center_x:0.5, y:0.2/1.4, w:1, h:1/1.4},
 				children: cards,
 				cardSpreadScale: 1
 
 			}),
-			new Button(null, {
+			new Button({
 				id: 'button',
 				hints: {center_x:0.5, y:1.2/1.4, w:0.5, h:0.2/1.4},
 				text: this.numToPick==0?'Close':'Confirm',
@@ -137,8 +137,8 @@ class CardSplay extends Widget {
 	fontSize=0.5;
 	grabbed_child = null;
 	_updatedChildren = false;
-	constructor(rect, properties) {
-		super(rect);
+	constructor(properties) {
+		super();
 		this.updateProperties(properties);
 	}
 	on_child_added(event, child) {
@@ -304,8 +304,8 @@ class Card extends Widget {
 	bgColorUp = colorString([0.2,0.2,0.2]);
 	bgColorDown = colorString([0.5,0.5,0.5]);
 	selectedColor = colorString([0.7,0.7,0.7]);
-    constructor(rect=null, properties=null) {
-        super(rect);
+    constructor(properties=null) {
+        super();
         this.updateProperties(properties);
     }
     draw() {
@@ -343,20 +343,19 @@ class Card extends Widget {
 class CardSplayCloseup extends ModalView {
 	cards = [];
 	constructor(closeup_card=null, cards=[], sort=true, props={}) {
-		super(new Rect());
+		super();
 		this.updateProperties(props);
 		if(sort) cards = cards.sort((a,b)=>a.name>b.name?1:(a.name==b.name?0:-1));
 		if(closeup_card == null) {
 			closeup_card = cards[0];
 		}
-		let r = new Rect();
 		let app=App.get();
-		this.scroll_view = new ScrollView(r, {scrollX:false, hints:{center_x:0.33/2, center_y:0.5, w:0.33, h:1}});
+		this.scroll_view = new ScrollView({scrollX:false, hints:{center_x:0.33/2, center_y:0.5, w:0.33, h:1}});
 		this.scroll_view.bind('touch_down', (e,o,t)=>this.on_touch_down_sv(e,o,t));
 		this.addChild(this.scroll_view);
 
-		this.grid_layout = new GridLayout(r, {numX: 4});
-		let ch = cards.map(c=> new c.constructor(r, {faceUp:true}));
+		this.grid_layout = new GridLayout({numX: 4});
+		let ch = cards.map(c=> new c.constructor({faceUp:true}));
 		this.grid_layout.children = ch;
 		this.scroll_view.addChild(this.grid_layout);
 		for(let c of ch) {
@@ -454,8 +453,8 @@ class PlayerDiscard extends CardSplay {
 class Hamburger extends Button {
 	color = null;
 	colorHighlight = null;
-	constructor(rect, props) {
-		super(rect);
+	constructor(props) {
+		super();
 		this.updateProperties(props);
 	}
 	draw() {
@@ -484,12 +483,12 @@ class PlayerPrompt extends BoxLayout {
 	id = 'prompt';
 	orientation = 'horizontal';
 	_layoutNotify = true;
-	constructor(rect, props) {
-		super(rect);
+	constructor(props) {
+		super();
 		this.updateProperties(props);
 		this.children = [
-			new Label(null, {text:(prompt)=>prompt.text, wrap:true}),
-			new Hamburger(null, {color:'gray', colorHighlight:'lightGray', hints:{w:null}, on_press: (e,o,v)=>App.get().stats.popup()}),
+			new Label({text:(prompt)=>prompt.text, wrap:true}),
+			new Hamburger({color:'gray', colorHighlight:'lightGray', hints:{w:null}, on_press: (e,o,v)=>App.get().stats.popup()}),
 		]
 
 	}
@@ -644,13 +643,11 @@ class ActionSelector extends ModalView {
 	constructor(card, actions) {
 		let app = App.get();
 		let h = Object.keys(actions).length
-		super(new Rect([card.x, card.y-h, card.w, h*2]),
-			{hints:{center_x:0.5,
-					center_y:0.5,
-					w:0.5}}); 
-		let b = new BoxLayout(null, {orientation:'vertical', hints:{x:0,y:0,w:1,h:1}});
+		super({rect:[card.x, card.y-h, card.w, h*2],
+					hints:{center_x:0.5,center_y:0.5,w:0.5}}); 
+		let b = new BoxLayout({orientation:'vertical', hints:{x:0,y:0,w:1,h:1}});
 		for(var a in actions) {
-			b.addChild(new ActionSelectorOption(new Rect(), {text: a}));
+			b.addChild(new ActionSelectorOption({text: a}));
 		}
 		this.addChild(b);
 	}
@@ -935,52 +932,29 @@ class Stats extends ModalView {
 	hints = {x:0.1, y:0.2, w:0.8, h:0.6};
 	id = 'stats';
 	constructor() {
-		super(null);
-		this.addChild(new BoxLayout(null, {
-			children:[new ScrollView(null, {scrollW: false, uiZoom: false,
-				children: [new BoxLayout(null, { hints:{h:null},
+		super();
+		this.addChild(new BoxLayout({
+			children:[new ScrollView({scrollW: false, uiZoom: false,
+				children: [new BoxLayout({ hints:{h:null},
 					children:[
-					new Label(null, {id: 'title', text: 'GAME OVER', h:1.5, hints: {h:null}, font_size:0.75}),
-					new BoxLayout(null, {id:'mission_container', h:0, hints:{h:null}}),
-					new Label(null, {align:'left', h:1.5, hints: {h:null}, text: 'Stats'}),
-					new Label(null, {align:'left', h:1, hints: {h:null}, id:'missions', text: (stats)=>`Missions complete: ${stats.missions}`}),
-					new Label(null, {align:'left', h:1, hints: {h:null}, id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
-					new Label(null, {align:'left', h:1, hints: {h:null}, id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
-					new Label(null, {align:'left', h:1, hints: {h:null}, id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
-					new Label(null, {align:'left', h:1, hints: {h:null}, id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
-					new Label(null, {align:'left', h:1, hints: {h:null}, id:'turns', text: (stats)=>`Turns: ${stats.turns} / ${stats.t_turns}`}),
+					new Label({id: 'title', text: 'GAME OVER', h:1.5, hints: {h:null}, font_size:0.75}),
+					new BoxLayout({id:'mission_container', h:0, hints:{h:null}}),
+					new Label({align:'left', h:1.5, hints: {h:null}, text: 'Stats'}),
+					new Label({align:'left', h:1, hints: {h:null}, id:'missions', text: (stats)=>`Missions complete: ${stats.missions}`}),
+					new Label({align:'left', h:1, hints: {h:null}, id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
+					new Label({align:'left', h:1, hints: {h:null}, id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
+					new Label({align:'left', h:1, hints: {h:null}, id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
+					new Label({align:'left', h:1, hints: {h:null}, id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
+					new Label({align:'left', h:1, hints: {h:null}, id:'turns', text: (stats)=>`Turns: ${stats.turns} / ${stats.t_turns}`}),
 					]}),
 				]}),
-			new BoxLayout(null, {id:'butbox', h:1, hints: {h:null}, paddingX:0.1, spacingX:0.1, orientation:'horizontal',
+			new BoxLayout({id:'butbox', h:1, hints: {h:null}, paddingX:0.1, spacingX:0.1, orientation:'horizontal',
 				children: [
-					new Button(null, {text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
-					new Button(null, {text:'RESTART', id:'restart', on_press:(ev,ob,press)=>this.restartGame()}),
-					new Button(null, {text:'NEXT', id:'next', on_press:()=>this.nextMission(), disable:true}),
+					new Button({text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
+					new Button({text:'RESTART', id:'restart', on_press:(ev,ob,press)=>this.restartGame()}),
+					new Button({text:'NEXT', id:'next', on_press:()=>this.nextMission(), disable:true}),
 				]})
 			]}));
-		// this.addChild(new BoxLayout(null, {
-		// 	hints: {x:0, y:0, w:1, h:1},
-		// 	orientation: 'vertical',
-		// 	children: [
-		// 		new Label(null, {id: 'title', text: 'GAME OVER', h:1.5, hints: {h:null}, font_size:0.75}),
-		// 		new ScrollView(null, {id:'mission_container', scrollW:false}),
-		// 		new BoxLayout(null, {orientation:'vertical', h:8.5, hints:{h:null},
-		// 			children: [
-		// 				new Label(null, {align:'left', h:1.5, hints: {h:null}, text: 'Stats'}),
-		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'missions', text: (stats)=>`Missions complete: ${stats.missions}`}),
-		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'kills', text: (stats)=>`Kills: ${stats.kills} / ${stats.t_kills}`}),
-		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'knockouts', text: (stats)=>`Knockouts: ${stats.knockouts} / ${stats.t_knockouts}`}),
-		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'contacts', text: (stats)=>`Contacts: ${stats.contacts} / ${stats.t_contacts}`}),
-		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'loot', text: (stats)=>`Loot: ${stats.loot} / ${stats.t_loot}`}),
-		// 				new Label(null, {align:'left', h:1, hints: {h:null}, id:'turns', text: (stats)=>`Turns: ${stats.turns} / ${stats.t_turns}`}),
-		// 				new BoxLayout(null, {id:'butbox', h:1, hints: {h:null}, paddingX:0.1, spacingX:0.1, orientation:'horizontal',
-		// 					children: [
-		// 						new Button(null, {text:'CLOSE', id:'close', on_press:(ev,ob,press)=>this.close()}),
-		// 						new Button(null, {text:'RESTART', id:'restart', on_press:(ev,ob,press)=>this.restartGame()}),
-		// 						new Button(null, {text:'NEXT', id:'next', disable:true}),
-		// 					]})
-		// 		]})
-		// 	]}));
 		this.next = this.findById('next');
 		this.title = this.findById('title');
 	}

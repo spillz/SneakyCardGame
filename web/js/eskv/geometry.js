@@ -38,7 +38,7 @@ class Vec2 extends Array {
 
 class Rect extends Array {
     constructor(rect=null){
-        super()
+        super();
         if(rect==null) {
             this[0] = 0;
             this[1] = 0;

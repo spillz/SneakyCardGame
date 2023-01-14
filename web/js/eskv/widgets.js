@@ -48,8 +48,8 @@ class Widget extends Rect {
     _animation = null;
     _layoutNotify = false; //By default, we don't notify about layout events because that's a lot of function calls across a big widget collection
     hints = {};
-    constructor(rect, properties=null) {
-        super(rect);
+    constructor(properties=null) {
+        super();
         this.parent = null;
         this.processTouches = false;
         this._deferredProps = null;
@@ -340,7 +340,7 @@ class Label extends Widget {
     wrap = false;
     align = 'center';
     color = "white";
-    constructor(rect, properties) {
+    constructor(properties) {
         super(...arguments);
         // this.text = '';
         // this.fontSize = null;
@@ -376,8 +376,8 @@ class Button extends Label {
     disableColor1 = colorString([0.2,0.2,0.2])
     disableColor2 = colorString([0.4,0.4,0.4])
     disable = false;
-    constructor(rect, props) {
-        super(rect);
+    constructor(props) {
+        super();
         this.updateProperties(props);
     }
     on_touch_down(event, touch) {
@@ -428,8 +428,8 @@ class BoxLayout extends Widget {
     paddingX = 0;
     paddingY = 0;
     orientation = 'vertical';
-    constructor(rect, properties=null) {
-        super(rect);
+    constructor(properties=null) {
+        super();
         this.updateProperties(properties);
     }
     on_numX(event, data) {
@@ -542,8 +542,8 @@ class GridLayout extends Widget {
     spacingY = 0;
     paddingX = 0;
     paddingY = 0;
-    constructor(rect, properties) {
-        super(rect);
+    constructor(properties) {
+        super();
         this.updateProperties(properties);
     }
     on_numX() {
@@ -626,11 +626,11 @@ class ScrollView extends Widget {
     scrollX = 0;
     scrollY = 0;
     wAlign = 'left'; //left, center, right
-    hAlign = 'middle'; //top, middle, bottom
+    hAlign = 'top'; //top, middle, bottom
     uiZoom = true;
     zoom = 1;
-    constructor(rect, properties) {
-        super(rect);
+    constructor(properties) {
+        super();
         this.updateProperties(properties);
         this.processTouches = true;
         this.oldTouch = null;
@@ -864,8 +864,8 @@ class ModalView extends BoxLayout {
     closeOnTouchOutside = true;
     bgColor = 'slate';
     outlineColor = 'gray'
-    constructor(rect, properties=null) {
-        super(rect);
+    constructor(properties=null) {
+        super();
         this.updateProperties(properties);
     }
     popup() {

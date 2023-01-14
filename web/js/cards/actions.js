@@ -305,7 +305,7 @@ class KnockoutAction extends PlayerAction {
 				var guard_choices = board.tokens.filter(t=>t instanceof board.token_types['G'] && ['dozing', 'alert'].includes(t.state));
 			}
 			else {
-				var guard_choices = board.tokens.filter(t=>t instanceof board.token_types['G'] && ['dozing', 'alert'].includes(t.state) 
+				var guard_choices = board.tokens.filter(t=>t instanceof board.token_types['G'] && t.state=='dozing' 
 								&& adist(board.active_player_token.map_pos, t.map_pos) <= 1);
 			}
 			board.map_choices = guard_choices.map(t=>board.make_token_choice(t, this, 'touch'));

@@ -2,8 +2,8 @@ class MapChoice extends BoxLayout {
 	map_pos = null;
 	choice_type = 'info';
 	listener = null;
-	constructor(rect, properties=null) {
-		super(rect);
+	constructor(properties=null) {
+		super();
 		this.updateProperties(properties);
 	}
 	on_map_pos(event, data) {
@@ -77,8 +77,8 @@ class MapChoice extends BoxLayout {
 }
 
 class TokenMapChoice extends MapChoice {
-	constructor(rect, properties=null) {
-		super(rect);
+	constructor(properties=null) {
+		super();
 		if(properties==null) properties = {};
 		properties['map_pos'] = properties['token'].map_pos
 		this.updateProperties(properties);
@@ -456,10 +456,10 @@ class Board extends GridLayout {
 		return [...this.iter_rect(pos, size, must_fit)].filter(p=>targets.includes(this.get(pos))).length;
 	}
 	make_choice(map_pos, listener, choice_type) {
-		return new MapChoice(new Rect(), {map_pos: map_pos, listener: listener, choice_type: choice_type});
+		return new MapChoice({map_pos: map_pos, listener: listener, choice_type: choice_type});
 	}
 	make_token_choice(token, listener, choice_type) {
-		return new TokenMapChoice(new Rect(), {token: token, listener: listener, choice_type: choice_type});
+		return new TokenMapChoice({token: token, listener: listener, choice_type: choice_type});
 	}
 	*iter_spawns() {
 		for(var c of this.children) {

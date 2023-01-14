@@ -140,9 +140,8 @@ class MapCard extends Widget {
 	building_types = ['B','B0'];
 	faceUp = true;
 	outlineColor = colorString([0.3,0.3,0.3]);
-	constructor(rect, properties=null) {
-		super(rect);
-		this.processTouches=true;
+	constructor(properties=null) {
+		super();
 		this.updateProperties(properties);
 		}
 	draw() {
@@ -324,8 +323,8 @@ class CityMap extends MapCard {
 					'Z': ['Loot Zone', [0.6, 0.6, 0.6, 1]], 
 					'M': ['Market', [0.6, 0.9, 0.6, 1]]};
 	pavement = ['U','L0','L1','L2'];
-	constructor(rect, properties=null) {
-		super(rect);
+	constructor(properties=null) {
+		super();
 		this.updateProperties(properties);
 		this.make_map();
 	}

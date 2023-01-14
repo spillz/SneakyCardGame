@@ -23,7 +23,7 @@ class App extends Widget {
         if(App.appInstance!=null) return appInstance; //singleton
         super();
         // widget container
-        this._baseWidget = new Widget(null, {hints:{x:0, y:0, w:1, h:1}});
+        this._baseWidget = new Widget({hints:{x:0, y:0, w:1, h:1}});
         this._baseWidget.parent = this;
         // modal widgets
         this._modalWidgets = [];
@@ -31,12 +31,13 @@ class App extends Widget {
 
         App.appInstance = this;
         this.pixelSize = 1;
-        this.fillScreen = false;
-        this.w =-1;
-        this.dimW = this.prefDimW = 32;
-        this.h =-1;
-        this.dimH = this.prefDimH = 16;
-        this.tileSize = this.getTileScale()*this.pixelSize;
+        this.integerTileSize = false;
+        this.exactDimensions = false;
+        this.w =-1; //canvas pixel width
+        this.h =-1; //canvas pixel height
+        this.dimW = this.prefDimW = 32; //logical width
+        this.dimH = this.prefDimH = 16; //logical height
+        this.tileSize = this.getTileScale()*this.pixelSize; //size of each logical unit
         this.canvasName = "canvas";
         this.id = 'app';
 
@@ -144,35 +145,53 @@ class App extends Widget {
         return [(pos[0]-this.offsetX-this.shakeX)/this.tileSize, (pos[1]-this.offsetY-this.shakeY)/this.tileSize];
 //        return pos;
     }
-    setupCanvas(){
-        this.canvas = document.querySelector(this.canvasName);
+    updateWindowSize() {
+        this.x = 0;
+        this.y = 0;
+        this.w = window.innerWidth;
+        this.h = window.innerHeight;
+        this.tileSize = this.getTileScale();
+        this.fitMaptoTileSize(this.tileSize);
+        this.setupCanvas();
+        screen.orientation.unlock();
 
-        this.canvas.width = window.innerWidth; //this.tileSize*(this.dimW);
-        this.canvas.height = window.innerHeight; //this.tileSize*(this.dimH);
-        this.canvas.style.width = this.canvas.width + 'px';
-        this.canvas.style.height = this.canvas.height + 'px';
-
-        this.ctx = this.canvas.getContext("2d");
-        this.ctx.imageSmoothingEnabled = false;
-
-        this.offsetX = Math.floor((window.innerWidth - this.tileSize*this.dimW)/2);
-        this.offsetY =  Math.floor((window.innerHeight - this.tileSize*this.dimH)/2);
+        this._needsLayout = true;
     }
     getTileScale() {
         let sh = this.h;
         let sw = this.w;
         let scale;
         scale = Math.min(sh/(this.prefDimH)/this.pixelSize,sw/(this.prefDimW)/this.pixelSize);
-        if(!this.fillScreen) { //pixel perfect scaling
+        if(this.integerTileSize) { //pixel perfect scaling
             scale = Math.floor(scale);
         }    
         return scale*this.pixelSize;
     }
     fitMaptoTileSize(scale) {
-        let sh = window.innerHeight;
-        let sw = window.innerWidth;
-        this.dimH = Math.floor(sh/scale);
-        this.dimW = Math.floor(sw/scale);    
+        let sh = this.h;
+        let sw = this.w;
+        if(this.exactDimensions) {
+            this.dimH = this.prefDimH;
+            this.dimW = this.prefDimW;        
+
+        } else {
+            this.dimH = Math.floor(sh/scale);
+            this.dimW = Math.floor(sw/scale);        
+        }
+    }
+    setupCanvas(){
+        this.canvas = document.querySelector(this.canvasName);
+
+        this.canvas.width = this.w; //this.tileSize*(this.dimW);
+        this.canvas.height = this.h; //this.tileSize*(this.dimH);
+        this.canvas.style.width = this.canvas.width + 'px';
+        this.canvas.style.height = this.canvas.height + 'px';
+
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.imageSmoothingEnabled = false;
+
+        this.offsetX = Math.floor((this.w - this.tileSize*this.dimW)/2);
+        this.offsetY =  Math.floor((this.h - this.tileSize*this.dimH)/2);
     }
     applyHints(c) {
         let hints = c.hints;
@@ -184,18 +203,6 @@ class App extends Widget {
         if('center_y' in hints && hints['center_y']!=null) c.center_y = hints['center_y']*this.dimH;
         if('right' in hints && hints['right']!=null) c.right = hints['right']*this.dimW;
         if('bottom' in hints && hints['bottom']!=null) c.bottom = hints['bottom']*this.dimH;
-    }
-    updateWindowSize() {
-        this.x = 0;
-        this.y = 0;
-        this.w = window.innerHeight;
-        this.h = window.innerWidth;
-        this.tileSize = this.getTileScale();
-        this.fitMaptoTileSize(this.tileSize);
-        this.setupCanvas();
-        screen.orientation.unlock();
-
-        this._needsLayout = true;
     }
     screenShake() {
         if(this.shakeAmount){

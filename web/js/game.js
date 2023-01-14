@@ -12,31 +12,31 @@ class Game extends App {
     map_card_size = [5,7];
     orientation = 'horizontal';
     debugMode = true;
+    integerTileSize = false;
     constructor() {
         super();
     }
     setupWidgets() {
-        let r = new Rect();
-        this.activecardsplay = new ActiveCardSplay(r, {text: 'ACTIVE\nCARD'});
-        this.playertraits = new PlayerTraits(r, {text: 'PLAYER\nTRAITS'});
-        this.playerdeck = new PlayerDeck(r, {text: 'PLAYER\nDECK'});
-        this.playerdiscard = new PlayerDiscard(r, {text: 'PLAYER\nDISCARD'});
-        this.loot1 = new LootDeck(r, {text: 'LOOT1'});
-        this.loot2 = new LootDeck(r, {text: 'LOOT2'});
-        this.loot3 = new LootDeck(r, {text: 'LOOT3'});
-        this.skilldeck = new SkillDeck(r, {text: 'SKILLS'});
-        this.exhausted = new Exhausted(r, {text: 'EXHAUSTED\nCARDS PILE'});
-        this.marketdeck = new MarketDeck(r, {text: 'MARKET\nDECK'});
-        this.eventdeck = new EventDeck(r, {text: 'EVENT\nDECK'});
-        this.eventdiscard = new EventDiscard(r, {text: 'EVENT\nDISCARD'});
-        this.hand = new Hand(r, {text: 'PLAYER\nHAND'});
-        this.sv = new ScrollView(r, {zoom: 1});
-        this.board = new Board([0,0,this.map_card_size[0]*this.map_size[0], 
-            this.map_card_size[1]*this.map_size[1]],
-            {numX: this.map_size[0]});
-        this.playarea = new Widget([0,0,this.map_card_size[0]*this.map_size[0], 
-            this.map_card_size[1]*this.map_size[1]]);
-        this.playerprompt = new PlayerPrompt(r, { fontSize: 0.5,
+        this.activecardsplay = new ActiveCardSplay({text: 'ACTIVE\nCARD'});
+        this.playertraits = new PlayerTraits({text: 'PLAYER\nTRAITS'});
+        this.playerdeck = new PlayerDeck({text: 'PLAYER\nDECK'});
+        this.playerdiscard = new PlayerDiscard({text: 'PLAYER\nDISCARD'});
+        this.loot1 = new LootDeck({text: 'LOOT1'});
+        this.loot2 = new LootDeck({text: 'LOOT2'});
+        this.loot3 = new LootDeck({text: 'LOOT3'});
+        this.skilldeck = new SkillDeck({text: 'SKILLS'});
+        this.exhausted = new Exhausted({text: 'EXHAUSTED\nCARDS PILE'});
+        this.marketdeck = new MarketDeck({text: 'MARKET\nDECK'});
+        this.eventdeck = new EventDeck({text: 'EVENT\nDECK'});
+        this.eventdiscard = new EventDiscard({text: 'EVENT\nDISCARD'});
+        this.hand = new Hand({text: 'PLAYER\nHAND'});
+        this.sv = new ScrollView({zoom: 1});
+        this.board = new Board({numX: this.map_size[0], 
+            rect: [0,0,this.map_card_size[0]*this.map_size[0], 
+            this.map_card_size[1]*this.map_size[1]]});
+        this.playarea = new Widget({rect:[0,0,this.map_card_size[0]*this.map_size[0], 
+            this.map_card_size[1]*this.map_size[1]]});
+        this.playerprompt = new PlayerPrompt({ fontSize: 0.5,
                 text: 'Tap the event deck to begin.'});
 
         this.sv.addChild(this.playarea);

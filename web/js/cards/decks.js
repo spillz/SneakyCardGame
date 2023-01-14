@@ -1,7 +1,7 @@
 function *repeatInstantiate(list, reps=1) {
 	for(let i of list) {
 		for(let r=0 ; r<reps; r++) {
-			yield new i(new Rect());
+			yield new i();
 		}
 	}
 }

@@ -2,7 +2,7 @@ class Token extends Widget {
 	map_pos = [0,0];
 	off = [0,0];
 	constructor(map_pos) {
-		super(new Rect([0,0,1,1]), {});
+		super();
 		this.off = new Vec2([0,0]);
 		this.map_pos = new Vec2(map_pos);
 		this.bind('off', (event, obj, data) => this.update_rect(event, obj, data));

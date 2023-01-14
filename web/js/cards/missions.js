@@ -7,8 +7,8 @@ class Mission extends BoxLayout {
 	constructor(props) {
         super();
 		this.children = [
-			new Label(null, {align:'left', hints:{h:null}, text:(mission)=>mission!=null?mission.title:'', fontSize:0.75}),
-			new Label(null, {align:'left', wrap:true, hints:{h:null}, text:(mission)=>mission!=null?mission.text:'', fontSize: 0.5})
+			new Label({align:'left', hints:{h:null}, text:(mission)=>mission!=null?mission.title:'', fontSize:0.75}),
+			new Label({align:'left', wrap:true, hints:{h:null}, text:(mission)=>mission!=null?mission.text:'', fontSize: 0.5})
 		]
 	}
 	updateProps() {
@@ -42,7 +42,7 @@ class ContactMission extends Mission {
 		for(var y = 0; y < app.map_size [1]; y++) {
 			for(var x = 0; x < app.map_size [0]; x++) {
 				var lev = (1 + x / 2) + (x >= lev_thresh) * lev_add_on;
-				map_cards.push(new CityMap(new Rect([0,0,w,h]),{cardLevel: lev}));
+				map_cards.push(new CityMap({rect: [0,0,w,h], cardLevel: lev}));
 			}
 		}
 		return map_cards;
