@@ -72,8 +72,9 @@ class TargetToken extends Token {
 	draw() {
 		let app = App.get();
 		let ctx = app.ctx;
-		let color = colorString([0.1,0.3,0.8]);
-		let color2 = colorString([0.4,0.5,0.9]);
+		const color = colorString([0.1,0.3,0.8]);
+		const color2 = colorString([0.4,0.5,0.9]);
+		const color3 = colorString([0.7,0.75,0.95]);
 		let r = this.rect;
 		var x = r.x + (r.w / 5);
 		var y = r.y + (r.h / 5);
@@ -102,6 +103,8 @@ class TargetToken extends Token {
 		ctx.moveTo(x + 3*w/4, y); //line bottom right diag
 		ctx.lineTo(x + w/2, y + h);
 		ctx.stroke();	
+
+		drawText2(ctx, this.lock_level, this.h/2, 'center', 'middle', this.rect, color3);
 
 	}
 }

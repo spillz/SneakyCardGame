@@ -316,16 +316,16 @@ class Card extends Widget {
             let r1 = new Rect(this);
             let r2 = new Rect(this);
             let r3 = new Rect(this);
-            r1.h = this.h/5;
+            r1.h = this.h/6;
             r2.y += r1.h;
             r2.h -= 2*r1.h;
 			r3.y += r1.h+r2.h;
-			r3.h = this.h/5;
+			r3.h = this.h/6;
 			let app=App.get();
-            drawWrappedText(app.ctx, this.name, (this.h/12), true, r1, this.nameColor);
-            drawWrappedText(app.ctx, this.text, (this.h/14), true, r2, this.textColor);
+            drawWrappedText2(app.ctx, this.name, (this.h/12), 'center', 'middle', r1, this.nameColor);
+            drawWrappedText2(app.ctx, this.text, (this.h/14), 'center', 'middle', r2, this.textColor);
 			if(this.lowerText!=null) {
-				drawWrappedText(app.ctx, this.lowerText, (this.h/14), true, r3, this.lowerTextColor);
+				drawWrappedText2(app.ctx, this.lowerText, (this.h/14), 'center', 'middle', r3, this.lowerTextColor);
 			}  
         } else {
 			this.bgColor = this.bgColorDown;
@@ -334,7 +334,7 @@ class Card extends Widget {
 			if(this.backText!=null) {
 				let app = App.get();
 				let r1 = new Rect(this);
-				drawWrappedText(app.ctx, this.backText, (this.h/12), true, r1, this.backTextColor);
+				drawWrappedText2(app.ctx, this.backText, (this.h/12), 'center', 'middle', r1, this.backTextColor);
 			}
         }
     }

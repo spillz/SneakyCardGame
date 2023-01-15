@@ -25,25 +25,30 @@ function drawText2(ctx, text, size, halign, valign, rect, color){
     ctx.fillStyle = color;
     ctx.font = (size>=1? size : Math.ceil(size/scale)) + "px monospace";
     let textX = rect.x;
-    let textY = rect.y+rect.h-(rect.h-size)/2;
+    let metrics = ctx.measureText(text);
+    let textY = rect.y;
     switch(halign){
         case 'left':
             break;
         case 'center':
-            textX += (rect.w-scale*ctx.measureText(text).width)/2;
+            textX += (rect.w-scale*metrics.width)/2;
             break;
         case 'right':
+            textX += (rect.w-scale*metrics.width);
             break;
     }
     switch(valign) {
         case 'top':
-            textY+=0;
+            ctx.textBaseline = 'top';
+            textY += 0;
             break;
         case 'middle':
-            textY+=0;
+            ctx.textBaseline = 'middle';
+            textY += rect.h/2;
             break;
         case 'bottom':
-            textY+=0;
+            ctx.textBaseline = 'bottom';
+            textY += rect.h;
             break;
     }
     ctx.fillText(text, textX/scale, textY/scale)
@@ -101,48 +106,93 @@ function sizeWrappedText(ctx, text, size, centered, rect, color){
         h += size;
     }
     if(size<1) ctx.restore();
-    return h+size;
+    return h;
+//    return h+size;
 }
+
+function drawWrappedText2(ctx, text, size, halign, valign, rect, color){
+    //TODO: handle explicit newlines in text
+    let scale = 1;
+    if(size<1) {
+        scale = 0.01;
+        ctx.save();
+        ctx.scale(scale,scale);
+    }
+    ctx.fillStyle = color;
+    ctx.font = (size>=1? size : Math.ceil(size/scale)) + "px monospace";
+
+    let y = rect.y;
+
+    out_text = [];
+    while(text!="") {
+        let x = rect.x;
+        let rowsNeeded = scale*ctx.measureText(text).width / rect.w;
+        let maxletters = Math.floor(text.length/rowsNeeded);
+        let substr = text.substring(0,maxletters);
+        let lastIndex = substr.lastIndexOf(" ");
+        if(lastIndex<0 || substr.length==text.length) {
+            lastIndex = substr.length;
+        }
+        substr = substr.substring(0, lastIndex);
+        text = text.substring(lastIndex+1);
+
+        let w = scale*ctx.measureText(substr).width;
+        switch(halign){
+            case 'left':
+                break;
+            case 'center':
+                x += (rect.w-w)/2;
+                break;
+            case 'right':
+                x += (rect.w-w);
+                break;
+        }
+        out_text.push([substr, x/scale, y/scale]);
+        y += size;
+    }
+    //TODO: Optionally cache this data instead of drawing immediately 
+    //(or draw to a backbuffer and cache that instead)
+    let h = y-rect.y;
+    let off = 0;
+    switch(valign) {
+        case 'top':
+            ctx.textBaseline = 'top';
+            off = 0
+            break;
+        case 'middle':
+            ctx.textBaseline = 'middle';
+            off = (rect.h-h)/2 + size/2;
+            break;
+        case 'bottom':
+            ctx.textBaseline = 'bottom';
+            off = (rect.h-h) + size;
+    }
+    for(let tdat of out_text) {
+        ctx.fillText(tdat[0],tdat[1],tdat[2]+off/scale);
+    }
+    if(size<1) {
+        ctx.restore();
+    }
+
+
+}
+
 
 function drawWrappedText(ctx, text, size, centered, rect, color){
     //TODO: handle explicit newlines in text
+    let scale = 1;
     if(size<1) {
+        scale = 0.01;
         ctx.save();
-        ctx.scale(0.01,0.01);
-        ctx.fillStyle = color;
-        ctx.font = Math.ceil(size*100) + "px monospace";
-
-        let y = rect.y+size;
-        while(text!="") {
-            let x = rect.x;
-            let rowsNeeded = 0.01*ctx.measureText(text).width / rect.w;
-            let maxletters = Math.floor(text.length/rowsNeeded);
-            let substr = text.substring(0,maxletters);
-            let lastIndex = substr.lastIndexOf(" ");
-            if(lastIndex<0 || substr.length==text.length) {
-                lastIndex = substr.length;
-            }
-            substr = substr.substring(0, lastIndex);
-            text = text.substring(lastIndex+1);
-    
-            if(centered) {
-                let w = 0.01*ctx.measureText(substr).width;
-                x = x + (rect.w - w)/2
-            }
-            ctx.fillText(substr, x*100, y*100);
-    
-            y += size;
-        }    
-        ctx.restore();
-        return;
+        ctx.scale(scale,scale);
     }
     ctx.fillStyle = color;
-    ctx.font = size + "px monospace";
+    ctx.font = (size>=1? size : Math.ceil(size/scale)) + "px monospace";
 
     let y = rect.y+size;
     while(text!="") {
         let x = rect.x;
-        let rowsNeeded = ctx.measureText(text).width / rect.w;
+        let rowsNeeded = scale*ctx.measureText(text).width / rect.w;
         let maxletters = Math.floor(text.length/rowsNeeded);
         let substr = text.substring(0,maxletters);
         let lastIndex = substr.lastIndexOf(" ");
@@ -153,11 +203,15 @@ function drawWrappedText(ctx, text, size, centered, rect, color){
         text = text.substring(lastIndex+1);
 
         if(centered) {
-            let w = ctx.measureText(substr).width;
+            let w = scale*ctx.measureText(substr).width;
             x = x + (rect.w - w)/2
         }
-        ctx.fillText(substr, x, y);
+        ctx.fillText(substr, x/scale, y/scale);
 
         y += size;
     }
+    if(size<1) {
+        ctx.restore();
+    }
+
 }

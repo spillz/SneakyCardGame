@@ -339,14 +339,10 @@ class Label extends Widget {
     text = '';
     wrap = false;
     align = 'center';
+    valign = 'middle';
     color = "white";
     constructor(properties) {
         super(...arguments);
-        // this.text = '';
-        // this.fontSize = null;
-        // this.wrap = false;
-        // this.align = 'center';
-        // this.color = "white";
         this.updateProperties(properties)
         }
     layoutChildren() {
@@ -363,9 +359,9 @@ class Label extends Widget {
         let app = App.get();
         let fontSize = this.fontSize==null? this.h/2 : this.fontSize;
         if(this.wrap) {
-            drawWrappedText(app.ctx, this.text, fontSize, this.align=="center", r, this.color);
+            drawWrappedText2(app.ctx, this.text, fontSize, this.align, this.valign, r, this.color);
         } else {
-            drawText(app.ctx, this.text, fontSize, this.align=="center", r, this.color);
+            drawText2(app.ctx, this.text, fontSize, this.align, this.valign, r, this.color);
         }   
     }
 }

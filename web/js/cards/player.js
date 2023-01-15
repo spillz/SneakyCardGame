@@ -136,9 +136,9 @@ class BasicArrow extends StartPlayerCard {
 
 class BasicLockpick extends StartPlayerCard {
     name = 'BASIC LOCKPICK';
-    text = 'Lockpick 1[+1]';
+    text = 'Lockpick 0.5[+0.5]';
 	get_actions() {
-		return {'LOCKPICK 1[+1]': new LockpickAction(this, {base_allowance: 1})}
+		return {'LOCKPICK 0.5[+0.5]': new LockpickAction(this, {base_allowance: 1})}
 	}
 }
 

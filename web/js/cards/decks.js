@@ -35,8 +35,8 @@ function make_market_cards() {
 }
 
 function make_player_cards() {
-	return [...repeatInstantiate([BasicMove],4), ...repeatInstantiate([BasicAttack, BasicClimb, BasicSneak, 
-		BasicKnockout, BasicKnockout, BasicArrow], 1)];
+	return [...repeatInstantiate([BasicMove],3), ...repeatInstantiate([BasicAttack, BasicClimb, BasicSneak, 
+		BasicKnockout, BasicKnockout, BasicArrow, BasicLockpick], 1)];
 }
 
 function make_trait_cards() {
