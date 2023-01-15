@@ -65,7 +65,7 @@ class PlayerToken extends Token {
 }
 
 class TargetToken extends Token {
-	lock_level = 1;
+	lock_level = 2;
 	loot_level = 1;
 	has_loot = true;
 	picked = false;

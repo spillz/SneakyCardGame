@@ -18,7 +18,7 @@ class SkillCard extends PlayerCard {
 
 class TreasureCard extends LootCard {
     name = 'TREASURE';
-    text = 'BUY 1[+1]: Spend 1 crown in the market';
+    text = 'BUY 1[+1]: Spend 1 crown in an adjacent market';
 	get_actions() {
 		return {'BUY 1[+1]': new MarketAction(this, {base_allowance: 1, value_per_card: 1, exhaust_on_use: this})}
 	}
@@ -26,9 +26,9 @@ class TreasureCard extends LootCard {
 
 class SkeletonKey extends LootCard {
     name = 'SKELETON KEY';
-    text = 'LOCKPICK 4[+1]. Draw loot cards equal to the lockpick value minus the lock level and keep 1, discard the rest. Exhausts after use.';
+    text = 'UNLOCK 4[+1]. Draw loot cards equal to the lockpick value minus the lock level and keep 1, discard the rest. Exhausts after use.';
 	get_actions() {
-		return {'LOCKPICK 4[+1]': new LockpickAction(this, {base_allowance: 4, value_per_card: 1, exhaust_on_use: this})}
+		return {'UNLOCK 4[+1]': new UnlockAction(this, {base_allowance: 4, value_per_card: 1, exhaust_on_use: this})}
 	}
 }
 
@@ -135,10 +135,10 @@ class BasicArrow extends StartPlayerCard {
 }
 
 class BasicLockpick extends StartPlayerCard {
-    name = 'BASIC LOCKPICK';
-    text = 'Lockpick 0.5[+0.5]';
+    name = 'RUSTY LOCKPICK';
+    text = 'Unlock 0.5[+0.5]';
 	get_actions() {
-		return {'LOCKPICK 0.5[+0.5]': new LockpickAction(this, {base_allowance: 1})}
+		return {'UNLOCK 0.5[+0.5]': new UnlockAction(this, {base_allowance: 0.5, value_per_card: 0.5})}
 	}
 }
 
@@ -191,9 +191,9 @@ class EfficientArrow extends SkillCard {
 }
 
 class EfficientLockpick extends SkillCard {
-    name = 'LOCKPICK';
-    text = 'Lockpick 2[+1]';
+    name = "TINKER'S LOCKPICK";
+    text = 'Unlock 2[+1]';
 	get_actions() {
-		return {'LOCKPICK 2[+1]': new LockpickAction(this, {base_allowance: 2})}
+		return {'UNLOCK 2[+1]': new UnlockAction(this, {base_allowance: 2})}
 	}
 }

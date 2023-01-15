@@ -464,7 +464,7 @@ class DimmerAction extends PlayerAction {
 	}
 }
 
-class LockpickAction extends PlayerAction {
+class UnlockAction extends PlayerAction {
 	base_allowance = 1;
 	can_loot = true;
 	max_loot = 3;
@@ -487,7 +487,7 @@ class LockpickAction extends PlayerAction {
 			let target = [...board.iter_tokens('T')].filter(t=>arrEq(t.map_pos,obj.map_pos));
 			if(target.length > 0) {
 				let t0 = target[0];
-				let pick = this.value_allowance();
+				let pick = this.rounded_remain();
 				board.alert_nearby_guards(this.base_noise);
 				if(pick >= t0.lock_level) {
 					t0.picked = true;
@@ -524,14 +524,19 @@ class LockpickAction extends PlayerAction {
 				board.map_choices = move_choices;
 			}
 			else if(!board.building_types.includes(board [board.active_player_token.map_pos])) {
-				let target_choices = [...board.iter_targets()].filter(t=>adist(p.map_pos,t)==1);
+				let target_choices = [...board.iter_tokens('T')]
+						.filter(t=>adist(p.map_pos,t.map_pos)==1 && this.rounded_remain()>=t.lock_level)
+						.map(t=>t.map_pos);
 				let move_choices = [];
-				for(var b of board.iter_types_in_range(p.map_pos, 'B', 1)) {
-					for(var m of board.iter_types_in_range(b, board.path_types, 1)) {
-						if(adist(p.map_pos, m) >= 1) {
-							move_choices.push(m);
+				if(this.rounded_remain()>1) {
+					for(var b of board.iter_types_in_range(p.map_pos, 'B', 1)) {
+						if([...board.iter_tokens('T')].find(t=>arrEq(b,t.map_pos))) continue;
+						for(var m of board.iter_types_in_range(b, board.path_types, 1)) {
+							if(adist(p.map_pos, m) >= 1) {
+								move_choices.push(m);
+							}
 						}
-					}
+					}	
 				}
 				target_choices = [...target_choices, ...move_choices];
 				let map_choices = target_choices.map(t=>board.make_choice(t, this, set_choice_type(t, p.map_pos, board, 3)));
@@ -546,7 +551,7 @@ class LockpickAction extends PlayerAction {
 				playarea.playerprompt.text = `Select an exit.`;
 			}
 			else {
-				playarea.playerprompt.text = `Lockpick ${this.rounded_remain()}: Select a target to loot or a destination. Add a handcard for [+${this.value_per_card}] loot choice.`;
+				playarea.playerprompt.text = `Unlock ${this.rounded_remain()}: Select a target to loot or a destination. Add a handcard for [+${this.value_per_card}] loot choice.`;
 			}
 		}
 	}

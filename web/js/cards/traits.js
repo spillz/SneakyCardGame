@@ -68,13 +68,13 @@ class SneakTrait extends TraitCard {
 
 class LootTrait extends TraitCard {
     name = 'LOOTER';
-    text = 'Once per round: play hand card as LOCKPICK 1[+1]';
+    text = 'Once per round: play hand card as UNLOCK 1[+1]';
 	get_actions_for_card(card, playarea) {
 		if(this.tapped || this.exhausted) {
 			return {};
 		}
 		else {
-			return {'LOCKPICK 1[+1]': new LockpickAction(card, {base_allowance: 1, tap_on_use: true})};
+			return {'UNLOCK 1[+1]': new UnlockAction(card, {base_allowance: 1, tap_on_use: true})};
 		}
 	}
 }
