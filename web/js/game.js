@@ -53,18 +53,20 @@ class Game extends App {
         this.action_selector = null;
         this.stats = new Stats();
 
-        this.playercards = [...make_player_cards()];
+        this.makeDecks();
+        this.setupNewGame();
+        this.stats.popup();
+    }
+    makeDecks(playercards = true) {
+        if(playercards) this.playercards = [...make_player_cards()];
         this.traitcards = make_trait_cards();
         this.lootcards1 = make_loot_cards(1);
         this.lootcards2 = make_loot_cards(2);
         this.lootcards3 = make_loot_cards(3);
         this.marketcards = make_market_cards();
         this.skillcards = make_skill_cards();
-
-        this.setupNewGame();
-        this.stats.popup();
     }
-    clear_state(self) {
+    clearState() {
         if(this.cardselector!=null) {
             this.cardselector.close();
             this.cardselector = null;
@@ -77,7 +79,8 @@ class Game extends App {
         this.board.map_choices=[]
     }
     setupNewGame() {
-        this.clear_state();
+        this.clearState();
+        this.makeDecks();
         this.stats.next.disable=true;
         this.stats.title.text = 'MISSION IN PROGRESS';
         this.skilldeck.select_draw(2,4);
@@ -114,7 +117,8 @@ class Game extends App {
 
     }
     setupNextMission() {
-        this.clear_state();
+        this.clearState();
+        this.makeDecks(false);
         this.stats.next.disable=true;
         this.stats.title.text = 'MISSION IN PROGRESS';
         this.skilldeck.select_draw(2,4);
@@ -151,7 +155,7 @@ class Game extends App {
         this.board.token_update();
     }
     missionComplete() {
-        this.clear_state();
+        this.clearState();
         this.stats.next.disable=false;
         this.stats.popup();
         this.hand.can_draw=false;
@@ -160,7 +164,7 @@ class Game extends App {
         this.stats.title.text = 'MISSION COMPLETED';
     }
     missionFailed() {
-        this.clear_state();
+        this.clearState();
         this.stats.next.disable=true;
         this.stats.popup();
         this.hand.can_draw=false;
