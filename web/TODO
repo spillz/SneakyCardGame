@@ -1,16 +1,18 @@
-Sneak card action (slip through the light)
-Fix Screen Layout (max screen real estate, prevent card overlaps and make sure cards have readable headers)
 Fix the core stats (contacts, possibly kills are inaccurate)
-Fix the placeholder player token icon and improve the guard tokens
-Fix market action sometimes not triggering with Treasure card
+Fix the timing of map choice display when cards are being offered
+Mission completion earns skill cards (pick 1 of 2 or 3)
+Ability to see discards (a button on the screen somewhere)
+More detailed card text [partial fixed, add short+long version + tooltips]
+DrawText supports fonts, improve wrapping logic
+Label widget (and possibly other widgets) -- cache the drawn widget to speed up rendering
+Fix the Patrol logic
+Make sure cards have readable headers
 
-Zoom: center on mouse/touch pos [zoom when centered a little funky]
-Mousewheel: Ctrl+ to zoom, shift+ to horiz scroll, unmod to vert scroll
+Base some range checks on map card distances not grid spaces (e.g., who player is visible too)
+Scrollview Zoom: center on mouse/touch pos [zoom when centered a little funky]
 Catch page unload
 Load/save game in progress
 Improve the mission menu and stats screen. More info etc.
-More detailed card text [partial fixed]
-Strip rect arg from all widget constructors and put in properties instead
 TextEntry widget using DOM Input
 Centering card splay
 Tutorial
@@ -36,6 +38,11 @@ Keyboard support
 Local co-op
 Network co-op
 
+Fix Screen Layout (max screen real estate, prevent card overlaps) [DONE 1/16/22]
+Strip rect arg from all widget constructors and put in properties instead [DONE 1/14/22]
+Mousewheel: Ctrl+ to zoom, shift+ to horiz scroll, unmod to vert scroll [DONE 1/12/22]
+Fix market action sometimes not triggering with Treasure card [DONE 1/12/22]
+Sneak card action (slip through the light) [done 1/12/22]
 BUG: fix remaining cards (e.g., water arrow) [DONE 1/5/22]
 BUG: scroll to player [fixed 1/5/22]
 BUG: discard used cards if partially complete action cancelled [fixed 1/4/22]
