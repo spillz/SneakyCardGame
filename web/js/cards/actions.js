@@ -528,7 +528,7 @@ class UnlockAction extends PlayerAction {
 						.filter(t=>adist(p.map_pos,t.map_pos)==1 && this.rounded_remain()>=t.lock_level)
 						.map(t=>t.map_pos);
 				let move_choices = [];
-				if(this.rounded_remain()>1) {
+				if(this.rounded_remain()>=1) {
 					for(var b of board.iter_types_in_range(p.map_pos, 'B', 1)) {
 						if([...board.iter_tokens('T')].find(t=>arrEq(b,t.map_pos))) continue;
 						for(var m of board.iter_types_in_range(b, board.path_types, 1)) {
@@ -543,7 +543,7 @@ class UnlockAction extends PlayerAction {
 				board.map_choices = map_choices;
 			}
 		}
-		if(board.map_choices.length < 1 && this.spent != 0) {
+		if(board.map_choices.length < 1 && this.spent > 0) {
 			playarea.activecardsplay.discard_used(this.cards_unused(), this.noise_made(), this.exhaust_on_use, this.tap_on_use);
 		}
 		else {
