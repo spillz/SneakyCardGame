@@ -183,14 +183,29 @@ class Game extends App {
  
         let W = this.dimW;
         let H = this.dimH;
+        this.vt_cards = f(H/4.5); //how many cards we need to fit vertically in a horizontal orientation screen
         this.hz_cards = f(W/5); //how many cards we need to fit horizontally in a vertical orientation screen
-        this.vt_cards = f(H/4.2); //how many cards we need to fit vertically in a horizontal orientation screen
         let cgx = this.map_card_grid_size[0];
         let cgy = this.map_card_grid_size[1];
         this.card_aspect_ratio = cgx/cgy;
 
-        this.card_size = H>W ? [this.hz_cards,this.hz_cards/this.card_aspect_ratio] : 
-                          [this.vt_cards*this.card_aspect_ratio,this.vt_cards];
+        let card_height = H/4.5;
+        let card_width = card_height*this.card_aspect_ratio;
+        let needed_width = card_width * (5+12/5)
+        let orientation = 'horizontal';
+        if(W<needed_width) {
+            orientation = 'vertical';
+            card_width = W/5;
+            card_height = card_width/this.card_aspect_ratio;
+            let needed_height = card_height*6;
+            if(H<needed_height) {
+                card_height = H/6;
+                card_width = card_height*this.card_aspect_ratio;
+            }
+        }
+        this.orientation = orientation;
+        this.card_size = [card_width, card_height];
+
         let cw,ch;
         [cw,ch] = this.card_size;
                                       
@@ -199,8 +214,9 @@ class Game extends App {
         this.map_scale = Math.max(this.scroll_size[1]/(3*ch), 
                              this.scroll_size[0]/(6*cw));
         this.map_card_size = [5,7];
-        // this.map_card_size = [cw*this.map_scale*f(this.zoom/cgx)*cgx, 
-        //                 ch*this.map_scale*f(this.zoom/cgy)*cgy];
+
+        //TODO: can tweak this a bit to set a minimum comfortable zoom level
+        this.sv.zoom = clamp(orientation=='horizontal'? this.scroll_size[0]/this.board.w:this.scroll_size[1]/this.board.h,1,5);
  
         //Layout the widgets
         if(W>H) { //Wide display
