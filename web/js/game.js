@@ -216,10 +216,11 @@ class Game extends App {
         this.map_card_size = [5,7];
 
         //TODO: can tweak this a bit to set a minimum comfortable zoom level
-        this.sv.zoom = clamp(orientation=='horizontal'? this.scroll_size[0]/this.board.w:this.scroll_size[1]/this.board.h,1,5);
+        this.sv.zoom = clamp(orientation=='horizontal'? 
+            this.scroll_size[0]/this.board.w:this.scroll_size[1]/this.board.h,1,5);
  
         //Layout the widgets
-        if(W>H) { //Wide display
+        if(orientation=='horizontal') { //Wide display
             //TODO: Update all of the names root->this, card_size->cx,cy, height->H, width->W
             this.playerprompt.rect = [0, 0, W, ch/5];
             this.activecardsplay.rect = [W-cw*6/5, H-ch, f(cw*6/5), ch];
@@ -236,7 +237,6 @@ class Game extends App {
             this.eventdiscard.rect = [0, 6*ch/5, f(cw*6/5), ch];
             this.hand.rect = [Math.max(6*cw/5, (W-cw*6)/2), H-ch, Math.min(W-12*cw/5,cw*6),ch];
             this.sv.rect = [f(cw*6/5), H-ch-this.scroll_size[1], ...this.scroll_size];
-            this.orientation = 'horizontal';
         } else { //Tall display
             this.playerprompt.rect = [0, 0, W, ch/5];
             this.activecardsplay.rect = [W-6*cw/5, H-2*ch, f(cw*6/5), ch];
@@ -253,7 +253,6 @@ class Game extends App {
             this.eventdiscard.rect = [cw*6/5, ch/5, f(cw*6/5), ch];
             this.hand.rect = [0, H-ch, Math.min(W,cw*6),ch];
             this.sv.rect = [0, H-2*ch-this.scroll_size[1], ...this.scroll_size];
-            this.orientation = 'vertical';
         }
         //TODO: Not ideal place to put this but it serves as an initializer for some of the board state
 		this.board.token_update();
