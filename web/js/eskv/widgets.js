@@ -94,9 +94,6 @@ class Widget extends Rect {
                 let objs = args.map(a=>app.findById(a));
                 let obmap = {}
                 for(let a of args) {
-                    if(a=='app') {
-                        console.log('app');
-                    }
                     obmap[a] = app.findById(a);
                 }
                 //Bind to all object properties in the RHS of the function
@@ -818,7 +815,6 @@ class ScrollView extends Widget {
             let zoom = this.zoom / (1 + wheel.deltaY/app.h);
             let minZoom = Math.min(this.w/this.children[0].w, this.h/this.children[0].h)
             this.zoom = Math.max(zoom, minZoom);
-            console.log('zoom',this.zoom);
     
             let moc = touch.local(this);
             let mx = moc.x;
@@ -832,11 +828,9 @@ class ScrollView extends Widget {
         else if(app.inputHandler.isKeyDown("Shift")) {
             this.scrollX += this.children[0].w * (wheel.deltaY/app.w);
             if(this.scrollX!=this._scrollX) this.scrollX = this._scrollX;
-            console.log('scrollX',this.scrollX);
         } else {
             this.scrollY += this.children[0].h * (wheel.deltaY/app.h);
             if(this.scrollY!=this._scrollY) this.scrollY = this._scrollY;
-            console.log('scrollY', this.scrollY);
         }
 
     }
@@ -859,7 +853,7 @@ class ScrollView extends Widget {
 class ModalView extends BoxLayout {
     closeOnTouchOutside = true;
     bgColor = 'slate';
-    outlineColor = 'gray'
+    outlineColor = 'gray';
     constructor(properties=null) {
         super();
         this.updateProperties(properties);

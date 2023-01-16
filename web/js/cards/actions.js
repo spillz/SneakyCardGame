@@ -495,7 +495,7 @@ class UnlockAction extends PlayerAction {
 					this.spent = pick;
 					if(t0.has_loot) {
 						let loot_decks = [playarea.loot1, playarea.loot2, playarea.loot3];
-						loot_decks [t0.loot_level - 1].select_draw(1, (1 + pick) - t0.lock_level);
+						loot_decks[t0.loot_level - 1].select_draw(1, (1 + pick) - t0.lock_level);
 						this.loot_pos = t0.map_pos;
 					}
 				}

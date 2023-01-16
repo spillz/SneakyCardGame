@@ -8,7 +8,6 @@ class Game extends App {
     vt_cards = 1; //how many cards we need to fit vertically in a horizontal orientation screen
     card_size = [4,6];
     scroll_size = [10,10];
-    map_scale = 1;
     map_card_size = [5,7];
     orientation = 'horizontal';
     debugMode = true;
@@ -83,7 +82,6 @@ class Game extends App {
         this.makeDecks();
         this.stats.next.disable=true;
         this.stats.title.text = 'MISSION IN PROGRESS';
-        this.skilldeck.select_draw(2,4);
 
         this.stats.mission = new ContactMission({mission_level:this.stats.missions+1});
         this.board.children = this.stats.mission.setup_map(this);
@@ -100,6 +98,7 @@ class Game extends App {
         this.loot2.children = shuffle(this.lootcards2);
         this.loot3.children = shuffle(this.lootcards3);
         this.marketdeck.children = shuffle(this.marketcards);
+        this.skilldeck.children = shuffle(this.skillcards);
 
         let player = new PlayerToken([0,0]);
 
@@ -121,7 +120,6 @@ class Game extends App {
         this.makeDecks(false);
         this.stats.next.disable=true;
         this.stats.title.text = 'MISSION IN PROGRESS';
-        this.skilldeck.select_draw(2,4);
 
         this.stats.mission = new ContactMission({mission_level:this.stats.missions+1});
         this.board.children = this.stats.mission.setup_map(this);
@@ -139,6 +137,7 @@ class Game extends App {
         this.loot2.children = shuffle(this.lootcards2);
         this.loot3.children = shuffle(this.lootcards3);
         this.marketdeck.children = shuffle(this.marketcards);
+        this.skilldeck.children = shuffle(this.skillcards);
 
         let player = new PlayerToken([0,0]);
 
@@ -153,6 +152,7 @@ class Game extends App {
 
         this.board.scroll_to_player();
         this.board.token_update();
+        this.skilldeck.select_draw();
     }
     missionComplete() {
         this.clearState();
@@ -209,15 +209,9 @@ class Game extends App {
         let cw,ch;
         [cw,ch] = this.card_size;
                                       
-        this.scroll_size = H>W ? [W, H-16*f(ch/5)] : 
+        this.scroll_size = orientation=='vertical' ? [W, H-16*f(ch/5)] : 
                             [W-12*f(cw/5), H-6*f(ch/5)];
-        this.map_scale = Math.max(this.scroll_size[1]/(3*ch), 
-                             this.scroll_size[0]/(6*cw));
         this.map_card_size = [5,7];
-
-        //TODO: can tweak this a bit to set a minimum comfortable zoom level
-        this.sv.zoom = clamp(orientation=='horizontal'? 
-            this.scroll_size[0]/this.board.w:this.scroll_size[1]/this.board.h,1,5);
  
         //Layout the widgets
         if(orientation=='horizontal') { //Wide display
@@ -254,6 +248,11 @@ class Game extends App {
             this.hand.rect = [0, H-ch, Math.min(W,cw*6),ch];
             this.sv.rect = [0, H-2*ch-this.scroll_size[1], ...this.scroll_size];
         }
+
+        //TODO: can tweak this a bit to set a minimum comfortable zoom level
+        this.sv.zoom = clamp(orientation=='horizontal'? 
+            this.scroll_size[0]/this.board.w:this.scroll_size[1]/this.board.h,1,5);
+
         //TODO: Not ideal place to put this but it serves as an initializer for some of the board state
 		this.board.token_update();
         this.board.scroll_to_player();

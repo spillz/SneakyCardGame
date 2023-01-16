@@ -12,7 +12,7 @@ function make_event_cards() {
 
 function make_skill_cards() {
 	return [...repeatInstantiate([EfficientMove, EfficientAttack, EfficientClimb, 
-		EfficientSneak, EfficientKnockout, EfficientArrow, EfficientLockpick], 3)];
+		EfficientSneak, EfficientKnockout, EfficientArrow, EfficientLockpick], 1)];
 }
 
 function make_loot_cards(level=1) {

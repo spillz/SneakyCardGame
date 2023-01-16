@@ -45,6 +45,9 @@ class CardSelector extends ModalView {
     shownCardShift = 0; // #proportion of card width or height to shift when card is selected
 	hints = {center_x:0.5, center_y:0.5} //, w:0.8, h:0.8};
 	prompt = 'Available market cards';
+	id = 'cardselector';
+	closeOnTouchOutside = false;
+	numSelected = 0;
     constructor(cards, properties) { 
 		let app = App.get();
         super({rect:[0, 0, Math.max(cards.length,4)*app.card_size[0], 1.4*app.card_size[1]]});
@@ -68,7 +71,7 @@ class CardSelector extends ModalView {
 			new Button({
 				id: 'button',
 				hints: {center_x:0.5, y:1.2/1.4, w:0.5, h:0.2/1.4},
-				text: this.numToPick==0?'Close':'Confirm',
+				text: (cardselector)=>cardselector.numToPick==0?'Close':'Confirm '+cardselector.numSelected,
 				on_press: (e,o,v) => this.on_press(e,o,v)
 			})
 		]
@@ -103,6 +106,7 @@ class CardSelector extends ModalView {
 			}
 			if(this.numToPick > 1) {
 				let sel = this._cards.children.filter(c=>c.selected);
+				this.numSelected = sel.length;
 				if(sel.length >= this.numToPick) {
 					return true;
 				}
@@ -116,6 +120,8 @@ class CardSelector extends ModalView {
 					else {
 						c.selected = false;
 					}
+					let sel = this._cards.children.filter(c=>c.selected);
+					this.numSelected = sel.length;
 				}
 			}
 		}
@@ -766,7 +772,7 @@ class SkillDeck extends CardSplay {
 			return true;
 		}
 	}
-	select_draw(num_to_pick=2, num_offered=4) {
+	select_draw(num_to_pick=1, num_offered=2) {
 		let app = App.get();
 		var cards = this.children.slice(-num_offered);
 		if(cards.length == 0) {

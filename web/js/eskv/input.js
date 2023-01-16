@@ -119,7 +119,6 @@ class InputHandler {
         ev.preventDefault();
     }
     process_back(ev, name) {
-        console.log(ev, name);
         if(location.hash === "#!/backbutton") {
             history.replaceState(null, document.title, location.pathname);
             this.app.childEmit('back_button', ev)
