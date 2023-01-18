@@ -153,7 +153,10 @@ class App extends Widget {
         this.tileSize = this.getTileScale();
         this.fitMaptoTileSize(this.tileSize);
         this.setupCanvas();
-        screen.orientation.unlock();
+        try {
+            screen.orientation.unlock();
+        } catch(error) {
+        }
 
         this._needsLayout = true;
     }
