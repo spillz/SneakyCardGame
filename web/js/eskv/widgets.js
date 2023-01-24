@@ -12,24 +12,35 @@ class WidgetAnimation {
         this.stack.push([props, duration]);
     }
     update(millis) { //todo: props can be of the form {prop1: 1, prop2: 2, ...} or {prop1: [1,func1], prop2: [2,func2]}
+        //TODO: For some reason, something gets stuck after resize leaving widgets in incorrect final positions
         let targetProps = this.stack[0][0];
         let duration = this.stack[0][1];
         if(this.elapsed==0) {
             this.initProps = {};
             for(let p in targetProps) {
-                this.initProps[p] = this.widget[p];
+                this.initProps[p] = this.widget[p]; //TODO: If the window gets resized these will be out of date
             }
         }
-        let skip = Math.max(this.elapsed+millis-duration,0);
-        this.elapsed = this.elapsed+millis-skip;
+        let skip = this.elapsed+millis-duration;
+        this.elapsed = skip<0 ?this.elapsed+millis:duration;
         let wgt = duration==0? 1:this.elapsed/duration;
-        for(let p in this.initProps) {
-            this.widget[p] = (1-wgt)*this.initProps[p] + wgt*targetProps[p];
-        }
-        if(skip>=1) {
+        if(skip<0) {
+            for(let p in this.initProps) {
+                this.widget[p] = (1-wgt)*this.initProps[p] + wgt*targetProps[p];
+            }    
+        } else {
+            for(let p in this.initProps) {
+                this.widget[p] = targetProps[p];
+            }    
             this.stack = this.stack.slice(1);
             this.elapsed = skip;
             if(this.stack.length==0) this.cancel();
+            else {
+                this.initProps = {};
+                for(let p in this.stack[0][0]) {
+                    this.initProps[p] = this.widget[p];
+                }    
+            }
         }
     }
     start(widget) {

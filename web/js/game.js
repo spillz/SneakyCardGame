@@ -248,6 +248,9 @@ class Game extends App {
             this.hand.rect = [0, H-ch, Math.min(W,cw*6),ch];
             this.sv.rect = [0, H-2*ch-this.scroll_size[1], ...this.scroll_size];
         }
+        //TODO: Animation needs to be cleared after a resize or they may update to old positions.
+        //The question is whether this should live deeper in the system.
+        [...this.iter(true, false)].map(w=>w._animation=null);
 
         //TODO: can tweak this a bit to set a minimum comfortable zoom level
         this.sv.zoom = clamp(orientation=='horizontal'? 
