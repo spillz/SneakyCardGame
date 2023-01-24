@@ -45,7 +45,7 @@ class PatrolEvent extends EventCard {
 			if(gcard != pcard) continue;
 			if(gpos == ppos) continue;
 			var pts = [...gcard.spawns, ...gcard.waypoints];
-            var pt = pts.indexOf(p => arrEq(p, gpos));
+            var pt = pts.findIndex(p => arrEq(p, gpos));
 			if(pt==undefined) pt = 0;
 			else pt = pt<pts.length-1?pt+1:0;
 			g.map_pos = board.get_pos_from_card(gcard, pts[pt]);
