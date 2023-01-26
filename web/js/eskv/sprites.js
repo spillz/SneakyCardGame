@@ -1,3 +1,36 @@
+function drawArrow(ctx,p1,p2,size){
+    ctx.save();
+
+    // var points = edges(ctx,p1,p2);
+    // if (points.length < 2) return 
+    // p1 = points[0], p2=points[points.length-1];
+
+    // Rotate the context to point along the path
+    var dx = p2[0]-p1[0], dy=p2[1]-p1[1], len=Math.sqrt(dx*dx+dy*dy);
+    ctx.translate(p2[0],p2[1]);
+    ctx.rotate(Math.atan2(dy,dx));
+
+    // line
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(-len,0);
+    ctx.closePath();
+    ctx.stroke();
+
+    // arrowhead
+    ctx.beginPath();
+    ctx.moveTo(-3*len/4+size/2,0);
+    ctx.lineTo(-3*len/4-size/2,-size/2);
+    ctx.lineTo(-3*len/4-size/2, size/2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+
+
 class SpriteSheet {
     constructor(src_file, spriteSize=16) {
         this.spriteSize = spriteSize;

@@ -181,19 +181,15 @@ class MapCard extends Widget {
 				if(this.building_types.includes(this.map.get([i+1,j]))) {
 					tr+=this.building_types.includes(this.map.get([i,j+1]));
 					br+=this.building_types.includes(this.map.get([i,j-1]));
-//                if(adj.includes([i+1,j])) {
 					app.ctx.beginPath();
                     app.ctx.moveTo(cx,cy);
                     app.ctx.lineTo(x+s[0], cy);
                     app.ctx.stroke();
-//                    tr += adj.includes([i,j+1]);
-//                    br += adj.includes([i,j-1]);
                 }
                 else {
                     br++;
                     tr++;
                 }
-//                if(adj.includes([i-1,j])) {
 				if(this.building_types.includes(this.map.get([i-1,j]))) {
 					tl+=this.building_types.includes(this.map.get([i,j+1]));
 					bl+=this.building_types.includes(this.map.get([i,j-1]));
@@ -201,14 +197,11 @@ class MapCard extends Widget {
                     app.ctx.moveTo(cx,cy);
                     app.ctx.lineTo(x, cy);
                     app.ctx.stroke();
-                    // tl += adj.includes([i,j+1]);
-                    // bl += adj.includes([i,j-1]);
                 }
                 else {
                     bl++;
                     tl++;
                 }
-//                if(adj.includes([i,j+1])) {
 				if(this.building_types.includes(this.map.get([i,j+1]))) {
 					tr+=this.building_types.includes(this.map.get([i+1,j]));
 					tl+=this.building_types.includes(this.map.get([i-1,j]));
@@ -216,14 +209,11 @@ class MapCard extends Widget {
                     app.ctx.moveTo(cx,cy);
                     app.ctx.lineTo(cx, y+s[1]);
                     app.ctx.stroke();
-                    // tr+=addj,includes([i+1,j]);
-                    // tl+=addj,includes([i-1,j]);
                 }
                 else {
                     tl++;
                     tr++;
                 }
-//                if(adj.includes([i, j - 1])) {
 				if(this.building_types.includes(this.map.get([i,j-1]))) {
 					br+=this.building_types.includes(this.map.get([i+1,j]));
 					bl+=this.building_types.includes(this.map.get([i-1,j]));
@@ -231,8 +221,6 @@ class MapCard extends Widget {
                     app.ctx.moveTo(cx,cy);
                     app.ctx.lineTo(cx, y);
                     app.ctx.stroke();
-//                    br+=adj.includes([i+1,j]);
-//                    bl+=adj.includes([i-1,j]);
                 }
                 else {
                     bl++;
@@ -264,7 +252,6 @@ class MapCard extends Widget {
                 }
             }
         }
-//		app.ctx.lineWidth = 1.0/app.tileSize;
         app.ctx.fillStyle = colorString([0.8,0.8,0.2]);
         for(var [i, j] of this.lights) {
             var x = rr.x + ((i + 0.4) * rr.w) / this.w;
@@ -274,12 +261,14 @@ class MapCard extends Widget {
             app.ctx.fill();    
         }
         app.ctx.fillStyle = colorString([0.9,0.0,0.0]);
+		let patrolPath = [];
         for(var [i, j] of this.spawns) {
             var x = rr.x + ((i + 0.4) * rr.w) / this.w;
             var y = rr.y + ((j + 0.4) * rr.h) / this.h;
 			app.ctx.beginPath();
             app.ctx.rect(x, y, size[0]/5, size[1]/5);
-            app.ctx.fill();    
+            app.ctx.fill();
+			patrolPath.push([x+size[0]/10,y+size[1]/10]);
         }
         app.ctx.fillStyle = colorString([0.6,0.0,0.0]);
         for(var [i, j] of this.waypoints) {
@@ -288,7 +277,15 @@ class MapCard extends Widget {
 			app.ctx.beginPath();
             app.ctx.rect(x, y, size[0]/5, size[1]/5);
             app.ctx.fill();    
+			patrolPath.push([x+size[0]/10,y+size[1]/10]);
         }
+        app.ctx.strokeStyle = colorString([0.4,0.0,0.0]);
+		let p1 = patrolPath[0];
+		for(let p2 of [...patrolPath.slice(1),patrolPath[0]]) {
+			drawArrow(app.ctx, p1, p2, size[0]/5);
+			p1 = p2;
+		}
+
 		if(this.outlineColor!=null) {
 			app.ctx.beginPath();
 			app.ctx.rect(this.x, this.y, this.w, this.h);
